@@ -61,6 +61,15 @@ export function ItemCard({
             {item.rarity}
           </span>
         ) : null}
+        <span
+          className={cx(
+            "absolute bottom-2 left-2 inline-flex items-center gap-1 border border-ink px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
+            item.unlocked ? "bg-paper-light text-moss" : "bg-rust text-paper",
+          )}
+        >
+          <Icon name={item.unlocked ? "unlock" : "lock"} size={10} />
+          {item.unlocked ? "Visible" : "Solo DM"}
+        </span>
       </div>
       <div className="flex flex-1 flex-col p-3">
         <div className="flex items-baseline justify-between gap-2">
@@ -143,7 +152,20 @@ export function SkillCard({
         </div>
       </div>
       <div className="flex-1 space-y-3 p-3">
-        <CoinRow coins={skill.coins} />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CoinRow coins={skill.coins} />
+          <span
+            className={cx(
+              "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
+              skill.unlocked
+                ? "border-moss/50 bg-moss/10 text-moss"
+                : "border-rust/50 bg-rust/10 text-rust-deep",
+            )}
+          >
+            <Icon name={skill.unlocked ? "unlock" : "lock"} size={10} />
+            {skill.unlocked ? "Visible" : "Solo DM"}
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
           <div className="border border-ink/25 bg-paper px-2 py-1.5">
             <div className="text-ink-faint">CLASH</div>

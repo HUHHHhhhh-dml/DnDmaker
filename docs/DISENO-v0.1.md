@@ -226,6 +226,7 @@ CombatUnit 1─* AppliedEffect ──1 EffectDefinition
 | `description` | `string?` | |
 | `slot` | `"horns" \| "hand" \| "armor" \| "leg" \| "utility"` | |
 | `rarity` | `string?` | Libre (Common, Rare, Unique...). |
+| `unlocked` | `boolean?` | Si es `true`, los jugadores lo ven y pueden elegirlo. Default: solo DM. |
 | `image` | `string?` | URL o `/uploads/...`. |
 | `stats` | `Partial<Stats>` | Suma a los stats base. |
 | `effects` | `{ effectId, stacks? }[]` | Efectos pasivos al equipar. |
@@ -244,6 +245,7 @@ CombatUnit 1─* AppliedEffect ──1 EffectDefinition
 | `baseDamage` | `number` | Daño base. |
 | `coinDamage` | `number` | Suma por cara al daño. |
 | `fullHeadsMultiplier` | `number?` | Por defecto 2; `1` lo desactiva. |
+| `unlocked` | `boolean?` | Si es `true`, los jugadores la ven y pueden elegirla. Default: solo DM. |
 | `target` | `"single"` | v0.1 solo un objetivo. |
 | `effects` | `{ effectId, chance?, stacks? }[]` | Se aplican al impactar. |
 | `animation` | `string?` | Nombre de animación (futuro). |

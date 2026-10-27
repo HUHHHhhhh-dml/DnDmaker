@@ -332,17 +332,39 @@ export class SessionService {
     };
   }
 
-  /** Campaña vista por un jugador: sin enemigos, notas, tiendas ni PIN. */
+  /** Campaña vista por un jugador: sin enemigos, notas, tiendas, PIN ni contenido bloqueado. */
   sanitizeCampaign(campaign: ReturnType<Repository["getCampaign"]>) {
     const { pin: _pin, ...safeSettings } = campaign.settings;
+    const party = campaign.content.characters.filter(
+      (character) => character.kind !== "enemy",
+    );
+    const referencedItems = new Set<string>();
+    const referencedSkills = new Set<string>();
+    for (const character of party) {
+      for (const itemId of Object.values(character.equipment ?? {})) {
+        if (itemId) referencedItems.add(itemId);
+      }
+      for (const entry of character.inventory) referencedItems.add(entry.itemId);
+      for (const skillId of character.skills) {
+        if (skillId) referencedSkills.add(skillId);
+      }
+    }
+
     return {
       ...campaign,
       settings: { ...safeSettings, pin: undefined },
       content: {
         ...campaign.content,
-        characters: campaign.content.characters
-          .filter((character) => character.kind !== "enemy")
-          .map((character) => this.sanitizeCharacter(character)),
+        // Los objetos/skills desbloqueados son la biblioteca visible. Los
+        // bloqueados que ya lleva un personaje de la party se mantienen para
+        // que su ficha y sus stats sigan siendo válidos.
+        items: campaign.content.items.filter(
+          (item) => item.unlocked === true || referencedItems.has(item.id),
+        ),
+        skills: campaign.content.skills.filter(
+          (skill) => skill.unlocked === true || referencedSkills.has(skill.id),
+        ),
+        characters: party.map((character) => this.sanitizeCharacter(character)),
         encounters: [],
         shops: [],
         dungeons: [],

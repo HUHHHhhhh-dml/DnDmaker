@@ -26,9 +26,10 @@
 | Un jugador no edita otra ficha | ✅ | Test HTTP: 403 `not_your_character`; además no puede tocar contenido/campaña/export. |
 | PIN | ✅ | Host con PIN 4321; join sin PIN/incorrecto → 403. |
 | Presencia | ✅ | Test Socket.IO real y E2E: “En línea”, contador y estado del DM. |
+| Contenido bloqueado | ✅ | El estado del jugador excluye objetos/skills sin desbloquear; equipar uno devuelve 403 `content_locked`; al desbloquear el DM aparece en vivo. |
 | Reconexión / persistencia | ✅ | Recarga de `/table` con auto-resume; tokens en SQLite + localStorage. |
 | Cierre de sala | ✅ | El jugador recibe “La sala se cerró”; fichas liberadas. |
-| API/permisos | ✅ | 50 tests de Vitest, incluidos 12 de sesiones y 3 de Socket.IO. |
+| API/permisos | ✅ | 52 tests de Vitest, incluidos 14 de sesiones y 3 de Socket.IO. |
 
 ## 3. Arquitectura de la mesa
 
@@ -81,7 +82,23 @@ Jugador (navegador)                       ├─ campaign:refresh ─► DM
   - sin PIN.
 - Los GET de campaña/contenido son de LAN y no se consideran secretos; las mutaciones sí están protegidas. La privacidad fuerte por lectura queda para una fase posterior con roles más estrictos.
 
-### 3.4 Tiempo real
+### 3.4 Biblioteca por desbloqueo
+
+- `Item.unlocked?: boolean` y `Skill.unlocked?: boolean`. Ausente o `false` significa **solo DM**.
+- El DM ve dos vistas en las bibliotecas:
+  - **DM · todo**: biblioteca completa con filtros Todos / Desbloqueados / Solo DM.
+  - **Jugadores · desbloqueados**: exactamente la biblioteca que ve la mesa.
+- Cada objeto/skill tiene su interruptor **“Visible para jugadores”** en el editor. El contenido nuevo nace bloqueado.
+- El estado saneado del jugador filtra `content.items` y `content.skills`:
+  - incluye todo lo desbloqueado;
+  - incluye además lo que ya lleve un personaje de la party (equipo, inventario o skills), para no romper stats ni fichas existentes;
+  - excluye el resto.
+- El servidor no confía en la UI: si un jugador intenta equipar/añadir un objeto o skill bloqueado, responde `403 content_locked`. Su propia ficha actual sigue permitida.
+- Un cambio de visibilidad emite `campaign:refresh`; los jugadores ven la biblioteca actualizada sin recargar.
+- Los **efectos** siguen compartidos para que los stats derivados y las referencias funcionen; si más adelante se quiere ocultarlos también, se les añade el mismo campo.
+- Las dos vistas del DM permiten comprobar de un vistazo qué verá la mesa; el filtro “Solo DM” enseña lo que todavía no se ha desbloqueado.
+
+### 3.5 Tiempo real
 
 Socket.IO en `/socket.io`, autenticado por `{ code, token }`:
 
@@ -114,6 +131,10 @@ El cliente del jugador y el del DM tienen stores separados (`usePlayerStore`, `u
 | Jugador | Entrada |
 |---|---|
 | ![Mesa del jugador](./screenshots/fase-2-mesa-jugador.png) | ![Join](./screenshots/fase-2-join.png) |
+
+| Biblioteca del DM (todo) | Biblioteca de jugadores |
+|---|---|
+| ![Biblioteca DM](./screenshots/fase-2-biblioteca.png) | ![Biblioteca jugadores](./screenshots/fase-2-biblioteca-jugadores.png) |
 
 ## 5. API añadida
 
@@ -150,11 +171,11 @@ Junto con `idx_sessions_code`. El DDL es idempotente y se aplica al arrancar; no
 
 ## 7. Tests
 
-`npm test` → **50 tests**:
+`npm test` → **52 tests**:
 
 - 25 de `packages/shared`.
 - 10 de API de Fase 1.
-- 12 de sesiones/permisos (`sessions.test.ts`).
+- 14 de sesiones/permisos (`sessions.test.ts`), incluido el filtrado y bloqueo de contenido.
 - 3 de Socket.IO con dos clientes reales (`realtime.test.ts`).
 
 Además, E2E manual con Playwright:

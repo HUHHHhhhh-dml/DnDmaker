@@ -16,6 +16,7 @@ import {
   PageHeader,
   TextArea,
   TextInput,
+  Toggle,
   cx,
 } from "../components/ui";
 import { CoinRow } from "../components/cards";
@@ -32,6 +33,7 @@ interface SkillDraft {
   baseDamage: number;
   coinDamage: number;
   fullHeadsMultiplier: number | undefined;
+  unlocked: boolean;
   effects: { effectId: string; chance: number; stacks: number }[];
   tags: string;
 }
@@ -48,6 +50,7 @@ function emptyDraft(): SkillDraft {
     baseDamage: 10,
     coinDamage: 5,
     fullHeadsMultiplier: 2,
+    unlocked: false,
     effects: [],
     tags: "",
   };
@@ -65,6 +68,7 @@ function draftFromSkill(skill: Skill): SkillDraft {
     baseDamage: skill.baseDamage,
     coinDamage: skill.coinDamage,
     fullHeadsMultiplier: skill.fullHeadsMultiplier,
+    unlocked: skill.unlocked === true,
     effects: (skill.effects ?? []).map((ref) => ({
       effectId: ref.effectId,
       chance: ref.chance ?? 1,
@@ -159,6 +163,7 @@ export function SkillEditorPage() {
       baseDamage: draft.baseDamage,
       coinDamage: draft.coinDamage,
       fullHeadsMultiplier: draft.fullHeadsMultiplier,
+      unlocked: draft.unlocked,
       target: "single" as const,
       effects: draft.effects.length > 0 ? draft.effects : undefined,
       tags: draft.tags
@@ -272,6 +277,14 @@ export function SkillEditorPage() {
                   placeholder="Cómo se siente usar esta skill…"
                 />
               </Field>
+              <div className="sm:col-span-2 border-2 border-ink bg-paper/60 p-3">
+                <Toggle
+                  checked={draft.unlocked}
+                  onCheckedChange={(value) => patch({ unlocked: value })}
+                  label="Visible para jugadores"
+                  hint="Apagada = solo el DM la ve en la biblioteca. Si un personaje ya la lleva equipada, su ficha la conserva."
+                />
+              </div>
             </div>
           </section>
 
@@ -447,7 +460,18 @@ export function SkillEditorPage() {
                   {draft.code || "SIN-CÓDIGO"}
                 </span>
               </div>
-              <div className="mt-2">
+              <div className="mt-2 flex flex-wrap items-center gap-1">
+                <span
+                  className={cx(
+                    "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
+                    draft.unlocked
+                      ? "border-moss/50 bg-moss/10 text-moss"
+                      : "border-rust/50 bg-rust/10 text-rust-deep",
+                  )}
+                >
+                  <Icon name={draft.unlocked ? "unlock" : "lock"} size={10} />
+                  {draft.unlocked ? "Visible para jugadores" : "Solo DM"}
+                </span>
                 <CoinRow coins={draft.coins} />
               </div>
               <div className="mt-3 space-y-1.5 font-mono text-[10px]">

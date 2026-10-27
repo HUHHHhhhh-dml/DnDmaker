@@ -150,6 +150,67 @@ export async function registerRoutes(
         "No se pueden editar fichas durante el combate.",
       );
     }
+
+    // Los jugadores solo pueden elegir objetos/skills desbloqueados. Se
+    // permite conservar lo que ya lleva su ficha aunque el DM lo haya vuelto
+    // a bloquear, para no romper stats existentes.
+    const current = campaign.content.characters.find(
+      (character) => character.id === characterId,
+    );
+    const allowedItems = new Set(
+      campaign.content.items
+        .filter((item) => item.unlocked === true)
+        .map((item) => item.id),
+    );
+    const allowedSkills = new Set(
+      campaign.content.skills
+        .filter((skill) => skill.unlocked === true)
+        .map((skill) => skill.id),
+    );
+    if (current) {
+      for (const itemId of Object.values(current.equipment ?? {})) {
+        if (itemId) allowedItems.add(itemId);
+      }
+      for (const entry of current.inventory) allowedItems.add(entry.itemId);
+      for (const skillId of current.skills) {
+        if (skillId) allowedSkills.add(skillId);
+      }
+    }
+
+    const requestedItems: string[] = [];
+    if (patch.equipment && typeof patch.equipment === "object") {
+      for (const itemId of Object.values(
+        patch.equipment as Record<string, unknown>,
+      )) {
+        if (typeof itemId === "string") requestedItems.push(itemId);
+      }
+    }
+    if (Array.isArray(patch.inventory)) {
+      for (const entry of patch.inventory as Array<{ itemId?: unknown }>) {
+        if (typeof entry?.itemId === "string") requestedItems.push(entry.itemId);
+      }
+    }
+    if (requestedItems.some((itemId) => !allowedItems.has(itemId))) {
+      throw new HttpError(
+        403,
+        "content_locked",
+        "Ese objeto todavía no está desbloqueado para los jugadores.",
+      );
+    }
+
+    const requestedSkills: string[] = [];
+    if (Array.isArray(patch.skills)) {
+      for (const skillId of patch.skills as unknown[]) {
+        if (typeof skillId === "string") requestedSkills.push(skillId);
+      }
+    }
+    if (requestedSkills.some((skillId) => !allowedSkills.has(skillId))) {
+      throw new HttpError(
+        403,
+        "content_locked",
+        "Esa skill todavía no está desbloqueada para los jugadores.",
+      );
+    }
   }
 
   /* ---------------------------------------------------------------------- */

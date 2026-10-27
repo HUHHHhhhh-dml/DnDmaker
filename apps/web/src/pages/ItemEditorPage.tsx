@@ -29,6 +29,7 @@ import {
   TagList,
   TextArea,
   TextInput,
+  Toggle,
   cx,
 } from "../components/ui";
 import { normalizedCode, statEntries } from "../lib/format";
@@ -39,6 +40,7 @@ interface ItemDraft {
   description: string;
   slot: EquipmentSlot;
   rarity: string;
+  unlocked: boolean;
   image: string | undefined;
   stats: Partial<Stats>;
   effects: { effectId: string; stacks?: number }[];
@@ -55,6 +57,7 @@ function emptyDraft(): ItemDraft {
     description: "",
     slot: "horns",
     rarity: "",
+    unlocked: false,
     image: undefined,
     stats: {},
     effects: [],
@@ -72,6 +75,7 @@ function draftFromItem(item: Item): ItemDraft {
     description: item.description ?? "",
     slot: item.slot,
     rarity: item.rarity ?? "",
+    unlocked: item.unlocked === true,
     image: item.image,
     stats: { ...item.stats },
     effects: (item.effects ?? []).map((ref) => ({ ...ref })),
@@ -148,6 +152,7 @@ export function ItemEditorPage() {
       description: draft.description.trim() || undefined,
       slot: draft.slot,
       rarity: draft.rarity.trim() || undefined,
+      unlocked: draft.unlocked,
       image: draft.image,
       stats: Object.keys(cleanStats).length > 0 ? cleanStats : undefined,
       effects: draft.effects.length > 0 ? draft.effects : undefined,
@@ -332,6 +337,14 @@ export function ItemEditorPage() {
                   placeholder="civil, starter"
                 />
               </Field>
+              <div className="sm:col-span-2 border-2 border-ink bg-paper/60 p-3">
+                <Toggle
+                  checked={draft.unlocked}
+                  onCheckedChange={(value) => patch({ unlocked: value })}
+                  label="Visible para jugadores"
+                  hint="Apagado = solo el DM lo ve en la biblioteca. Si un personaje ya lo lleva equipado, su ficha lo conserva."
+                />
+              </div>
             </div>
           </section>
 
@@ -488,6 +501,17 @@ export function ItemEditorPage() {
                     {draft.code || "SIN-CÓDIGO"}
                   </span>
                 </div>
+                <span
+                  className={cx(
+                    "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
+                    draft.unlocked
+                      ? "border-moss/50 bg-moss/10 text-moss"
+                      : "border-rust/50 bg-rust/10 text-rust-deep",
+                  )}
+                >
+                  <Icon name={draft.unlocked ? "unlock" : "lock"} size={10} />
+                  {draft.unlocked ? "Visible para jugadores" : "Solo DM"}
+                </span>
                 <p className="text-[11px] leading-snug text-ink-soft">
                   {draft.description || "Sin descripción."}
                 </p>

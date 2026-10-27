@@ -108,6 +108,7 @@ export function buildSeedContent(): CampaignContent {
   const civil: Item = {
     id: newId("itm"),
     code: "AASS-164",
+    unlocked: true,
     name: "CIVIL",
     description: "Cuernos otorgados a civiles para reducir Incidentes.",
     slot: "horns",
@@ -120,6 +121,7 @@ export function buildSeedContent(): CampaignContent {
   const warrior: Item = {
     id: newId("itm"),
     code: "ADTH-376",
+    unlocked: true,
     name: "WARRIOR",
     description: "Los aspirantes a ser guerreros usan estos cuernos.",
     slot: "horns",
@@ -132,6 +134,7 @@ export function buildSeedContent(): CampaignContent {
   const brokenFetters: Item = {
     id: newId("itm"),
     code: "OPMS-356",
+    unlocked: false,
     name: "BROKEN FETTERS",
     description:
       "Captan la energía del usuario y la liberan al entrar en combate: mucho ATK, poca vida.",
@@ -145,6 +148,7 @@ export function buildSeedContent(): CampaignContent {
   const simpleArmor: Item = {
     id: newId("itm"),
     code: "AFAB-745",
+    unlocked: true,
     name: "SIMPLE ARMOR",
     description: "Armadura básica usada por novatos.",
     slot: "armor",
@@ -158,6 +162,7 @@ export function buildSeedContent(): CampaignContent {
   const whiteBoots: Item = {
     id: newId("itm"),
     code: "PWBE-747",
+    unlocked: true,
     name: "WHITE BOOTS",
     description: "Usadas por los Purifiers en terrenos complicados.",
     slot: "leg",
@@ -170,6 +175,7 @@ export function buildSeedContent(): CampaignContent {
   const healingInjection: Item = {
     id: newId("itm"),
     code: "BAHW-367",
+    unlocked: true,
     name: "HEALING INJECTION",
     description: "Inyección de campaña: cura 20 HP al usarla en combate.",
     slot: "utility",
@@ -183,6 +189,7 @@ export function buildSeedContent(): CampaignContent {
   const purifierInjection: Item = {
     id: newId("itm"),
     code: "CLYK-643",
+    unlocked: true,
     name: "PURIFIER INJECTION",
     description: "Inyección de élite: cura 150 HP.",
     slot: "utility",
@@ -206,6 +213,7 @@ export function buildSeedContent(): CampaignContent {
   const odachi: Skill = {
     id: newId("skl"),
     code: "BETI-928",
+    unlocked: true,
     name: "ODACHI",
     description: "Tres monedas y un filo que no perdona.",
     coins: 3,
@@ -222,6 +230,7 @@ export function buildSeedContent(): CampaignContent {
   const simpleDagger: Skill = {
     id: newId("skl"),
     code: "BSGO-728",
+    unlocked: true,
     name: "SIMPLE DAGGER",
     description: "Rápida y sucia; puede abrir heridas.",
     coins: 2,
@@ -237,6 +246,7 @@ export function buildSeedContent(): CampaignContent {
   const simpleRifle: Skill = {
     id: newId("skl"),
     code: "BTAH-885",
+    unlocked: true,
     name: "SIMPLE RIFLE",
     description: "Un disparo con mucho clasha y daño fiable.",
     coins: 1,
@@ -251,6 +261,7 @@ export function buildSeedContent(): CampaignContent {
   const lance: Skill = {
     id: newId("skl"),
     code: "AACZ-996",
+    unlocked: true,
     name: "LANCE",
     description: "Alcance medio, dos monedas equilibradas.",
     coins: 2,
@@ -265,6 +276,7 @@ export function buildSeedContent(): CampaignContent {
   const thirdOdachi: Skill = {
     id: newId("skl"),
     code: "WEFE-421",
+    unlocked: false,
     name: "3RD ODACHI",
     description: "Cinco monedas. Si sale todo caras, se acaba la conversación.",
     coins: 5,

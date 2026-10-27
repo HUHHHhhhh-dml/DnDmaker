@@ -25,6 +25,10 @@ let campaign: Campaign;
 let playerCharacterId: string;
 let otherCharacterId: string;
 let enemyCharacterId: string;
+let unlockedItemId: string;
+let lockedItemId: string;
+let unlockedSkillId: string;
+let lockedSkillId: string;
 let sessionCode: string;
 let dmToken: string;
 let playerToken: string;
@@ -104,6 +108,50 @@ beforeAll(async () => {
     },
   });
   enemyCharacterId = (enemyChar.json() as Character).id;
+
+  const unlockedItem = await app.inject({
+    method: "POST",
+    url: `/api/campaigns/${campaign.id}/items`,
+    payload: { name: "Filo visible", slot: "hand", unlocked: true, stats: { atk: 2 } },
+  });
+  unlockedItemId = (unlockedItem.json() as { id: string }).id;
+
+  const lockedItem = await app.inject({
+    method: "POST",
+    url: `/api/campaigns/${campaign.id}/items`,
+    payload: { name: "Filo oculto", slot: "hand", unlocked: false, stats: { atk: 99 } },
+  });
+  lockedItemId = (lockedItem.json() as { id: string }).id;
+
+  const unlockedSkill = await app.inject({
+    method: "POST",
+    url: `/api/campaigns/${campaign.id}/skills`,
+    payload: {
+      name: "Skill visible",
+      coins: 1,
+      baseClash: 1,
+      coinClash: 1,
+      baseDamage: 1,
+      coinDamage: 1,
+      unlocked: true,
+    },
+  });
+  unlockedSkillId = (unlockedSkill.json() as { id: string }).id;
+
+  const lockedSkill = await app.inject({
+    method: "POST",
+    url: `/api/campaigns/${campaign.id}/skills`,
+    payload: {
+      name: "Skill oculta",
+      coins: 1,
+      baseClash: 1,
+      coinClash: 1,
+      baseDamage: 1,
+      coinDamage: 1,
+      unlocked: false,
+    },
+  });
+  lockedSkillId = (lockedSkill.json() as { id: string }).id;
 });
 
 afterAll(async () => {
@@ -202,6 +250,14 @@ describe("Fase 2 — sala en vivo", () => {
       ),
     ).toBe(true);
     expect(state.campaign.content.encounters).toEqual([]);
+    expect(state.campaign.content.items.map((item) => item.id)).toContain(unlockedItemId);
+    expect(state.campaign.content.items.map((item) => item.id)).not.toContain(lockedItemId);
+    expect(state.campaign.content.skills.map((skill) => skill.id)).toContain(
+      unlockedSkillId,
+    );
+    expect(state.campaign.content.skills.map((skill) => skill.id)).not.toContain(
+      lockedSkillId,
+    );
     expect(stateResponse.body).not.toContain(enemyCharacterId);
   });
 
@@ -222,6 +278,73 @@ describe("Fase 2 — sala en vivo", () => {
       payload: { notes: "El DM también edita" },
     });
     expect(dmEdit.statusCode).toBe(200);
+  });
+
+  it("el jugador no puede equipar contenido bloqueado", async () => {
+    const lockedItemEquip = await app.inject({
+      method: "PATCH",
+      url: `/api/content/characters/${playerCharacterId}`,
+      headers: playerHeaders(),
+      payload: {
+        equipment: {
+          horns: null,
+          hand: lockedItemId,
+          armor: null,
+          leg: null,
+          utility: null,
+        },
+      },
+    });
+    expect(lockedItemEquip.statusCode).toBe(403);
+    expect(lockedItemEquip.json().error.code).toBe("content_locked");
+
+    const lockedSkillEquip = await app.inject({
+      method: "PATCH",
+      url: `/api/content/characters/${playerCharacterId}`,
+      headers: playerHeaders(),
+      payload: { skills: [lockedSkillId, null, null] },
+    });
+    expect(lockedSkillEquip.statusCode).toBe(403);
+    expect(lockedSkillEquip.json().error.code).toBe("content_locked");
+
+    const unlockedEquip = await app.inject({
+      method: "PATCH",
+      url: `/api/content/characters/${playerCharacterId}`,
+      headers: playerHeaders(),
+      payload: {
+        equipment: {
+          horns: null,
+          hand: unlockedItemId,
+          armor: null,
+          leg: null,
+          utility: null,
+        },
+        skills: [unlockedSkillId, null, null],
+      },
+    });
+    expect(unlockedEquip.statusCode).toBe(200);
+  });
+
+  it("el DM desbloquea un objeto y el jugador lo recibe en vivo", async () => {
+    const unlock = await app.inject({
+      method: "PATCH",
+      url: `/api/content/items/${lockedItemId}`,
+      headers: dmHeaders(),
+      payload: { unlocked: true },
+    });
+    expect(unlock.statusCode).toBe(200);
+
+    const state = await app.inject({
+      method: "GET",
+      url: `/api/sessions/${sessionCode}/state`,
+      headers: playerHeaders(),
+    });
+    expect(state.statusCode).toBe(200);
+    expect(
+      (state.json() as SessionStateResponse).campaign.content.items.map(
+        (item) => item.id,
+      ),
+    ).toContain(lockedItemId);
   });
 
   it("el jugador no puede editar otra ficha ni el contenido", async () => {

@@ -163,6 +163,8 @@ const itemFields = {
   description: descriptionSchema.optional(),
   slot: equipmentSlotSchema,
   rarity: z.string().trim().max(40).optional(),
+  /** Visibilidad para jugadores; ausente = bloqueado. */
+  unlocked: z.boolean().optional(),
   image: imageSchema.optional(),
   icon: imageSchema.optional(),
   stats: partialStatsSchema.optional(),
@@ -198,6 +200,8 @@ const skillFields = {
   baseDamage: integer(-9999, 9999),
   coinDamage: integer(-9999, 9999),
   fullHeadsMultiplier: z.number().min(1).max(10).optional(),
+  /** Visibilidad para jugadores; ausente = bloqueada. */
+  unlocked: z.boolean().optional(),
   target: z.literal("single").default("single"),
   effects: z.array(skillEffectRefSchema).max(10).optional(),
   tags: tagsSchema.optional(),

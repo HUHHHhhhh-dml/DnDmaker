@@ -126,6 +126,8 @@ export interface Item {
   description?: string;
   slot: EquipmentSlot;
   rarity?: string;
+  /** Si es true, los jugadores pueden verlo/elegirlo. Default: solo DM. */
+  unlocked?: boolean;
   image?: string;
   icon?: string;
   stats?: Partial<Stats>;
@@ -159,6 +161,8 @@ export interface Skill {
   baseDamage: number;
   coinDamage: number;
   fullHeadsMultiplier?: number;
+  /** Si es true, los jugadores pueden verla/elegirla. Default: solo DM. */
+  unlocked?: boolean;
 
   target: "single";
   effects?: SkillEffectRef[];

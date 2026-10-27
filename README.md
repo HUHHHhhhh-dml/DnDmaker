@@ -65,6 +65,7 @@ Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislami
 - **Party y presencia** en vivo: quién está en línea, su ficha y sus stats derivados.
 - **Permisos de servidor**: el jugador solo edita su propia ficha; no puede tocar contenido, campaña, export ni otras fichas. En combate no se edita (preparado para Fase 3).
 - **Estado del jugador saneado**: sin enemigos, sin notas del DM, sin PIN y sin encuentros.
+- **Biblioteca por desbloqueo**: el DM ve todos los objetos/skills y decide con un interruptor cuáles aparecen a los jugadores. Hay vistas “DM · todo” y “Jugadores · desbloqueados”.
 - **Reconexión**: recargar la pestaña recupera la sesión guardada; cerrar la sala libera las fichas.
 - **Recuperación del DM**: abrir una sala nueva reemplaza la anterior y permite fijar el PIN desde la propia mesa.
 
@@ -73,6 +74,10 @@ Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislami
 | Mesa del jugador | Entrada a la sala |
 |---|---|
 | ![Mesa del jugador](./docs/screenshots/fase-2-mesa-jugador.png) | ![Join](./docs/screenshots/fase-2-join.png) |
+
+| Biblioteca del DM | Biblioteca de jugadores |
+|---|---|
+| ![Biblioteca DM](./docs/screenshots/fase-2-biblioteca.png) | ![Biblioteca jugadores](./docs/screenshots/fase-2-biblioteca-jugadores.png) |
 
 | Panel del DM | Ficha con stats derivados |
 |---|---|
@@ -121,6 +126,7 @@ protocol-life/
 - **Mutaciones por HTTP, eventos por Socket.IO:** el servidor valida permisos y después emite `campaign:refresh`/`session:players`; el cliente nunca muta por socket.
 - **PIN:** usa los ajustes de la campaña y se puede fijar al abrir la sala. Es una barrera de conveniencia en LAN, **no autenticación fuerte**.
 - **Tokens:** el DM y cada jugador reciben un token aleatorio. Se guardan en `localStorage` con claves separadas por rol; cada pestaña tiene su propio contexto en memoria.
+- **Desbloqueo:** `unlocked?: boolean` en `Item` y `Skill`. Ausente o `false` = solo DM. Los jugadores solo pueden elegir contenido desbloqueado; el servidor rechaza con `403 content_locked`. Lo que ya lleva un personaje se conserva en su ficha aunque el DM lo vuelva a bloquear.
 - **Contenido JSON validado:** las entidades completas viven en columnas JSON validadas con Zod; las tiendas/mazmorras del modelo se guardan en `campaigns.extras`.
 - **Stats derivados:** `(base + planos) × (1 + porcentajes)`, Skill Slots limitados a `1..rules.maxSkillSlots`.
 - **Moneda:** **Clean Shards**. Nunca dinero real.

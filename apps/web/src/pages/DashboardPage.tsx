@@ -313,6 +313,7 @@ export function DashboardPage() {
                 "Sala LAN con link + PIN",
                 "Fichas compartidas en vivo",
                 "Permisos por token de sesión",
+                "Biblioteca por desbloqueo",
                 "Party y presencia en tiempo real",
               ].map((entry) => (
                 <li key={entry} className="flex items-start gap-1.5">

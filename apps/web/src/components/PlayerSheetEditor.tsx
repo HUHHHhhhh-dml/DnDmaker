@@ -54,6 +54,24 @@ export function PlayerSheetEditor({
     campaign.content.skills.map((skill) => [skill.id, skill]),
   );
 
+  // El estado del jugador incluye lo bloqueado que lleva la party para que los
+  // stats de todos se calculen bien. El editor solo ofrece lo desbloqueado más
+  // lo que ya lleva esta ficha (aunque el DM lo haya vuelto a bloquear).
+  const ownItemIds = new Set<string>();
+  for (const itemId of Object.values(character.equipment ?? {})) {
+    if (itemId) ownItemIds.add(itemId);
+  }
+  for (const entry of character.inventory) ownItemIds.add(entry.itemId);
+  const ownSkillIds = new Set(
+    character.skills.filter((skillId): skillId is string => Boolean(skillId)),
+  );
+  const selectableItems = campaign.content.items.filter(
+    (item) => item.unlocked === true || ownItemIds.has(item.id),
+  );
+  const selectableSkills = campaign.content.skills.filter(
+    (skill) => skill.unlocked === true || ownSkillIds.has(skill.id),
+  );
+
   function patch(update: Partial<Character>) {
     setDraft((current) => ({ ...current, ...update }));
   }
@@ -91,7 +109,7 @@ export function PlayerSheetEditor({
   }
 
   function addInventoryEntry() {
-    const firstItem = campaign.content.items[0];
+    const firstItem = selectableItems[0];
     if (!firstItem) return;
     setDraft((current) => ({
       ...current,
@@ -308,7 +326,8 @@ export function PlayerSheetEditor({
           03 · Equipo
         </h2>
         <p className="mb-4 mt-2 text-[11px] text-ink-faint">
-          Cinco slots. Cada objeto suma sus stats y efectos pasivos al total.
+          Cinco slots. Cada objeto suma sus stats y efectos pasivos al total. Solo
+          aparecen los objetos desbloqueados por el DM (y los que ya lleva tu ficha).
         </p>
         <div className="space-y-3">
           {EQUIPMENT_SLOTS.map((slot) => {
@@ -330,7 +349,7 @@ export function PlayerSheetEditor({
                     onValueChange={(value) => patchEquipment(slot, value || null)}
                   >
                     <option value="">— Vacío —</option>
-                    {campaign.content.items
+                    {selectableItems
                       .filter((entry) => entry.slot === slot || entry.id === currentId)
                       .map((entry) => (
                         <option key={entry.id} value={entry.id}>
@@ -358,7 +377,8 @@ export function PlayerSheetEditor({
         </h2>
         <p className="mb-4 mt-2 text-[11px] text-ink-faint">
           Tres slots de skill. Dominio y hábitat son habilidades especiales de tu
-          ficha.
+          ficha. Solo se ofrecen las skills desbloqueadas por el DM (y las que ya
+          lleves).
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           {[0, 1, 2].map((index) => {
@@ -375,7 +395,7 @@ export function PlayerSheetEditor({
                   onValueChange={(value) => patchSkill(index, value || null)}
                 >
                   <option value="">— Vacío —</option>
-                  {campaign.content.skills.map((option) => (
+                  {selectableSkills.map((option) => (
                     <option key={option.id} value={option.id}>
                       {option.name} ({option.coins} monedas)
                     </option>
@@ -423,9 +443,9 @@ export function PlayerSheetEditor({
           Objetos que llevas contigo, además del equipo puesto.
         </p>
         <div className="space-y-2">
-          {campaign.content.items.length === 0 ? (
+          {selectableItems.length === 0 ? (
             <p className="text-xs text-ink-soft">
-              La campaña todavía no tiene objetos.
+              La campaña todavía no tiene objetos desbloqueados.
             </p>
           ) : (
             draft.inventory.map((entry, index) => {
@@ -439,7 +459,7 @@ export function PlayerSheetEditor({
                     }
                     className="min-w-[180px] flex-1"
                   >
-                    {campaign.content.items.map((option) => (
+                    {selectableItems.map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.name} ({EQUIPMENT_SLOT_LABELS[option.slot]})
                       </option>

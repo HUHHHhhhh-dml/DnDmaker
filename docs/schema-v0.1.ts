@@ -138,6 +138,8 @@ export interface Item {
   description?: string;
   slot: EquipmentSlot;
   rarity?: string;
+  /** Si es true, los jugadores pueden verlo/elegirlo. Default: solo DM. */
+  unlocked?: boolean;
   /** URL o /uploads/... */
   image?: string;
   icon?: string;
@@ -183,6 +185,8 @@ export interface Skill {
   coinDamage: number;
   /** Multiplicador si todas las monedas salen caras (default 2). */
   fullHeadsMultiplier?: number;
+  /** Si es true, los jugadores pueden verla/elegirla. Default: solo DM. */
+  unlocked?: boolean;
 
   /** v0.1: un solo objetivo. */
   target: "single";

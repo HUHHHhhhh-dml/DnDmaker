@@ -20,15 +20,33 @@ const SLOT_FILTERS: Array<{ value: EquipmentSlot | "all"; label: string }> = [
   })),
 ];
 
+type LibraryView = "dm" | "players";
+type LockFilter = "all" | "unlocked" | "locked";
+
 export function ItemsPage() {
   const campaign = useAppStore((state) => state.campaign);
   const [search, setSearch] = useState("");
   const [slot, setSlot] = useState<EquipmentSlot | "all">("all");
+  const [view, setView] = useState<LibraryView>("dm");
+  const [lockFilter, setLockFilter] = useState<LockFilter>("all");
   if (!campaign) return null;
+
+  const viewItems = useMemo(
+    () =>
+      campaign.content.items.filter((item) =>
+        view === "dm" ? true : item.unlocked === true,
+      ),
+    [campaign.content.items, view],
+  );
 
   const items = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return campaign.content.items.filter((item) => {
+    return viewItems.filter((item) => {
+      const unlocked = item.unlocked === true;
+      const matchesLock =
+        view === "players" ||
+        lockFilter === "all" ||
+        (lockFilter === "unlocked" ? unlocked : !unlocked);
       const matchesSlot = slot === "all" || item.slot === slot;
       const matchesSearch =
         !needle ||
@@ -36,27 +54,102 @@ export function ItemsPage() {
         (item.code ?? "").toLowerCase().includes(needle) ||
         (item.description ?? "").toLowerCase().includes(needle) ||
         (item.tags ?? []).some((tag) => tag.toLowerCase().includes(needle));
-      return matchesSlot && matchesSearch;
+      return matchesLock && matchesSlot && matchesSearch;
     });
-  }, [campaign.content.items, search, slot]);
+  }, [viewItems, search, slot, lockFilter, view]);
 
-  const slotCounts = campaign.content.items.reduce<Record<string, number>>((acc, item) => {
+  const slotCounts = viewItems.reduce<Record<string, number>>((acc, item) => {
     acc[item.slot] = (acc[item.slot] ?? 0) + 1;
     return acc;
   }, {});
+
+  const unlockedCount = campaign.content.items.filter(
+    (item) => item.unlocked === true,
+  ).length;
+  const lockedCount = campaign.content.items.length - unlockedCount;
+
+  function resetFilters() {
+    setSearch("");
+    setSlot("all");
+    setLockFilter("all");
+  }
 
   return (
     <div className="animate-rise">
       <PageHeader
         eyebrow="Biblioteca · Objetos"
         title="Arsenal"
-        description="Equipo y utilidades. Cada objeto suma stats al equiparse y puede arrastrar efectos pasivos. El código es visible, pero el ID interno manda."
+        description="El DM ve toda la biblioteca; los jugadores solo ven lo desbloqueado. Cada objeto tiene su interruptor de visibilidad y los que ya lleva un personaje se conservan en su ficha."
         actions={
           <LinkButton to="/items/new" variant="accent" size="sm" icon="plus">
             Nuevo objeto
           </LinkButton>
         }
       />
+
+      <div className="mb-4 flex flex-col gap-3 border-2 border-ink bg-paper-deep p-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex border-2 border-ink bg-paper-light">
+          <button
+            type="button"
+            onClick={() => setView("dm")}
+            className={cx(
+              "px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] transition-colors",
+              view === "dm" ? "bg-ink text-paper" : "text-ink-soft hover:bg-paper",
+            )}
+          >
+            <Icon name="lock" size={11} className="mr-1 inline" />
+            DM · todo
+            <span className="ml-1 opacity-60">{campaign.content.items.length}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("players")}
+            className={cx(
+              "border-l-2 border-ink px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] transition-colors",
+              view === "players" ? "bg-moss text-paper" : "text-ink-soft hover:bg-paper",
+            )}
+          >
+            <Icon name="unlock" size={11} className="mr-1 inline" />
+            Jugadores · desbloqueados
+            <span className="ml-1 opacity-60">{unlockedCount}</span>
+          </button>
+        </div>
+
+        {view === "dm" ? (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+              Visibilidad
+            </span>
+            {(
+              [
+                ["all", "Todos", campaign.content.items.length],
+                ["unlocked", "Desbloqueados", unlockedCount],
+                ["locked", "Solo DM", lockedCount],
+              ] as Array<[LockFilter, string, number]>
+            ).map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setLockFilter(value)}
+                className={cx(
+                  "border border-ink px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-colors",
+                  lockFilter === value
+                    ? "bg-ink text-paper"
+                    : "bg-paper text-ink-soft hover:bg-paper-light",
+                )}
+              >
+                {label}
+                <span className="ml-1 opacity-60">{count}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="max-w-md px-1 text-[10px] leading-snug text-ink-soft">
+            Solo aparecen los objetos desbloqueados. Si un personaje ya lleva uno
+            bloqueado, su ficha lo conserva.
+          </p>
+        )}
+      </div>
 
       <div className="mb-5 flex flex-col gap-3 border-2 border-ink bg-paper-light p-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -88,7 +181,7 @@ export function ItemsPage() {
               {filter.label}
               <span className="ml-1 opacity-60">
                 {filter.value === "all"
-                  ? campaign.content.items.length
+                  ? viewItems.length
                   : (slotCounts[filter.value] ?? 0)}
               </span>
             </button>
@@ -98,43 +191,46 @@ export function ItemsPage() {
 
       <div className="mb-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
         <span>
-          {items.length} de {campaign.content.items.length} objetos
+          {items.length} de {viewItems.length} objetos ·{" "}
+          {view === "dm" ? "biblioteca del DM" : "visibles para jugadores"}
         </span>
-        <button
-          type="button"
-          onClick={() => {
-            setSearch("");
-            setSlot("all");
-          }}
-          className="hover:text-rust"
-        >
+        <button type="button" onClick={resetFilters} className="hover:text-rust">
           Limpiar filtros
         </button>
       </div>
 
       {items.length === 0 ? (
         <EmptyState
-          icon="cube"
-          title={campaign.content.items.length === 0 ? "La biblioteca está vacía" : "Nada coincide"}
+          icon={view === "players" ? "unlock" : "cube"}
+          title={
+            campaign.content.items.length === 0
+              ? "La biblioteca está vacía"
+              : view === "players" && unlockedCount === 0
+                ? "Nada desbloqueado todavía"
+                : "Nada coincide"
+          }
           description={
             campaign.content.items.length === 0
               ? "Empieza con un par de cuernos, una armadura y un arma. Todo se puede editar después."
-              : "Prueba con otro nombre, código o slot."
+              : view === "players" && unlockedCount === 0
+                ? "El DM irá desbloqueando objetos desde esta biblioteca. Mientras tanto, la lista de jugadores estará vacía."
+                : "Prueba con otro nombre, código, slot o filtro de visibilidad."
           }
           action={
             campaign.content.items.length === 0 ? (
               <LinkButton to="/items/new" icon="plus" size="sm">
                 Crear el primer objeto
               </LinkButton>
-            ) : (
+            ) : view === "players" && unlockedCount === 0 ? (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setSearch("");
-                  setSlot("all");
-                }}
+                onClick={() => setView("dm")}
               >
+                Ver biblioteca del DM
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
                 Limpiar filtros
               </Button>
             )
