@@ -148,7 +148,7 @@ Borrar contenido referenciado devuelve **409** con la lista de referencias; no s
 
 - **Fase 1 — Estudio del DM:** completada.
 - **Fase 2 — Mesa en vivo:** host/join con código + PIN, sesión con tokens, fichas compartidas, presencia y permisos.
-- **Fase 3 — Encuentros y combate:** `CombatState`, declaraciones, clash, monedas, DEF, efectos, utilidad, log animado y consola del DM.
+- **Fase 3 — Encuentros y combate:** `CombatState`, declaraciones, clash, monedas, DEF, efectos, utilidad, log animado, consola del DM y side-view híbrido (party por capas, enemigos con sprite único).
 - **Fase 4 — Contenido avanzado:** tiendas, mazmorras, balance, animaciones, backup/restore.
 
 ## Documentos
@@ -157,4 +157,5 @@ Borrar contenido referenciado devuelve **409** con la lista de referencias; no s
 - [Contrato de datos v0.1](./docs/schema-v0.1.ts)
 - [Handoff / plan de Fase 1](./docs/HANDOFF-FASE-1.md)
 - [Notas de implementación de Fase 1](./docs/FASE-1.md)
+- [Decisión de side-view (Fase 3)](./docs/DECISION-SIDE-VIEW.md)
 - [Prototipo original](./reference/protocol-game-v1.1.html) (solo referencia estética/mecánica)

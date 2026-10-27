@@ -125,6 +125,7 @@ También se verificó el flujo completo en navegador (Playwright, contra `npm ru
 - Sin cuentas de usuario, IA automática ni app móvil nativa (descartado también para el futuro).
 - Sin migraciones automáticas de esquema; si cambia el DDL en desarrollo, se recomienda borrar `data/protocol-life.sqlite` y volver a arrancar (el seed se regenera). Para producción/backup se añadirá `drizzle-kit` y backup diario.
 - El borrado de una campaña es inmediato y en cascada; la UI pide confirmación y recuerda exportar antes.
+- **Visual de combate:** no hay side-view todavía. La decisión para Fase 3 está cerrada en [DECISION-SIDE-VIEW.md](./DECISION-SIDE-VIEW.md): party por capas, enemigos por sprite único y fallback automático.
 
 ## 7. Siguiente fase (Fase 2)
 
@@ -148,3 +149,7 @@ También se verificó el flujo completo en navegador (Playwright, contra `npm ru
 | `apps/web/src/store/useAppStore.ts` | Estado de campaña/contenido (Zustand). |
 | `apps/web/src/pages/CharacterSheetPage.tsx` | Ficha, equipo y stats en vivo. |
 | `apps/web/src/components/StatPanel.tsx` | Visualización de stats y desglose. |
+
+## 9. Decisión registrada para Fase 3
+
+El side-view queda cerrado como **híbrido por ficha**: capas para la party y NPCs importantes, sprite único para enemigos, capas opcionales para jefes, con fallback `capas → battleSprite → portrait → placeholder`. El contrato propuesto (`visualMode`, `battleSprite`, `bodyImage`, `Skill.weaponImage`) está anotado en [`schema-v0.1.ts`](./schema-v0.1.ts) y detallado en [`DECISION-SIDE-VIEW.md`](./DECISION-SIDE-VIEW.md). No se activa en el runtime hasta Fase 3.

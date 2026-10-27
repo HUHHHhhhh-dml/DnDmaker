@@ -483,3 +483,45 @@ export interface ApiError {
   code: string;
   message: string;
 }
+
+/* ========================================================================== */
+/* FASE 3 — Side-view (decisión cerrada, aún NO activa en v0.1)               */
+/* ========================================================================== */
+
+/**
+ * Decisión del 2026-10-27: side-view híbrido por ficha.
+ *
+ * - Party/NPCs importantes: capas (cuerpo base + equipo).
+ * - Enemigos normales: sprite único (`battleSprite` o `portrait`).
+ * - Jefes: sprite único por defecto; pueden activar capas.
+ * - Fallback: capas → battleSprite → portrait → placeholder.
+ *
+ * `portrait` sigue siendo la imagen de ficha/menús. Para combate se añadirán
+ * campos opcionales en Fase 3; NO forman parte del contrato v0.1 y no deben
+ * usarse todavía en la app, el servidor ni los tests.
+ *
+ * Documento completo: docs/DECISION-SIDE-VIEW.md
+ *
+ * Propuesta (comentada, no exportada):
+ *
+ * export type VisualMode = "portrait" | "layered";
+ *
+ * export interface Character {
+ *   // ...campos actuales...
+ *   // Cómo se dibuja en combate. Ausente = según kind.
+ *   visualMode?: VisualMode;
+ *   // Sprite único de combate (modo portrait/sprite).
+ *   battleSprite?: string;
+ *   // Base del cuerpo para el modo capas.
+ *   bodyImage?: string;
+ * }
+ *
+ * export interface Skill {
+ *   // ...campos actuales...
+ *   // Capa de arma mientras se usa esta skill (opcional).
+ *   weaponImage?: string;
+ * }
+ *
+ * Defaults: enemigos → "portrait"; resto → "layered". Sin `bodyImage`, el modo
+ * capas cae a sprite único. La utilidad no se dibuja en el cuerpo.
+ */
