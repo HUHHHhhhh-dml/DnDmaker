@@ -21,6 +21,9 @@ export type IsoDate = string;
 
 export type DamageType = "physical" | "mystic" | "pure";
 
+/** Modo de render del side-view híbrido (activo en Fase 3). */
+export type VisualMode = "portrait" | "layered";
+
 export interface Stats {
   /** HP máximo base, antes de equipo/efectos. */
   hpMax: number;
@@ -123,6 +126,11 @@ export interface AppliedEffect {
   /** Turnos restantes; undefined = permanente. */
   remainingTurns?: number;
   sourceId?: Id;
+  /**
+   * Pasivo del equipo ya incluido en los stats del snapshot. El motor no
+   * debe reaplicar sus `modifyStat` al iniciar el combate.
+   */
+  passive?: boolean;
 }
 
 /* ========================================================================== */
@@ -172,6 +180,8 @@ export interface Skill {
   name: string;
   description?: string;
   image?: string;
+  /** Capa de arma mientras se usa esta skill (modo `layered`). */
+  weaponImage?: string;
 
   /** Número de monedas (>= 1). */
   coins: number;
@@ -226,11 +236,24 @@ export interface Character {
   id: Id;
   name: string;
   kind: CharacterKind;
+  /** Retrato de ficha/menús; no es el sprite de combate salvo fallback. */
   portrait?: string;
   description?: string;
 
+  /** Modo de render en combate. Ausente = enemigos `portrait`, resto `layered`. */
+  visualMode?: VisualMode;
+  /** Sprite único de combate. */
+  battleSprite?: string;
+  /** Cuerpo base para el modo capas. Sin él, se cae a sprite único. */
+  bodyImage?: string;
+
   /** Stats base antes de equipo/efectos. */
   baseStats: Stats;
+  /**
+   * HP actual persistente entre combates. Ausente = HP máximo derivado.
+   * Lo escribe el motor al terminar el combate o “Rest party” fuera de él.
+   */
+  hpCurrent?: number;
 
   /** Slots de equipo; `utility` es el ítem de utilidad. */
   equipment: Record<EquipmentSlot, Id | null>;
@@ -254,12 +277,23 @@ export interface Character {
 /* Encuentros                                                                 */
 /* ========================================================================== */
 
+/** Overrides de aparición; los objetos anidados también son parciales. */
+export type CharacterOverrides = Omit<
+  Partial<Character>,
+  "baseStats" | "equipment" | "special" | "inventory"
+> & {
+  baseStats?: Partial<Stats>;
+  equipment?: Partial<Record<EquipmentSlot, Id | null>>;
+  special?: Partial<NonNullable<Character["special"]>>;
+  inventory?: { itemId: Id; qty: number }[];
+};
+
 export interface EncounterEnemy {
   characterId: Id;
   /** Cuántas copias del enemigo (default 1). */
   count?: number;
   /** Overrides puntuales para esta aparición. */
-  overrides?: Partial<Character>;
+  overrides?: CharacterOverrides;
 }
 
 export interface EncounterRewards {
@@ -405,13 +439,29 @@ export interface CombatUnit {
   id: Id;
   characterId: Id;
   team: Team;
+  /** Tipo de ficha copiado para resolver el modo visual por defecto. */
+  kind: CharacterKind;
   name: string;
-  /** Stats ya calculados con equipo/efectos. */
+  description?: string;
+  portrait?: string;
+  visualMode?: VisualMode;
+  battleSprite?: string;
+  bodyImage?: string;
+  /** Stats ya calculados con equipo/efectos al iniciar (snapshot). */
   stats: Stats;
+  /** Stats base para recalcular con efectos activos durante el combate. */
+  baseStats?: Stats;
   hpCurrent: number;
   equipment: Record<EquipmentSlot, Id | null>;
   skills: (Id | null)[];
+  special?: {
+    domainId?: Id | null;
+    habitatId?: Id | null;
+  };
+  /** Efectos activos; incluye pasivos del equipo ya reflejados en `stats`. */
   effects: AppliedEffect[];
+  /** Usos restantes de la utilidad durante este combate. */
+  utilityUses: number;
   defeated: boolean;
 }
 
@@ -464,11 +514,20 @@ export interface CombatState {
   units: CombatUnit[];
   /** Acciones declaradas por unidad; hasta skillSlots por unidad. */
   actions: Record<Id, DeclaredAction[]>;
+  /**
+   * Lock por unidad. Necesario para bloquear unidades que no declararon
+   * acciones (0 acciones) y para no contar a las derrotadas. Opcional para
+   * estados antiguos; 3C lo inicializa de forma lazy.
+   */
+  lockedUnits?: Record<Id, boolean>;
   /** Cooldowns de habilidades especiales por unidad. */
   specialCooldowns: Record<Id, Record<Id, number>>;
   log: CombatEvent[];
   winner?: Team;
 }
+
+/** Estado apto para clientes: mismo combate sin la semilla del RNG. */
+export type PublicCombatState = Omit<CombatState, "seed">;
 
 /* ========================================================================== */
 /* Eventos de red (v0.1)                                                      */
@@ -485,13 +544,41 @@ export interface DeclareActionPayload {
   actions: Omit<DeclaredAction, "unitId" | "locked">[];
 }
 
+/** Fase 3D — payloads de Socket.IO del combate. */
+export interface CombatStartPayload {
+  encounterId: Id;
+}
+
+/** Acción de red: el servidor ignora/valida unitId y locked. */
+export interface CombatDeclareAction
+  extends Omit<DeclaredAction, "unitId" | "locked"> {
+  unitId?: Id;
+  locked?: boolean;
+}
+
+export interface CombatDeclarePayload {
+  /** Ronda/combate esperados; el servidor rechaza paquetes viejos. */
+  round?: number;
+  combatId?: Id;
+  /** Selector de unidad enemiga para el DM; el jugador lo ignora. */
+  unitId?: Id;
+  actions: CombatDeclareAction[];
+}
+
+/** `combat:lock` puede sellar la ronda; `combat:end` no lleva datos. */
+export interface CombatLockPayload {
+  round?: number;
+  combatId?: Id;
+}
+export type CombatEndPayload = Record<string, never>;
+
 export interface ApiError {
   code: string;
   message: string;
 }
 
 /* ========================================================================== */
-/* FASE 3 — Side-view (decisión cerrada, aún NO activa en v0.1)               */
+/* FASE 3 — Side-view (activo desde 3A)                                       */
 /* ========================================================================== */
 
 /**
@@ -502,32 +589,13 @@ export interface ApiError {
  * - Jefes: sprite único por defecto; pueden activar capas.
  * - Fallback: capas → battleSprite → portrait → placeholder.
  *
- * `portrait` sigue siendo la imagen de ficha/menús. Para combate se añadirán
- * campos opcionales en Fase 3; NO forman parte del contrato v0.1 y no deben
- * usarse todavía en la app, el servidor ni los tests.
- *
- * Documento completo: docs/DECISION-SIDE-VIEW.md
- *
- * Propuesta (comentada, no exportada):
- *
- * export type VisualMode = "portrait" | "layered";
- *
- * export interface Character {
- *   // ...campos actuales...
- *   // Cómo se dibuja en combate. Ausente = según kind.
- *   visualMode?: VisualMode;
- *   // Sprite único de combate (modo portrait/sprite).
- *   battleSprite?: string;
- *   // Base del cuerpo para el modo capas.
- *   bodyImage?: string;
- * }
- *
- * export interface Skill {
- *   // ...campos actuales...
- *   // Capa de arma mientras se usa esta skill (opcional).
- *   weaponImage?: string;
- * }
+ * `portrait` sigue siendo la imagen de ficha/menús. En Fase 3 se activaron
+ * `Character.visualMode`, `Character.battleSprite`, `Character.bodyImage` y
+ * `Skill.weaponImage`; el snapshot de combate (`CombatUnit`) los copia para
+ * no depender de la ficha viva durante la resolución.
  *
  * Defaults: enemigos → "portrait"; resto → "layered". Sin `bodyImage`, el modo
  * capas cae a sprite único. La utilidad no se dibuja en el cuerpo.
+ *
+ * Documento completo: docs/DECISION-SIDE-VIEW.md
  */

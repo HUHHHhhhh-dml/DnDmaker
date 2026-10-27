@@ -355,7 +355,7 @@ export function ItemEditorPage() {
             <ImageField
               value={draft.image}
               onChange={(value) => patch({ image: value })}
-              hint="Ideal: PNG 200×300 transparente y en el mismo lienzo que la imagen base. Se usa en el slot y como capa sobre el personaje."
+              hint="Ideal: PNG 1024×1024 transparente y en el mismo lienzo que el cuerpo base. Se usa en el slot y como capa de combate si la ficha está en modo capas."
             />
           </section>
 

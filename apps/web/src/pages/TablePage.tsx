@@ -10,6 +10,8 @@ import { useAppStore } from "../store/useAppStore";
 import { useLiveStore } from "../store/useLiveStore";
 import { api } from "../lib/api";
 import { Icon } from "../components/Icons";
+import { CombatResultPanel } from "../components/combat/CombatResultPanel";
+import { DmCombatConsole } from "../components/combat/DmCombatConsole";
 import {
   Button,
   ConfirmDialog,
@@ -18,6 +20,7 @@ import {
   LinkButton,
   PageHeader,
   SectionTitle,
+  Select,
   TextInput,
   Toggle,
   cx,
@@ -35,6 +38,13 @@ export function TablePage() {
   const liveError = useLiveStore((state) => state.error);
   const host = useLiveStore((state) => state.host);
   const closeSession = useLiveStore((state) => state.close);
+  const combat = useLiveStore((state) => state.combat);
+  const recentCombat = useLiveStore((state) => state.recentCombat);
+  const combatError = useLiveStore((state) => state.combatError);
+  const clearCombatError = useLiveStore((state) => state.clearCombatError);
+  const startCombat = useLiveStore((state) => state.startCombat);
+  const dismissRecentCombat = useLiveStore((state) => state.dismissRecentCombat);
+  const restParty = useAppStore((state) => state.restParty);
 
   const [requirePin, setRequirePin] = useState(
     campaign?.settings.requirePin ?? false,
@@ -43,6 +53,8 @@ export function TablePage() {
   const [lanIps, setLanIps] = useState<string[]>([]);
   const [pinError, setPinError] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmRest, setConfirmRest] = useState(false);
+  const [selectedEncounterId, setSelectedEncounterId] = useState("");
 
   useEffect(() => {
     if (!campaign) return;
@@ -56,6 +68,16 @@ export function TablePage() {
       .then((result) => setLanIps(result.lanIps))
       .catch(() => setLanIps([]));
   }, []);
+
+  const encounterIds = (campaign?.content.encounters ?? [])
+    .map((encounter) => encounter.id)
+    .join("|");
+  useEffect(() => {
+    const ids = encounterIds ? encounterIds.split("|") : [];
+    setSelectedEncounterId((current) =>
+      current && ids.includes(current) ? current : (ids[0] ?? ""),
+    );
+  }, [encounterIds]);
 
   const joinUrl = useMemo(() => {
     if (!code) return "";
@@ -128,6 +150,21 @@ export function TablePage() {
     setConfirmClose(false);
   }
 
+  function handleStartCombat() {
+    if (!selectedEncounterId) return;
+    startCombat(selectedEncounterId);
+  }
+
+  async function handleRestParty() {
+    try {
+      await restParty();
+    } catch {
+      // El store ya notificó el error (por ejemplo, combate en curso).
+    } finally {
+      setConfirmRest(false);
+    }
+  }
+
   function playerStats(player: PublicSessionPlayer) {
     if (!player.characterId) return null;
     const character = activeCampaign.content.characters.find(
@@ -188,6 +225,22 @@ export function TablePage() {
             <Icon name="alert" size={14} /> Aviso de la mesa
           </div>
           {liveError}
+        </div>
+      ) : null}
+
+      {combatError && !combat ? (
+        <div className="mb-4 flex items-start gap-2 border-2 border-rust bg-rust/10 p-3 text-rust-deep">
+          <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+          <p className="min-w-0 flex-1 text-xs font-semibold leading-relaxed">
+            {combatError}
+          </p>
+          <button
+            type="button"
+            onClick={clearCombatError}
+            className="shrink-0 font-mono text-[9px] font-bold uppercase tracking-[0.12em] underline"
+          >
+            Cerrar
+          </button>
         </div>
       ) : null}
 
@@ -371,16 +424,123 @@ export function TablePage() {
               </div>
             </section>
 
-            <section>
-              <SectionTitle
-                title="Party en vivo"
-                count={players.length}
-                action={
-                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
-                    {session.dmConnected ? "DM presente" : "DM ausente"}
-                  </span>
-                }
-              />
+            {combat ? (
+              <DmCombatConsole campaign={activeCampaign} />
+            ) : (
+              <>
+                {recentCombat ? (
+                  <CombatResultPanel
+                    campaign={activeCampaign}
+                    combat={recentCombat}
+                    onDismiss={dismissRecentCombat}
+                    eyebrow="Último combate (reconexión)"
+                  />
+                ) : null}
+
+                {session.status === "combat" ? (
+                  <section className="panel p-4">
+                    <div className="flex items-center gap-2">
+                      <Icon name="broadcast" size={16} className="text-rust" />
+                      <p className="text-xs font-semibold text-ink-soft">
+                        La sala está en combate. Esperando el snapshot del servidor…
+                      </p>
+                    </div>
+                  </section>
+                ) : (
+                  <section className="panel p-4">
+                    <SectionTitle
+                      title="Iniciar encuentro"
+                      count={activeCampaign.content.encounters.length}
+                      action={
+                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                          snapshot de la party
+                        </span>
+                      }
+                    />
+                    {activeCampaign.content.encounters.length === 0 ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-2 border-dashed border-ink/25 p-3">
+                        <p className="text-xs text-ink-soft">
+                          Todavía no hay encuentros. Crea uno con enemigos para
+                          empezar un combate.
+                        </p>
+                        <LinkButton
+                          to="/encounters/new"
+                          variant="ghost"
+                          size="sm"
+                          icon="plus"
+                        >
+                          Crear encuentro
+                        </LinkButton>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="mb-3 text-[11px] leading-relaxed text-ink-soft">
+                          Al iniciar se congela el estado de la party (stats,
+                          equipo, skills y HP) y los enemigos se instancian con
+                          sus overrides. Después se declara ronda a ronda.
+                        </p>
+                        <div className="flex flex-wrap items-end gap-2">
+                          <label className="min-w-[220px] flex-1">
+                            <span className="field-label">Encuentro</span>
+                            <Select
+                              aria-label="Encuentro a iniciar"
+                              value={selectedEncounterId}
+                              onValueChange={setSelectedEncounterId}
+                            >
+                              {activeCampaign.content.encounters.map(
+                                (encounter) => (
+                                  <option key={encounter.id} value={encounter.id}>
+                                    {encounter.name} ·{" "}
+                                    {encounter.enemies.reduce(
+                                      (sum, enemy) => sum + (enemy.count ?? 1),
+                                      0,
+                                    )}{" "}
+                                    enemigos
+                                  </option>
+                                ),
+                              )}
+                            </Select>
+                          </label>
+                          <Button
+                            type="button"
+                            variant="accent"
+                            size="sm"
+                            icon="sword"
+                            onClick={handleStartCombat}
+                            disabled={!selectedEncounterId}
+                          >
+                            Iniciar combate
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </section>
+                )}
+
+                <section>
+                  <SectionTitle
+                    title="Party en vivo"
+                    count={players.length}
+                    action={
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+                          {session.dmConnected ? "DM presente" : "DM ausente"}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          icon="plus"
+                          onClick={() => setConfirmRest(true)}
+                          disabled={
+                            players.length === 0 || session.status === "combat"
+                          }
+                        >
+                          Rest party
+                        </Button>
+                      </div>
+                    }
+                  />
               {players.length === 0 ? (
                 <EmptyState
                   icon="users"
@@ -465,7 +625,9 @@ export function TablePage() {
                   })}
                 </div>
               )}
-            </section>
+                </section>
+              </>
+            )}
           </div>
 
           <aside className="space-y-4">
@@ -532,6 +694,22 @@ export function TablePage() {
         confirmLabel="Cerrar sala"
         onCancel={() => setConfirmClose(false)}
         onConfirm={() => void handleClose()}
+        busy={busy}
+      />
+
+      <ConfirmDialog
+        open={confirmRest}
+        title="Rest party"
+        message={
+          <>
+            Se curará al máximo el HP de todas las fichas de la party
+            (jugadores y NPCs). Es una acción fuera de combate; los enemigos no
+            se tocan.
+          </>
+        }
+        confirmLabel="Descansar"
+        onCancel={() => setConfirmRest(false)}
+        onConfirm={() => void handleRestParty()}
         busy={busy}
       />
     </div>

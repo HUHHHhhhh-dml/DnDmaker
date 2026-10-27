@@ -68,6 +68,31 @@ export class SessionService {
     );
   }
 
+  getById(id: string): SessionRow | null {
+    return (
+      this.db.select().from(sessions).where(eq(sessions.id, id)).get() ?? null
+    );
+  }
+
+  /**
+   * Cambia el estado de la mesa (`lobby` / `playing` / `combat`). Lo usa el
+   * dominio de combate al iniciar/terminar y no expone tokens.
+   */
+  setStatus(
+    id: string,
+    status: SessionRow["status"],
+  ): PublicSession | null {
+    const row = this.getById(id);
+    if (!row) return null;
+    const now = new Date().toISOString();
+    this.db
+      .update(sessions)
+      .set({ status, updatedAt: now })
+      .where(eq(sessions.id, id))
+      .run();
+    return this.publicSession({ ...row, status, updatedAt: now });
+  }
+
   authenticate(code: string, token: string | undefined | null): SessionIdentity | null {
     if (!token) return null;
     const row = this.getByCode(code);
@@ -326,21 +351,35 @@ export class SessionService {
     return {
       role: "player",
       session: this.publicSession(row),
-      campaign: this.sanitizeCampaign(campaign),
+      // Durante el combate el jugador necesita ver las skills/objetos que
+      // aparecen en el estado (incluidos los enemigos) para poder dibujar el
+      // side-view y leer el log. Fuera de combate se mantiene el saneado.
+      campaign: this.sanitizeCampaign(campaign, row.status === "combat"),
       player: publicPlayer(identity.player),
       character: ownCharacter ? this.sanitizeCharacter(ownCharacter) : undefined,
     };
   }
 
-  /** Campaña vista por un jugador: sin enemigos, notas, tiendas, PIN ni contenido bloqueado. */
-  sanitizeCampaign(campaign: ReturnType<Repository["getCampaign"]>) {
+  /**
+   * Campaña vista por un jugador: sin enemigos, notas, tiendas, PIN ni
+   * contenido bloqueado. En combate (`includeCombatReferences`) se añaden las
+   * skills/objetos referenciados por los enemigos porque ya son visibles en el
+   * estado de combate y el renderer/log los necesitan.
+   */
+  sanitizeCampaign(
+    campaign: ReturnType<Repository["getCampaign"]>,
+    includeCombatReferences = false,
+  ) {
     const { pin: _pin, ...safeSettings } = campaign.settings;
     const party = campaign.content.characters.filter(
       (character) => character.kind !== "enemy",
     );
     const referencedItems = new Set<string>();
     const referencedSkills = new Set<string>();
-    for (const character of party) {
+    const referencedCharacters = includeCombatReferences
+      ? campaign.content.characters
+      : party;
+    for (const character of referencedCharacters) {
       for (const itemId of Object.values(character.equipment ?? {})) {
         if (itemId) referencedItems.add(itemId);
       }

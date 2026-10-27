@@ -8,6 +8,7 @@ import type {
   Ruleset,
   StatKey,
   Stats,
+  VisualMode,
 } from "./types";
 
 export const SCHEMA_VERSION = 1 as const;
@@ -89,6 +90,34 @@ export const EQUIPMENT_SLOT_LABELS: Record<EquipmentSlot, string> = {
   leg: "Piernas",
   utility: "Utilidad",
 };
+
+export const VISUAL_MODE_LABELS: Record<VisualMode, string> = {
+  portrait: "Sprite único",
+  layered: "Capas",
+};
+
+/**
+ * Modo por defecto del side-view híbrido:
+ * enemigos → sprite único; el resto → capas.
+ */
+export function defaultVisualMode(kind: Character["kind"]): VisualMode {
+  return kind === "enemy" ? "portrait" : "layered";
+}
+
+/** Modo efectivo respetando el campo de la ficha y su default por tipo. */
+export function resolveVisualMode(
+  character: Pick<Character, "kind" | "visualMode">,
+): VisualMode {
+  return character.visualMode ?? defaultVisualMode(character.kind);
+}
+
+/** HP actual efectivo: si la ficha no guarda uno, está a máximo. */
+export function currentHp(
+  character: Pick<Character, "hpCurrent">,
+  hpMax: number,
+): number {
+  return clamp(character.hpCurrent ?? hpMax, 0, Math.max(0, hpMax));
+}
 
 export const EQUIPMENT_SLOT_HINTS: Record<EquipmentSlot, string> = {
   horns: "Identidad y rango.",

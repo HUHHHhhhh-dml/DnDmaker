@@ -3,13 +3,24 @@ import { create } from "zustand";
 import type {
   Campaign,
   Character,
+  CombatEvent,
+  PublicCombatState,
   PublicSession,
   PublicSessionPlayer,
   SessionJoinInput,
   SessionPlayersEvent,
   SessionStateResponse,
+  StateFullPayload,
 } from "@protocol-life/shared";
 import { ApiError, api } from "../lib/api";
+import {
+  combatHasMissingContent,
+  type CombatDeclaration,
+} from "../lib/combat";
+import {
+  isRecentCombatDismissed,
+  rememberRecentCombatDismissed,
+} from "../lib/recentCombat";
 import {
   clearPlayerSession,
   clearSessionToken,
@@ -47,12 +58,27 @@ export interface PlayerState {
   loading: boolean;
   error: string | null;
   closed: boolean;
+  /** Estado público del combate vivo (o terminado pendiente de cerrar). */
+  combat: PublicCombatState | null;
+  /**
+   * Último combate terminado dentro del TTL del servidor (riesgo 2). Se
+   * muestra como resultado tras recargar y se puede descartar localmente.
+   */
+  recentCombat: PublicCombatState | null;
+  /** Timeline de eventos; el estado ya viene resuelto del servidor. */
+  combatEvents: CombatEvent[];
+  combatError: string | null;
 
   join: (code: string, input: SessionJoinInput) => Promise<boolean>;
   restore: (code: string) => Promise<boolean>;
   refresh: () => Promise<void>;
   saveCharacter: (patch: Partial<Character>) => Promise<boolean>;
   leave: () => Promise<void>;
+  declareCombat: (actions: CombatDeclaration[]) => void;
+  lockCombat: (actions: CombatDeclaration[]) => void;
+  dismissCombat: () => void;
+  dismissRecentCombat: () => void;
+  clearCombatError: () => void;
 }
 
 let socket: Socket | null = null;
@@ -77,6 +103,10 @@ const EMPTY_STATE: Pick<
   | "loading"
   | "error"
   | "closed"
+  | "combat"
+  | "recentCombat"
+  | "combatEvents"
+  | "combatError"
 > = {
   token: null,
   code: null,
@@ -88,6 +118,10 @@ const EMPTY_STATE: Pick<
   loading: false,
   error: null,
   closed: false,
+  combat: null,
+  recentCombat: null,
+  combatEvents: [],
+  combatError: null,
 };
 
 export function describePlayerError(error: unknown): string {
@@ -133,6 +167,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         player: joined.player,
         closed: false,
         connected: false,
+        combat: null,
+        recentCombat: null,
+        combatEvents: [],
+        combatError: null,
       });
       connectSocket(normalized, token, set, get);
       return true;
@@ -160,6 +198,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           "La sesión guardada no pertenece a un jugador.",
         );
       }
+      set({
+        combat: null,
+        recentCombat: null,
+        combatEvents: [],
+        combatError: null,
+      });
       applyState(state, stored.code, stored.token, set);
       connectSocket(stored.code, stored.token, set, get);
       return true;
@@ -178,6 +222,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           player: null,
           connected: false,
           closed: false,
+          combat: null,
+          recentCombat: null,
+          combatEvents: [],
+          combatError: null,
           error: describePlayerError(error),
         });
       } else {
@@ -250,6 +298,81 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ ...EMPTY_STATE });
     }
   },
+
+  declareCombat(actions) {
+    if (!socket) {
+      set({ combatError: "No estás conectado a la mesa." });
+      return;
+    }
+    const combat = get().combat;
+    if (!combat) {
+      set({ combatError: "No hay un combate activo." });
+      return;
+    }
+    socket.emit("combat:declare", {
+      combatId: combat.id,
+      round: combat.round,
+      actions,
+    });
+    set({ combatError: null });
+  },
+
+  /**
+   * El lock siempre manda primero la declaración actual. Socket.IO conserva
+   * el orden, así el servidor valida/bloquea exactamente lo que ve el jugador.
+   * La ronda/combate sellan ambos paquetes: si la mesa ya resolvió, el
+   * servidor ignora el lock viejo y reenvía el estado nuevo.
+   */
+  lockCombat(actions) {
+    if (!socket) {
+      set({ combatError: "No estás conectado a la mesa." });
+      return;
+    }
+    const combat = get().combat;
+    if (!combat) {
+      set({ combatError: "No hay un combate activo." });
+      return;
+    }
+    socket.emit("combat:declare", {
+      combatId: combat.id,
+      round: combat.round,
+      actions,
+    });
+    socket.emit("combat:lock", {
+      combatId: combat.id,
+      round: combat.round,
+    });
+    set({ combatError: null });
+  },
+
+  dismissCombat() {
+    const session = get().session;
+    const combat = get().combat;
+    const code = get().code;
+    // El resultado no debe volver a aparecer al recargar dentro del TTL.
+    if (combat && code) rememberRecentCombatDismissed(code, combat.id);
+    set({
+      combat: null,
+      recentCombat: null,
+      combatEvents: [],
+      combatError: null,
+      session: session ? { ...session, status: "playing" } : session,
+    });
+    // Limpia de la campaña saneada las referencias de enemigos que solo se
+    // incluyen durante el combate.
+    void get().refresh();
+  },
+
+  dismissRecentCombat() {
+    const recent = get().recentCombat;
+    const code = get().code;
+    if (recent && code) rememberRecentCombatDismissed(code, recent.id);
+    set({ recentCombat: null, combatEvents: [] });
+  },
+
+  clearCombatError() {
+    set({ combatError: null });
+  },
 }));
 
 function applyState(
@@ -302,6 +425,96 @@ function connectSocket(
     set({ session: payload.session });
   });
 
+  next.on("state:full", (payload: StateFullPayload) => {
+    if (payload?.role !== "player" || !payload.session || !payload.campaign) {
+      return;
+    }
+    const activeCode = payload.session.code || code;
+    const recent =
+      payload.recentCombat &&
+      !isRecentCombatDismissed(activeCode, payload.recentCombat.id)
+        ? payload.recentCombat
+        : null;
+    set({
+      session: payload.session,
+      campaign: payload.campaign,
+      character: payload.character ?? get().character,
+      player: payload.player ?? get().player,
+      combat: payload.combat,
+      recentCombat: recent,
+      combatEvents: payload.combat?.log ?? recent?.log ?? [],
+      combatError: null,
+      closed: false,
+    });
+  });
+
+  next.on("combat:started", (payload: { combat: PublicCombatState }) => {
+    if (!payload?.combat) return;
+    const current = get().session;
+    const campaign = get().campaign;
+    set({
+      combat: payload.combat,
+      recentCombat: null,
+      combatEvents: payload.combat.log,
+      combatError: null,
+      session: current ? { ...current, status: "combat" } : current,
+    });
+    // No depender solo del `campaign:refresh` del servidor: si el combate
+    // referencia skills/objetos que la campaña saneada aún no trae, pedimos el
+    // estado de sesión (que en combate incluye las referencias enemigas).
+    if (
+      !campaign ||
+      combatHasMissingContent(payload.combat, campaign.content)
+    ) {
+      void get().refresh();
+    }
+  });
+
+  next.on("combat:state", (payload: { combat: PublicCombatState }) => {
+    if (!payload?.combat) return;
+    set({
+      combat: payload.combat,
+      combatEvents: payload.combat.log,
+    });
+  });
+
+  next.on("combat:event", (payload: { event: CombatEvent }) => {
+    const event = payload?.event;
+    if (!event) return;
+    const current = get().combatEvents;
+    if (current.some((entry) => entry.id === event.id)) return;
+    set({ combatEvents: [...current, event] });
+  });
+
+  next.on(
+    "combat:ended",
+    (payload: { winner?: PublicCombatState["winner"]; log: CombatEvent[] }) => {
+      const current = get().combat;
+      const session = get().session;
+      const log = Array.isArray(payload?.log) ? payload.log : current?.log ?? [];
+      set({
+        combat: current
+          ? {
+              ...current,
+              phase: "ended",
+              winner: payload?.winner,
+              log,
+            }
+          : current,
+        combatEvents: log,
+        combatError: null,
+        session: session ? { ...session, status: "playing" } : session,
+      });
+    },
+  );
+
+  next.on("error", (payload: SessionErrorPayload) => {
+    set({
+      combatError:
+        payload?.message ?? "No se pudo completar la acción de combate.",
+    });
+  });
+
   next.on("session:players", (payload: SessionPlayersEvent) => {
     const current = get().session;
     if (!current) return;
@@ -333,6 +546,10 @@ function connectSocket(
       closed: true,
       token: null,
       connected: false,
+      combat: null,
+      recentCombat: null,
+      combatEvents: [],
+      combatError: null,
     });
   });
 
@@ -347,6 +564,10 @@ function connectSocket(
         connected: false,
         closed: true,
         token: null,
+        combat: null,
+        recentCombat: null,
+        combatEvents: [],
+        combatError: null,
       });
       return;
     }

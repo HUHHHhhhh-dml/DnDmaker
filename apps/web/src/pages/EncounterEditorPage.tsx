@@ -3,9 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   CURRENCY_NAME,
   EQUIPMENT_SLOT_LABELS,
+  VISUAL_MODE_LABELS,
   encounterInputSchema,
+  type CharacterOverrides,
   type Encounter,
   type EncounterEnemy,
+  type Stats,
+  type VisualMode,
 } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
 import { ImageField } from "../components/ImageField";
@@ -63,6 +67,35 @@ function draftFromEncounter(encounter: Encounter): EncounterDraft {
   };
 }
 
+/**
+ * Limpia claves vacías de un override para no guardar `{ name: undefined }`
+ * ni objetos anidados sin campos. El servidor valida el resultado final.
+ */
+function cleanOverrides(
+  overrides: CharacterOverrides | undefined,
+): CharacterOverrides | undefined {
+  if (!overrides) return undefined;
+  const next = structuredClone(overrides) as Record<string, unknown>;
+  for (const key of Object.keys(next)) {
+    const value = next[key];
+    if (value === undefined) {
+      delete next[key];
+      continue;
+    }
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value as Record<string, unknown>).length === 0
+    ) {
+      delete next[key];
+    }
+  }
+  return Object.keys(next).length > 0
+    ? (next as CharacterOverrides)
+    : undefined;
+}
+
 export function EncounterEditorPage() {
   const { encounterId } = useParams();
   const campaign = useAppStore((state) => state.campaign);
@@ -84,6 +117,7 @@ export function EncounterEditorPage() {
   );
   const [errors, setErrors] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [overrideIndex, setOverrideIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!campaign) return;
@@ -139,6 +173,58 @@ export function EncounterEditorPage() {
 
   function removeEnemy(index: number) {
     patch({ enemies: draft.enemies.filter((_, enemyIndex) => enemyIndex !== index) });
+    setOverrideIndex((current) => (current === index ? null : current));
+  }
+
+  function patchOverride(
+    index: number,
+    update: Partial<CharacterOverrides>,
+  ) {
+    patch({
+      enemies: draft.enemies.map((enemy, enemyIndex) => {
+        if (enemyIndex !== index) return enemy;
+        return {
+          ...enemy,
+          overrides: cleanOverrides({
+            ...(enemy.overrides ?? {}),
+            ...update,
+          }),
+        };
+      }),
+    });
+  }
+
+  function patchOverrideStat(
+    index: number,
+    key: keyof Stats,
+    value: number | undefined,
+  ) {
+    const enemy = draft.enemies[index];
+    if (!enemy) return;
+    const next = { ...(enemy.overrides?.baseStats ?? {}) };
+    if (value === undefined || Number.isNaN(value)) {
+      delete next[key];
+    } else {
+      next[key] = value;
+    }
+    patchOverride(index, { baseStats: next });
+  }
+
+  function resetOverrides(index: number) {
+    patch({
+      enemies: draft.enemies.map((enemy, enemyIndex) =>
+        enemyIndex === index
+          ? { characterId: enemy.characterId, count: enemy.count }
+          : enemy,
+      ),
+    });
+  }
+
+  function overrideStat(
+    enemy: EncounterEnemy,
+    key: keyof Stats,
+  ): number | undefined {
+    return enemy.overrides?.baseStats?.[key];
   }
 
   function toggleReward(itemId: string) {
@@ -258,7 +344,7 @@ export function EncounterEditorPage() {
                 value={draft.background}
                 onChange={(value) => patch({ background: value })}
                 label="Fondo del encuentro"
-                hint="Opcional. Se usará en la vista de combate (Fase 3)."
+                hint="Opcional. Fondo de la escena de combate."
               />
             </div>
           </section>
@@ -268,8 +354,9 @@ export function EncounterEditorPage() {
               02 · Enemigos
             </h2>
             <p className="mb-4 mt-2 text-[11px] text-ink-faint">
-              Solo se muestran fichas de tipo enemigo. La cantidad crea copias del mismo
-              enemigo.
+              Solo se muestran fichas de tipo enemigo. La cantidad crea copias del
+              mismo enemigo. Los overrides permiten una variante por aparición
+              (stats o visuales) sin tocar la ficha base.
             </p>
             <div className="space-y-2">
               {draft.enemies.map((enemy, index) => {
@@ -312,6 +399,20 @@ export function EncounterEditorPage() {
                         className="w-16"
                       />
                     </label>
+                    <Button
+                      type="button"
+                      variant={enemy.overrides ? "primary" : "ghost"}
+                      size="sm"
+                      icon="edit"
+                      onClick={() =>
+                        setOverrideIndex((current) =>
+                          current === index ? null : index,
+                        )
+                      }
+                    >
+                      Overrides
+                      {enemy.overrides ? " •" : ""}
+                    </Button>
                     <button
                       type="button"
                       onClick={() => removeEnemy(index)}
@@ -324,6 +425,133 @@ export function EncounterEditorPage() {
                       <span className="w-full font-mono text-[9px] uppercase tracking-[0.1em] text-rust">
                         Esta ficha no es de tipo enemigo.
                       </span>
+                    ) : null}
+                    {overrideIndex === index ? (
+                      <div className="w-full space-y-3 border-t-2 border-ink/15 pt-3">
+                        <p className="text-[10px] leading-relaxed text-ink-faint">
+                          Los overrides solo afectan a esta aparición; la ficha base
+                          no cambia. Se envían al snapshot de combate.
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          <Field label="Nombre alternativo">
+                            <TextInput
+                              value={enemy.overrides?.name ?? ""}
+                              onValueChange={(value) =>
+                                patchOverride(index, {
+                                  name: value === "" ? undefined : value,
+                                })
+                              }
+                              placeholder={character?.name ?? "Eco sombrío"}
+                              maxLength={80}
+                            />
+                          </Field>
+                          {(
+                            [
+                              ["hpMax", "HP máximo"],
+                              ["def", "DEF"],
+                              ["atk", "ATK"],
+                              ["spd", "SPD"],
+                              ["luck", "LUCK"],
+                              ["skillSlots", "Skill Slots"],
+                            ] as Array<[keyof Stats, string]>
+                          ).map(([key, label]) => (
+                            <Field
+                              key={key}
+                              label={label}
+                              hint={
+                                overrideStat(enemy, key) === undefined
+                                  ? "Sin override"
+                                  : "Override activo"
+                              }
+                            >
+                              <NumberInput
+                                value={overrideStat(enemy, key)}
+                                onValueChange={(value) =>
+                                  patchOverrideStat(index, key, value)
+                                }
+                                min={
+                                  key === "hpMax"
+                                    ? 1
+                                    : key === "skillSlots"
+                                      ? 1
+                                      : -999
+                                }
+                                max={key === "skillSlots" ? 6 : 999}
+                                placeholder="—"
+                              />
+                            </Field>
+                          ))}
+                          <Field
+                            label="Modo visual"
+                            hint={
+                              enemy.overrides?.visualMode
+                                ? `Override: ${VISUAL_MODE_LABELS[enemy.overrides.visualMode]}`
+                                : "Hereda de la ficha"
+                            }
+                          >
+                            <Select
+                              value={enemy.overrides?.visualMode ?? ""}
+                              onValueChange={(value) =>
+                                patchOverride(index, {
+                                  visualMode: value
+                                    ? (value as VisualMode)
+                                    : undefined,
+                                })
+                              }
+                            >
+                              <option value="">Heredar de la ficha</option>
+                              <option value="portrait">Sprite único</option>
+                              <option value="layered">Capas</option>
+                            </Select>
+                          </Field>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <ImageField
+                            value={enemy.overrides?.portrait}
+                            onChange={(value) =>
+                              patchOverride(index, { portrait: value })
+                            }
+                            label="Retrato override"
+                            hint="Opcional."
+                            shape="portrait"
+                          />
+                          <ImageField
+                            value={enemy.overrides?.battleSprite}
+                            onChange={(value) =>
+                              patchOverride(index, { battleSprite: value })
+                            }
+                            label="Sprite único override"
+                            hint="Opcional. Si falta, hereda."
+                          />
+                          <ImageField
+                            value={enemy.overrides?.bodyImage}
+                            onChange={(value) =>
+                              patchOverride(index, { bodyImage: value })
+                            }
+                            label="Cuerpo base override"
+                            hint="Opcional. Activa capas solo en esta aparición."
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            icon="close"
+                            onClick={() => resetOverrides(index)}
+                            disabled={!enemy.overrides}
+                          >
+                            Limpiar overrides
+                          </Button>
+                          <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-faint">
+                            {enemy.overrides
+                              ? "Se guardarán con el encuentro"
+                              : "Sin overrides"}
+                          </span>
+                        </div>
+                      </div>
                     ) : null}
                   </div>
                 );
@@ -493,11 +721,12 @@ export function EncounterEditorPage() {
 
             <div className="border-2 border-dashed border-ink/30 p-3 text-[11px] leading-relaxed text-ink-soft">
               <strong className="font-mono text-[9px] uppercase tracking-[0.14em]">
-                Fase 3
+                Iniciar desde La mesa
               </strong>
               <p className="mt-1">
-                Cuando el combate exista, el DM podrá iniciar este encuentro desde la mesa.
-                Los enemigos se instancian con su HP y stats derivados.
+                El DM inicia este encuentro desde «La mesa» cuando la party está
+                conectada. Los enemigos se instancian con su HP, stats derivados y
+                overrides; el estado se congela al empezar.
               </p>
             </div>
 

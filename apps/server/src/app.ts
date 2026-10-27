@@ -5,6 +5,10 @@ import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
+import { toPublicCombatState } from "./combat/public";
+import { CombatService } from "./combat/service";
+import { registerCombatSocket } from "./combat/socket";
+import { CombatStore } from "./combat/store";
 import { dbPath as defaultDbPath, uploadsDir as defaultUploadsDir, webDistDir as defaultWebDistDir } from "./config";
 import { openDatabase } from "./db";
 import { createRealtime, type RealtimeService } from "./realtime";
@@ -28,6 +32,8 @@ export interface BuiltApp {
   repository: Repository;
   sessions: SessionService;
   realtime: RealtimeService;
+  combatStore: CombatStore;
+  combat: CombatService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp> {
@@ -39,6 +45,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
   const repository = new Repository(db, sqlite);
   const sessions = new SessionService(db, repository);
   sessions.resetPresence();
+  const combatStore = new CombatStore(db, sqlite);
 
   if (options.seed !== false) {
     const seeded = repository.ensureSeedCampaign();
@@ -54,6 +61,31 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
   });
 
   const realtime = createRealtime(app, sessions);
+  const combat = new CombatService(repository, sessions, combatStore, {
+    onStarted: (state, session) => {
+      realtime.emitCombatStarted(session.code, toPublicCombatState(state));
+      realtime.emitPlayers(session.code);
+      // En combate el jugador necesita las skills/objetos de los enemigos
+      // para dibujar el side-view y leer el log; `getState` los incluye
+      // mientras la sala está en `combat`.
+      realtime.emitRefresh(session.campaignId);
+    },
+    onCombatEvent: (_state, event, session) => {
+      realtime.emitCombatEvent(session.code, event);
+    },
+    onCombatState: (state, session) => {
+      realtime.emitCombatState(session.code, toPublicCombatState(state));
+    },
+    onCombatEnded: (state, session) => {
+      realtime.emitCombatEnded(session.code, {
+        winner: state.winner,
+        log: state.log,
+      });
+      // La mesa vuelve a `playing`; refresca la presencia/estado de la sala.
+      realtime.emitPlayers(session.code);
+    },
+  });
+  registerCombatSocket({ io: realtime.io, sessions, combat });
 
   await app.register(cors, { origin: true });
   await app.register(multipart, { limits: uploadLimits });
@@ -63,6 +95,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     uploadsDir: uploads,
     sessions,
     realtime,
+    combat,
   });
 
   const webIndex = join(webDist, "index.html");
@@ -133,5 +166,5 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     }
   });
 
-  return { app, repository, sessions, realtime };
+  return { app, repository, sessions, realtime, combatStore, combat };
 }

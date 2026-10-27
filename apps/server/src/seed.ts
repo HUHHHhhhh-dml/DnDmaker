@@ -336,6 +336,8 @@ export function buildSeedContent(): CampaignContent {
     name: "Arzu",
     kind: "player",
     description: "Portador de la Odachi. Busca su lugar en la Armada 2.",
+    visualMode: "layered",
+    bodyImage: "/assets/base-character.png",
     baseStats: { hpMax: 50, def: 0, atk: 0, spd: 10, luck: 5, skillSlots: 2 },
     equipment: {
       horns: civil.id,
@@ -356,6 +358,8 @@ export function buildSeedContent(): CampaignContent {
     name: "Maciel",
     kind: "player",
     description: "La voz de la Armada 2. Prefiere resolverlo a tiros.",
+    visualMode: "layered",
+    bodyImage: "/assets/base-character.png",
     baseStats: { hpMax: 45, def: 2, atk: 2, spd: 11, luck: 0, skillSlots: 2 },
     equipment: {
       horns: warrior.id,
@@ -374,6 +378,7 @@ export function buildSeedContent(): CampaignContent {
     name: "Purifier Scout",
     kind: "enemy",
     description: "Explorador de la Armada 2. Rápido y desechable.",
+    visualMode: "portrait",
     baseStats: { hpMax: 40, def: 10, atk: 5, spd: 12, luck: 0, skillSlots: 2 },
     equipment: {
       horns: null,
@@ -392,6 +397,7 @@ export function buildSeedContent(): CampaignContent {
     name: "Protocol Echo",
     kind: "enemy",
     description: "Una copia del protocolo que no debería existir.",
+    visualMode: "portrait",
     baseStats: { hpMax: 90, def: 20, atk: 10, spd: 8, luck: 10, skillSlots: 3 },
     equipment: {
       horns: warrior.id,

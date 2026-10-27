@@ -1,5 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { Server, type Socket } from "socket.io";
+import type {
+  CombatEvent,
+  PublicCombatState,
+  Team,
+} from "@protocol-life/shared";
 import type { SessionService } from "./sessions";
 
 /**
@@ -15,6 +20,17 @@ export type RealtimeService = {
   emitPlayers: (code: string) => void;
   emitRefresh: (campaignId: string) => void;
   emitClosed: (code: string) => void;
+  /** Fase 3: la sala recibe el snapshot inicial del combate (sin seed). */
+  emitCombatStarted: (code: string, combat: PublicCombatState) => void;
+  /** Fase 3C: cada paso de la resolución (evento ya calculado, sin seed). */
+  emitCombatEvent: (code: string, event: CombatEvent) => void;
+  /** Fase 3C: estado actualizado tras declarar, bloquear o resolver. */
+  emitCombatState: (code: string, combat: PublicCombatState) => void;
+  /** Fase 3C: cierre del combate con ganador y log completo. */
+  emitCombatEnded: (
+    code: string,
+    payload: { winner?: Team; log: CombatEvent[] },
+  ) => void;
   close: () => void;
 };
 
@@ -107,9 +123,44 @@ export function createRealtime(
     io.in(sessionRoom(normalized)).disconnectSockets(true);
   }
 
+  function emitCombatStarted(code: string, combat: PublicCombatState): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("combat:started", {
+      combat,
+    });
+  }
+
+  function emitCombatEvent(code: string, event: CombatEvent): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("combat:event", {
+      event,
+    });
+  }
+
+  function emitCombatState(code: string, combat: PublicCombatState): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("combat:state", {
+      combat,
+    });
+  }
+
+  function emitCombatEnded(
+    code: string,
+    payload: { winner?: Team; log: CombatEvent[] },
+  ): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("combat:ended", payload);
+  }
+
   function close(): void {
     io.close();
   }
 
-  return { io, emitPlayers, emitRefresh, emitClosed, close };
+  return {
+    io,
+    emitPlayers,
+    emitRefresh,
+    emitClosed,
+    emitCombatStarted,
+    emitCombatEvent,
+    emitCombatState,
+    emitCombatEnded,
+    close,
+  };
 }

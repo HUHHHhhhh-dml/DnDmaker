@@ -7,20 +7,25 @@ import {
   EQUIPMENT_SLOTS,
   STAT_KEYS,
   STAT_LABELS,
+  VISUAL_MODE_LABELS,
   calculateStats,
   characterInputSchema,
   newCharacter,
+  resolveVisualMode,
   type Character,
   type CharacterKind,
   type EquipmentSlot,
   type Skill,
   type StatKey,
   type Stats,
+  type VisualMode,
 } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
+import { useLiveStore } from "../store/useLiveStore";
 import { ImageField } from "../components/ImageField";
 import { Icon } from "../components/Icons";
 import { StatPanel } from "../components/StatPanel";
+import { CombatVisualPreview } from "../components/combat/CombatVisualPreview";
 import {
   Button,
   ConfirmDialog,
@@ -63,7 +68,12 @@ export function CharacterSheetPage() {
   const saveContent = useAppStore((state) => state.saveContent);
   const removeContent = useAppStore((state) => state.removeContent);
   const busy = useAppStore((state) => state.busy);
+  const notify = useAppStore((state) => state.notify);
   const navigate = useNavigate();
+  // Fase 3F: en combate nadie edita fichas/HP. El servidor también lo bloquea;
+  // la UI esconde la edición y lo explica.
+  const liveCombat = useLiveStore((state) => state.combat);
+  const inCombat = Boolean(liveCombat && liveCombat.phase !== "ended");
 
   const existing = useMemo(
     () =>
@@ -95,6 +105,10 @@ export function CharacterSheetPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId, campaign?.id]);
 
+  useEffect(() => {
+    if (inCombat) setEditing(false);
+  }, [inCombat]);
+
   if (!campaign) return null;
 
   if (characterId && !existing) {
@@ -123,6 +137,10 @@ export function CharacterSheetPage() {
   const equippedSkills = draft.skills
     .map((id) => (id ? skillsById.get(id) : null))
     .filter((skill): skill is Skill => Boolean(skill));
+  const effectiveVisualMode = resolveVisualMode(view);
+  const previewWeapon = view.skills
+    .map((id) => (id ? skillsById.get(id) : null))
+    .find((skill): skill is Skill => Boolean(skill?.weaponImage));
 
   function patch(update: Partial<Character>) {
     setDraft((current) => ({ ...current, ...update }));
@@ -198,11 +216,21 @@ export function CharacterSheetPage() {
   }
 
   async function handleSave() {
+    if (inCombat) {
+      notify(
+        "error",
+        "No se puede editar una ficha durante el combate. Espera a que termine.",
+      );
+      return;
+    }
     const payload = {
       name: draft.name.trim(),
       kind: draft.kind,
       portrait: draft.portrait,
       description: draft.description?.trim() || undefined,
+      visualMode: draft.visualMode,
+      battleSprite: draft.battleSprite,
+      bodyImage: draft.bodyImage,
       baseStats: draft.baseStats,
       equipment: draft.equipment,
       skills: draft.skills,
@@ -272,11 +300,16 @@ export function CharacterSheetPage() {
                 size="sm"
                 icon="save"
                 loading={busy}
+                disabled={inCombat}
                 onClick={() => void handleSave()}
               >
                 Guardar ficha
               </Button>
             </>
+          ) : inCombat ? (
+            <span className="chip chip-rust">
+              <Icon name="lock" size={11} /> Solo lectura · combate
+            </span>
           ) : (
             <>
               <Button
@@ -299,6 +332,17 @@ export function CharacterSheetPage() {
           )
         }
       />
+
+      {inCombat ? (
+        <div className="mb-4 flex items-start gap-2 border-2 border-amber bg-amber/15 p-3">
+          <Icon name="lock" size={15} className="mt-0.5 shrink-0 text-rust" />
+          <p className="text-xs font-semibold leading-relaxed text-ink-soft">
+            La mesa está en combate: las fichas y el HP son de solo lectura hasta
+            que termine. El DM solo controla enemigos y nadie ajusta HP en medio
+            de la ronda.
+          </p>
+        </div>
+      ) : null}
 
       {errors.length > 0 ? (
         <div className="mb-4 border-2 border-rust bg-rust/10 p-3">
@@ -579,7 +623,84 @@ export function CharacterSheetPage() {
 
               <section className="panel p-4">
                 <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-                  05 · Inventario y notas
+                  05 · Visual de combate
+                </h2>
+                <p className="mb-4 mt-2 text-[11px] leading-relaxed text-ink-faint">
+                  Decide cómo se dibuja esta ficha en el side-view. La vista previa
+                  usa el equipo actual; en modo capas, el <code>Item.image</code>{" "}
+                  de cada objeto equipado se apila en orden piernas → armadura →
+                  cuernos → mano. La utilidad no se dibuja en el cuerpo.
+                </p>
+
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+                  <div className="space-y-4">
+                    <Field
+                      label="Modo de render"
+                      hint={`Por defecto, este tipo de ficha usa: ${VISUAL_MODE_LABELS[resolveVisualMode(draft)]}.`}
+                    >
+                      <Select
+                        value={draft.visualMode ?? effectiveVisualMode}
+                        onValueChange={(value) =>
+                          patch({ visualMode: value as VisualMode })
+                        }
+                      >
+                        <option value="portrait">Sprite único</option>
+                        <option value="layered">Capas</option>
+                      </Select>
+                    </Field>
+
+                    <ImageField
+                      value={draft.battleSprite}
+                      onChange={(value) => patch({ battleSprite: value })}
+                      label="Sprite único de combate"
+                      hint="Cuerpo completo, transparente y mirando a la izquierda. Fallback: retrato → placeholder."
+                    />
+
+                    <ImageField
+                      value={draft.bodyImage}
+                      onChange={(value) => patch({ bodyImage: value })}
+                      label="Cuerpo base (modo capas)"
+                      hint="PNG 1024×1024 transparente, pies al 90%. Sin cuerpo base, el modo capas cae a sprite único."
+                    />
+
+                    {previewWeapon ? (
+                      <div className="border-2 border-ink/25 bg-paper/60 p-2.5">
+                        <div className="mono-label">Capa de arma en preview</div>
+                        <p className="mt-1 flex items-center gap-2 text-xs font-semibold">
+                          <Icon name="sword" size={13} className="text-rust" />
+                          {previewWeapon.name}
+                        </p>
+                        <p className="mt-1 text-[10px] leading-snug text-ink-faint">
+                          Mientras esa skill se resuelve, su{" "}
+                          <code>weaponImage</code> sustituye temporalmente la capa
+                          de la mano.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="mono-label">Vista previa en vivo</span>
+                      <span className="chip">
+                        {VISUAL_MODE_LABELS[effectiveVisualMode]}
+                      </span>
+                    </div>
+                    <CombatVisualPreview
+                      character={draft}
+                      content={content}
+                      weaponImage={previewWeapon?.weaponImage}
+                    />
+                    <p className="font-mono text-[8px] uppercase tracking-[0.12em] text-ink-faint">
+                      Cambia el equipo y el modo: el montaje se actualiza al instante.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="panel p-4">
+                <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                  06 · Inventario y notas
                 </h2>
                 <div className="mt-3 space-y-2">
                   {campaign.content.items.length === 0 ? (
@@ -703,6 +824,43 @@ export function CharacterSheetPage() {
                       </div>
                     );
                   })}
+                </div>
+              </section>
+
+              <section className="panel p-4">
+                <h2 className="mb-3 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                  Visual de combate
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-[220px_minmax(0,1fr)]">
+                  <CombatVisualPreview
+                    character={view}
+                    content={content}
+                    weaponImage={previewWeapon?.weaponImage}
+                  />
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 border-b border-ink/10 pb-1.5">
+                      <span className="text-ink-soft">Modo</span>
+                      <span className="chip">
+                        {VISUAL_MODE_LABELS[resolveVisualMode(view)]}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-b border-ink/10 pb-1.5">
+                      <span className="text-ink-soft">Sprite único</span>
+                      <span className="font-mono text-[10px]">
+                        {view.battleSprite ? "Definido" : "Fallback"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-b border-ink/10 pb-1.5">
+                      <span className="text-ink-soft">Cuerpo base</span>
+                      <span className="font-mono text-[10px]">
+                        {view.bodyImage ? "Definido" : "Sin capas"}
+                      </span>
+                    </div>
+                    <p className="pt-1 text-[10px] leading-snug text-ink-faint">
+                      Cambia modo, sprite o cuerpo desde «Editar ficha». El mismo
+                      montaje se usa en la mesa de combate.
+                    </p>
+                  </div>
                 </div>
               </section>
 

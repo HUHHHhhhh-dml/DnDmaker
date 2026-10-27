@@ -52,6 +52,9 @@ export const equipmentSlotSchema = z.enum([
 
 export const characterKindSchema = z.enum(["player", "npc", "enemy"]);
 
+/** Modo de render del side-view híbrido. */
+export const visualModeSchema = z.enum(["portrait", "layered"]);
+
 export const effectTriggerSchema = z.enum([
   "roundStart",
   "roundEnd",
@@ -194,6 +197,8 @@ const skillFields = {
   name: nameSchema,
   description: descriptionSchema.optional(),
   image: imageSchema.optional(),
+  /** Capa de arma que sustituye a la mano mientras se usa esta skill. */
+  weaponImage: imageSchema.optional(),
   coins: integer(1, 20),
   baseClash: integer(-9999, 9999),
   coinClash: integer(-9999, 9999),
@@ -267,7 +272,12 @@ const characterFields = {
   kind: characterKindSchema,
   portrait: imageSchema.optional(),
   description: descriptionSchema.optional(),
+  visualMode: visualModeSchema.optional(),
+  battleSprite: imageSchema.optional(),
+  bodyImage: imageSchema.optional(),
   baseStats: characterStatsSchema,
+  /** HP actual; ausente = HP máximo derivado. */
+  hpCurrent: integer(0, 99_999).optional(),
   equipment: equipmentSchema,
   skills: characterSkillsSchema,
   special: characterSpecialSchema.optional(),
@@ -285,10 +295,33 @@ export const characterPatchSchema = characterInputSchema.partial();
 /* Encuentros                                                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Overrides de una aparición: todos los campos son opcionales y los objetos
+ * anidados también, para poder pisar solo `hpMax` o un slot de equipo.
+ */
+const characterOverridesSchema = z.object({
+  name: nameSchema.optional(),
+  kind: characterKindSchema.optional(),
+  portrait: imageSchema.optional(),
+  description: descriptionSchema.optional(),
+  visualMode: visualModeSchema.optional(),
+  battleSprite: imageSchema.optional(),
+  bodyImage: imageSchema.optional(),
+  baseStats: characterStatsSchema.partial().optional(),
+  hpCurrent: integer(0, 99_999).optional(),
+  equipment: equipmentSchema.partial().optional(),
+  skills: characterSkillsSchema.optional(),
+  special: characterSpecialSchema.partial().optional(),
+  inventory: z.array(inventoryEntrySchema).max(200).optional(),
+  notes: z.string().max(4000).optional(),
+  ownerId: idSchema.optional(),
+  tags: tagsSchema.optional(),
+});
+
 const encounterEnemySchema = z.object({
   characterId: idSchema,
   count: integer(1, 20).optional(),
-  overrides: characterInputSchema.partial().optional(),
+  overrides: characterOverridesSchema.optional(),
 });
 
 const encounterRewardsSchema = z.object({
@@ -430,6 +463,177 @@ export const hostSessionSchema = z.object({
 
 export type SessionJoinInput = z.infer<typeof sessionJoinSchema>;
 export type HostSessionInput = z.infer<typeof hostSessionSchema>;
+
+/* -------------------------------------------------------------------------- */
+/* Combate (Fase 3)                                                          */
+/* -------------------------------------------------------------------------- */
+
+/** Stats ya derivados: pueden superar los límites de una ficha base. */
+export const combatStatsSchema = z.object({
+  hpMax: integer(1, 99_999),
+  def: integer(-99_999, 99_999),
+  atk: integer(-99_999, 99_999),
+  spd: integer(-99_999, 99_999),
+  luck: integer(-99_999, 99_999),
+  skillSlots: integer(1, 6),
+});
+
+export const appliedEffectSchema = z.object({
+  effectId: idSchema,
+  stacks: integer(1, 99),
+  potency: z.number().optional(),
+  /** undefined = permanente mientras dure el combate/equipo. */
+  remainingTurns: integer(0, 99_999).optional(),
+  sourceId: idSchema.optional(),
+  /** Pasivo del equipo ya incluido en los stats del snapshot. */
+  passive: z.boolean().optional(),
+});
+
+export const teamSchema = z.enum(["players", "enemies"]);
+export const combatPhaseSchema = z.enum(["declaring", "resolving", "ended"]);
+
+export const combatUnitSchema = z.object({
+  id: idSchema,
+  characterId: idSchema,
+  team: teamSchema,
+  kind: characterKindSchema,
+  name: nameSchema,
+  description: descriptionSchema.optional(),
+  portrait: imageSchema.optional(),
+  visualMode: visualModeSchema.optional(),
+  battleSprite: imageSchema.optional(),
+  bodyImage: imageSchema.optional(),
+  stats: combatStatsSchema,
+  /** Base para recalcular stats con efectos; opcional en estados antiguos. */
+  baseStats: combatStatsSchema.optional(),
+  hpCurrent: integer(0, 99_999),
+  equipment: equipmentSchema,
+  skills: characterSkillsSchema,
+  special: characterSpecialSchema.optional(),
+  effects: z.array(appliedEffectSchema).max(100),
+  utilityUses: integer(0, 99),
+  defeated: z.boolean(),
+});
+
+export const declaredActionSchema = z
+  .object({
+    unitId: idSchema,
+    /** Slot 1..skillSlots; cada acción ocupa un slot distinto. */
+    slot: integer(1, 6),
+    skillId: idSchema.optional(),
+    utilityId: idSchema.optional(),
+    special: z.enum(["domain", "habitat"]).optional(),
+    targetId: idSchema.optional(),
+    redirectFor: idSchema.optional(),
+    locked: z.boolean(),
+  })
+  .refine(
+    (action) => Boolean(action.skillId || action.utilityId || action.special),
+    "La acción necesita una skill, una utilidad o un especial.",
+  );
+
+export const combatEventTypeSchema = z.enum([
+  "roundStart",
+  "actionDeclared",
+  "clash",
+  "redirect",
+  "special",
+  "damage",
+  "heal",
+  "effectApplied",
+  "effectTick",
+  "cooldown",
+  "defeated",
+  "roundEnd",
+  "combatEnd",
+]);
+
+export const combatEventSchema = z.object({
+  id: idSchema,
+  round: integer(1, 99_999),
+  type: combatEventTypeSchema,
+  actorId: idSchema.optional(),
+  targetId: idSchema.optional(),
+  message: z.string().max(4000),
+  data: z.record(z.string(), z.unknown()).optional(),
+});
+
+/** Estado completo del combate; se persiste como JSON validado. */
+export const combatStateSchema = z.object({
+  id: idSchema,
+  encounterId: idSchema,
+  round: integer(1, 99_999),
+  phase: combatPhaseSchema,
+  seed: z.string().trim().min(1).max(200),
+  units: z.array(combatUnitSchema).max(100),
+  actions: z.record(z.string(), z.array(declaredActionSchema).max(6)),
+  /** Lock por unidad, incluidas las que no declararon acciones. */
+  lockedUnits: z.record(z.string(), z.boolean()).optional(),
+  specialCooldowns: z.record(
+    z.string(),
+    z.record(z.string(), integer(0, 99_999)),
+  ),
+  log: z.array(combatEventSchema).max(50_000),
+  winner: teamSchema.optional(),
+});
+
+/* -------------------------------------------------------------------------- */
+/* Payloads de red del combate (Fase 3D)                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Acción que llega por Socket.IO. Acepta `unitId`/`locked` por compatibilidad
+ * con `DeclaredAction`, pero el servidor los normaliza: un jugador solo puede
+ * declarar su unidad y el lock nunca lo decide el cliente.
+ */
+export const combatDeclareActionSchema = z
+  .object({
+    unitId: idSchema.optional(),
+    slot: integer(1, 6),
+    skillId: idSchema.optional(),
+    utilityId: idSchema.optional(),
+    special: z.enum(["domain", "habitat"]).optional(),
+    targetId: idSchema.optional(),
+    redirectFor: idSchema.optional(),
+    locked: z.boolean().optional(),
+  })
+  .refine(
+    (action) => Boolean(action.skillId || action.utilityId || action.special),
+    "La acción necesita una skill, una utilidad o un especial.",
+  );
+
+export const combatStartPayloadSchema = z.object({
+  encounterId: idSchema,
+});
+
+export const combatDeclarePayloadSchema = z.object({
+  /**
+   * Ronda/combate que el cliente cree que está jugando. El servidor rechaza
+   * una declaración vieja para que un paquete tardío no contamine la ronda
+   * nueva. `combatId` no se usa para permisos ni para localizar el combate.
+   */
+  round: integer(1, 99_999).optional(),
+  combatId: idSchema.optional(),
+  /** Selector de unidad enemiga para el DM. El jugador lo ignora. */
+  unitId: idSchema.optional(),
+  actions: z.array(combatDeclareActionSchema).max(6),
+});
+
+export const combatLockPayloadSchema = z.object({
+  /** Ronda/combate esperados; un lock viejo se ignora. */
+  round: integer(1, 99_999).optional(),
+  combatId: idSchema.optional(),
+});
+export const combatEndPayloadSchema = z.object({});
+
+export type CombatUnitInput = z.infer<typeof combatUnitSchema>;
+export type DeclaredActionInput = z.infer<typeof declaredActionSchema>;
+export type CombatEventInput = z.infer<typeof combatEventSchema>;
+export type CombatStateInput = z.infer<typeof combatStateSchema>;
+export type CombatDeclareAction = z.infer<typeof combatDeclareActionSchema>;
+export type CombatDeclarePayload = z.infer<typeof combatDeclarePayloadSchema>;
+export type CombatLockPayload = z.infer<typeof combatLockPayloadSchema>;
+export type CombatStartPayload = z.infer<typeof combatStartPayloadSchema>;
 
 /* -------------------------------------------------------------------------- */
 /* Tipos inferidos (útiles en la API)                                         */

@@ -139,6 +139,13 @@ export const api = {
     return request(`/api/campaigns/${id}`, { method: "DELETE" });
   },
 
+  /** Fase 3F: cura a la party fuera de combate. */
+  restParty(campaignId: string): Promise<Campaign> {
+    return request(`/api/campaigns/${campaignId}/rest-party`, {
+      method: "POST",
+    });
+  },
+
   listContent<T extends ContentType>(
     campaignId: string,
     type: T,

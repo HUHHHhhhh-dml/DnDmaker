@@ -1,8 +1,8 @@
 # Decisión de side-view (Fase 3)
 
-> **Estado:** decisión cerrada el 2026-10-27. Implementación pendiente de la Fase 3.
+> **Estado:** decisión cerrada el 2026-10-27. **Campos activados en 3A**; el renderer y el editor llegan en 3E/3F.
 > **Ámbito:** cómo se dibujan las unidades en el combate side-view.
-> **Contrato v0.1:** no se modifica ni se activa todavía; la propuesta de campos está al final de [`schema-v0.1.ts`](./schema-v0.1.ts).
+> **Contrato:** los campos `visualMode`, `battleSprite`, `bodyImage` y `weaponImage` ya están en [`schema-v0.1.ts`](./schema-v0.1.ts) y se copian al snapshot de combate.
 
 ## 1. Decisión
 
@@ -36,7 +36,7 @@ Motivo: la party son pocas fichas y su identidad visual *es* el equipo; los enem
 - Si falta `bodyImage`, el modo capas cae automáticamente a sprite único.
 - Los objetos usan su `Item.image` actual como capa. Si más adelante el arte de carta no sirve como capa (por encuadre o fondo), se evalúa añadir `Item.layerImage`; **no forma parte de esta decisión**.
 
-## 3. Contrato propuesto (se activa en Fase 3)
+## 3. Contrato activo (Fase 3)
 
 ```ts
 export type VisualMode = "portrait" | "layered";

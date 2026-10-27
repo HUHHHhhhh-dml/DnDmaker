@@ -20,6 +20,7 @@ import {
   type CampaignContent,
   type CampaignSettings,
   type Character,
+  type CharacterOverrides,
   type ContentType,
   type DerivedStats,
   type EffectAction,
@@ -141,6 +142,15 @@ export class Repository {
     private readonly db: AppDatabase,
     private readonly sqlite: Database.Database,
   ) {}
+
+  /**
+   * Transacción de SQLite para operaciones de dominio que tocan varias
+   * tablas. `better-sqlite3` soporta anidamiento por savepoints, así que las
+   * transacciones internas de cada método siguen siendo válidas.
+   */
+  transaction<T>(fn: () => T): T {
+    return this.sqlite.transaction(fn)();
+  }
 
   /* ---------------------------------------------------------------------- */
   /* Campañas                                                               */
@@ -495,6 +505,57 @@ export class Repository {
       this.touchCampaign(row.campaignId, now);
     })();
     return parsed;
+  }
+
+  /**
+   * Persiste el HP actual de una ficha al terminar un combate. Es una
+   * escritura interna del motor: no pasa por los permisos de contenido y se
+   * usa solo cuando la fase ya está en `ended`.
+   */
+  setCharacterCurrentHp(characterId: string, hpCurrent: number): Character {
+    const row = this.findContentRow("characters", characterId);
+    if (!row) {
+      throw new HttpError(404, "character_not_found", "El personaje no existe.");
+    }
+    const current = row.data as Character;
+    const next: Character = {
+      ...current,
+      hpCurrent: Math.max(0, Math.round(hpCurrent)),
+    };
+    const parsed = CONTENT_SCHEMAS.characters.entity.parse(next) as Character;
+    const now = nowIso();
+    this.sqlite.transaction(() => {
+      this.updateEntity("characters", characterId, parsed, now);
+      this.touchCampaign(row.campaignId, now);
+    })();
+    return parsed;
+  }
+
+  /**
+   * "Rest party" fuera de combate (Fase 3F): cura al máximo a las fichas de
+   * la party (player/npc). Es la única escritura de HP junto con el cierre de
+   * `CombatService.endEncounter`; las rutas la bloquean durante el combate.
+   */
+  restParty(campaignId: string): Campaign {
+    const campaign = this.getCampaign(campaignId);
+    const now = nowIso();
+    this.sqlite.transaction(() => {
+      for (const character of campaign.content.characters) {
+        if (character.kind === "enemy") continue;
+        const derived = calculateStats(
+          character,
+          campaign.content,
+          campaign.rules,
+        );
+        const next = CONTENT_SCHEMAS.characters.entity.parse({
+          ...character,
+          hpCurrent: derived.stats.hpMax,
+        }) as Character;
+        this.updateEntity("characters", character.id, next, now);
+      }
+      this.touchCampaign(campaignId, now);
+    })();
+    return this.getCampaign(campaignId);
   }
 
   getCharacterSheet(campaignId: string, characterId: string): CharacterSheet {
@@ -883,26 +944,29 @@ function remapContent(content: CampaignContent): CampaignContent {
     );
 
   const mapOverrides = (
-    overrides: Partial<Character> | undefined,
-  ): Partial<Character> | undefined => {
+    overrides: CharacterOverrides | undefined,
+  ): CharacterOverrides | undefined => {
     if (!overrides) return undefined;
     return {
       ...overrides,
+      // Solo se remapean las claves presentes: un override parcial no debe
+      // rellenar los slots de equipo que no toca.
       equipment: overrides.equipment
-        ? {
-            horns: mapId(overrides.equipment.horns),
-            hand: mapId(overrides.equipment.hand),
-            armor: mapId(overrides.equipment.armor),
-            leg: mapId(overrides.equipment.leg),
-            utility: mapId(overrides.equipment.utility),
-          }
+        ? (Object.fromEntries(
+            Object.entries(overrides.equipment).map(([slot, itemId]) => [
+              slot,
+              mapId(itemId),
+            ]),
+          ) as CharacterOverrides["equipment"])
         : undefined,
       skills: overrides.skills?.map((skillId) => mapId(skillId)) as (string | null)[] | undefined,
       special: overrides.special
-        ? {
-            domainId: mapId(overrides.special.domainId),
-            habitatId: mapId(overrides.special.habitatId),
-          }
+        ? (Object.fromEntries(
+            Object.entries(overrides.special).map(([key, specialId]) => [
+              key,
+              mapId(specialId),
+            ]),
+          ) as CharacterOverrides["special"])
         : undefined,
       inventory: overrides.inventory?.map((entry) => ({
         ...entry,

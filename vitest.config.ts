@@ -6,6 +6,9 @@ export default defineConfig({
     include: [
       "packages/shared/src/**/*.test.ts",
       "apps/server/src/**/*.test.ts",
+      // Tests puros de libs del cliente (sin DOM/React). Justificado en 3F:
+      // el descarte local del último combate no necesita jsdom.
+      "apps/web/src/lib/**/*.test.ts",
     ],
     globals: false,
     testTimeout: 20_000,

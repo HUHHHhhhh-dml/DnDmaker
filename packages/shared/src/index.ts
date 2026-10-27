@@ -2,5 +2,7 @@ export * from "./types";
 export * from "./defaults";
 export * from "./schemas";
 export * from "./stats";
+export * from "./visual";
 export * from "./validation";
 export * from "./session";
+export * from "./combat";

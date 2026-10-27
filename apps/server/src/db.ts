@@ -91,6 +91,32 @@ CREATE TABLE IF NOT EXISTS sessions (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS combat_states (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+  encounter_id TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  round INTEGER NOT NULL,
+  seed TEXT NOT NULL,
+  state TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS combat_events (
+  id TEXT PRIMARY KEY,
+  combat_id TEXT NOT NULL REFERENCES combat_states(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL,
+  round INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  actor_id TEXT,
+  target_id TEXT,
+  message TEXT NOT NULL,
+  data TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_items_campaign ON items(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_skills_campaign ON skills(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_effects_campaign ON effects(campaign_id);
@@ -98,6 +124,10 @@ CREATE INDEX IF NOT EXISTS idx_characters_campaign ON characters(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_encounters_campaign ON encounters(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_specials_campaign ON specials(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_code ON sessions(code);
+CREATE INDEX IF NOT EXISTS idx_combat_states_campaign ON combat_states(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_combat_states_session ON combat_states(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_combat_events_combat_seq ON combat_events(combat_id, seq);
+CREATE INDEX IF NOT EXISTS idx_combat_events_combat ON combat_events(combat_id);
 `;
 
 export interface OpenDatabaseOptions {

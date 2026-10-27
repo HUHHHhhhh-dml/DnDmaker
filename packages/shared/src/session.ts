@@ -1,6 +1,7 @@
 import type {
   Campaign,
   Character,
+  PublicCombatState,
   Session,
   SessionPlayer,
 } from "./types";
@@ -52,6 +53,19 @@ export interface SessionStateResponse {
   campaign: Campaign;
   player?: PublicSessionPlayer;
   character?: Character;
+}
+
+/**
+ * Snapshot completo al conectar/reconectar (Fase 3D). Incluye el combate vivo
+ * ya público (sin seed) o `null` si la mesa no está combatiendo.
+ *
+ * `recentCombat` (Fase 3F, riesgo 2) es el último combate terminado dentro del
+ * TTL; el servidor solo lo manda si el jugador participó en él. El cliente
+ * puede descartarlo localmente y no volver a mostrarlo.
+ */
+export interface StateFullPayload extends SessionStateResponse {
+  combat: PublicCombatState | null;
+  recentCombat?: PublicCombatState | null;
 }
 
 export interface SessionPlayersEvent {

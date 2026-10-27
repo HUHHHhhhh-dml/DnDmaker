@@ -13,6 +13,7 @@ import {
   sessionJoinSchema,
   type ContentType,
 } from "@protocol-life/shared";
+import type { CombatService } from "./combat/service";
 import { getLanIps } from "./network";
 import type { RealtimeService } from "./realtime";
 import type { Repository } from "./repository";
@@ -62,13 +63,14 @@ export interface RouteOptions {
   uploadsDir: string;
   sessions: SessionService;
   realtime: RealtimeService;
+  combat: CombatService;
 }
 
 export async function registerRoutes(
   app: FastifyInstance,
   options: RouteOptions,
 ): Promise<void> {
-  const { repo, uploadsDir, sessions, realtime } = options;
+  const { repo, uploadsDir, sessions, realtime, combat } = options;
 
   /* ---------------------------------------------------------------------- */
   /* Autorización de la mesa                                                 */
@@ -100,6 +102,20 @@ export async function registerRoutes(
   }
 
   /**
+   * En combate nadie edita fichas ni contenido: el estado es un snapshot y
+   * cambiar reglas/equipo a mitad de ronda rompería el log.
+   */
+  function assertNotInCombat(campaignId: string): void {
+    if (combat.getLiveCombat(campaignId)) {
+      throw new HttpError(
+        423,
+        "combat_lock",
+        "No se puede editar contenido ni fichas durante el combate.",
+      );
+    }
+  }
+
+  /**
    * Valida una escritura de ficha cuando la campaña está en vivo:
    * el DM puede todo; el jugador solo su propia ficha y según permisos.
    */
@@ -119,6 +135,13 @@ export async function registerRoutes(
     if (!identity) {
       throw new HttpError(401, "invalid_token", "Tu token de sesión no es válido.");
     }
+    if (combat.getLiveCombat(campaignId)) {
+      throw new HttpError(
+        423,
+        "combat_lock",
+        "No se pueden editar fichas durante el combate.",
+      );
+    }
     if (identity.role === "dm") return;
 
     if (identity.player.characterId !== characterId) {
@@ -135,19 +158,19 @@ export async function registerRoutes(
         "No puedes cambiar el tipo ni el dueño de la ficha.",
       );
     }
+    if ("hpCurrent" in patch) {
+      throw new HttpError(
+        403,
+        "forbidden_fields",
+        "Solo el DM puede ajustar el HP actual de una ficha.",
+      );
+    }
     const campaign = repo.getCampaign(campaignId);
     if (!campaign.settings.allowPlayerEdit) {
       throw new HttpError(
         403,
         "player_edit_disabled",
         "El DM no permite que los jugadores editen su ficha.",
-      );
-    }
-    if (session.status === "combat") {
-      throw new HttpError(
-        403,
-        "combat_lock",
-        "No se pueden editar fichas durante el combate.",
       );
     }
 
@@ -260,6 +283,13 @@ export async function registerRoutes(
     "/api/campaigns/:campaignId/session",
     async (request, reply) => {
       const { campaignId } = request.params;
+      if (combat.getLiveCombat(campaignId)) {
+        throw new HttpError(
+          409,
+          "combat_in_progress",
+          "Termina el combate antes de reabrir la sala.",
+        );
+      }
       const input = hostSessionSchema.parse(request.body ?? {});
 
       // El host puede fijar el PIN en el mismo gesto de abrir la sala. Es la
@@ -323,7 +353,19 @@ export async function registerRoutes(
     "/api/sessions/:code/leave",
     async (request) => {
       const { code } = request.params;
-      const result = sessions.leave(code, getSessionToken(request));
+      const token = getSessionToken(request);
+      const session = sessions.getByCode(code);
+      if (session && combat.getLiveCombat(session.campaignId)) {
+        const identity = sessions.authenticate(code, token);
+        if (identity?.role === "player") {
+          throw new HttpError(
+            409,
+            "combat_in_progress",
+            "No puedes salir de la mesa durante el combate.",
+          );
+        }
+      }
+      const result = sessions.leave(code, token);
       realtime.emitPlayers(code);
       realtime.emitRefresh(result.campaignId);
       return result;
@@ -334,7 +376,20 @@ export async function registerRoutes(
     "/api/sessions/:code/close",
     async (request, reply) => {
       const { code } = request.params;
-      const result = sessions.close(code, getSessionToken(request));
+      const token = getSessionToken(request);
+      const session = sessions.getByCode(code);
+      if (
+        session &&
+        combat.getLiveCombat(session.campaignId) &&
+        sessions.isDmToken(code, token)
+      ) {
+        throw new HttpError(
+          409,
+          "combat_in_progress",
+          "Termina el combate antes de cerrar la sala.",
+        );
+      }
+      const result = sessions.close(code, token);
       realtime.emitClosed(code);
       realtime.emitRefresh(result.campaignId);
       return reply.code(204).send();
@@ -363,6 +418,7 @@ export async function registerRoutes(
     async (request) => {
       const { campaignId } = request.params;
       requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
       const patch = campaignPatchSchema.parse(request.body ?? {});
       const campaign = repo.updateCampaign(campaignId, patch);
       realtime.emitRefresh(campaignId);
@@ -375,10 +431,27 @@ export async function registerRoutes(
     async (request, reply) => {
       const { campaignId } = request.params;
       requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
       const session = sessions.getByCampaignId(campaignId);
       if (session) realtime.emitClosed(session.code);
       repo.deleteCampaign(campaignId);
       return reply.code(204).send();
+    },
+  );
+
+  /**
+   * Cura a la party fuera de combate (Fase 3F). En combate nadie escribe HP:
+   * el cierre del combate persistente es la única otra escritura.
+   */
+  app.post<{ Params: { campaignId: string } }>(
+    "/api/campaigns/:campaignId/rest-party",
+    async (request) => {
+      const { campaignId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      const campaign = repo.restParty(campaignId);
+      realtime.emitRefresh(campaignId);
+      return campaign;
     },
   );
 
@@ -440,6 +513,7 @@ export async function registerRoutes(
       const { campaignId } = request.params;
       const type = parseContentType(request.params.type);
       requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
       const input = CONTENT_SCHEMAS[type].input.parse(request.body ?? {});
       const entity = repo.createContent(type, campaignId, input);
       realtime.emitRefresh(campaignId);
@@ -461,6 +535,7 @@ export async function registerRoutes(
       const type = parseContentType(request.params.type);
       const { id } = request.params;
       const campaignId = repo.getContentCampaignId(type, id);
+      assertNotInCombat(campaignId);
       const patch = CONTENT_SCHEMAS[type].patch.parse(request.body ?? {}) as Record<
         string,
         unknown
@@ -485,6 +560,7 @@ export async function registerRoutes(
       const { id } = request.params;
       const campaignId = repo.getContentCampaignId(type, id);
       requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
       repo.deleteContent(type, id);
       realtime.emitRefresh(campaignId);
       return reply.code(204).send();

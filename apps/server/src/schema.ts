@@ -1,11 +1,15 @@
 import {
+  index,
   integer,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import type {
   CampaignSettings,
   Character,
+  CombatEvent,
+  CombatState,
   EffectDefinition,
   Encounter,
   Item,
@@ -131,6 +135,59 @@ export const sessions = sqliteTable("sessions", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+/**
+ * Estado de combate persistido como JSON validado (Fase 3). El estado es la
+ * fuente de verdad del motor; las columnas espejo permiten listar/filtrar.
+ */
+export const combatStates = sqliteTable(
+  "combat_states",
+  {
+    id: text("id").primaryKey(),
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
+    encounterId: text("encounter_id").notNull(),
+    phase: text("phase").$type<CombatState["phase"]>().notNull(),
+    round: integer("round").notNull(),
+    seed: text("seed").notNull(),
+    state: text("state", { mode: "json" }).$type<CombatState>().notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("idx_combat_states_campaign").on(table.campaignId),
+    index("idx_combat_states_session").on(table.sessionId),
+  ],
+);
+
+/** Log append-only del combate. Cada fila es un evento ya aplicado. */
+export const combatEvents = sqliteTable(
+  "combat_events",
+  {
+    id: text("id").primaryKey(),
+    combatId: text("combat_id")
+      .notNull()
+      .references(() => combatStates.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    round: integer("round").notNull(),
+    type: text("type").$type<CombatEvent["type"]>().notNull(),
+    actorId: text("actor_id"),
+    targetId: text("target_id"),
+    message: text("message").notNull(),
+    data: text("data", { mode: "json" })
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_combat_events_combat_seq").on(table.combatId, table.seq),
+    index("idx_combat_events_combat").on(table.combatId),
+  ],
+);
 
 export const CONTENT_TABLES = {
   items,

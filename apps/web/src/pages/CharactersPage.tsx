@@ -4,6 +4,7 @@ import {
   type CharacterKind,
 } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
+import { useLiveStore } from "../store/useLiveStore";
 import { CharacterCard } from "../components/cards";
 import { Icon } from "../components/Icons";
 import {
@@ -24,6 +25,10 @@ const KIND_FILTERS: Array<{ value: CharacterKind | "all"; label: string }> = [
 
 export function CharactersPage() {
   const campaign = useAppStore((state) => state.campaign);
+  const restParty = useAppStore((state) => state.restParty);
+  const busy = useAppStore((state) => state.busy);
+  const liveCombat = useLiveStore((state) => state.combat);
+  const inCombat = Boolean(liveCombat && liveCombat.phase !== "ended");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<CharacterKind | "all">("all");
   if (!campaign) return null;
@@ -56,9 +61,31 @@ export function CharactersPage() {
         title="Fichas"
         description="Jugadores, NPCs y enemigos. Equipa objetos, elige hasta tres skills y observa cómo cambian los stats derivados en vivo."
         actions={
-          <LinkButton to="/characters/new" variant="accent" size="sm" icon="plus">
-            Nueva ficha
-          </LinkButton>
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              icon="plus"
+              loading={busy}
+              disabled={inCombat}
+              onClick={() => {
+                restParty().catch(() => {
+                  // El store notifica el error (por ejemplo, combate en curso).
+                });
+              }}
+              title={
+                inCombat
+                  ? "No se puede curar durante el combate"
+                  : "Cura al máximo a toda la party fuera de combate"
+              }
+            >
+              Rest party
+            </Button>
+            <LinkButton to="/characters/new" variant="accent" size="sm" icon="plus">
+              Nueva ficha
+            </LinkButton>
+          </>
         }
       />
 

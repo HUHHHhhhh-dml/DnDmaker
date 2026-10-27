@@ -43,6 +43,8 @@ interface AppState {
   }) => Promise<Campaign>;
   updateCampaign: (patch: unknown) => Promise<Campaign>;
   deleteCampaign: (id: string) => Promise<void>;
+  /** Fase 3F: cura a la party fuera de combate. */
+  restParty: () => Promise<boolean>;
 
   saveContent: <T extends ContentType>(
     type: T,
@@ -346,6 +348,34 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       await get().loadAll();
       get().notify("ok", "Campaña eliminada.");
+    } catch (error) {
+      get().notify("error", describeError(error));
+      throw error;
+    } finally {
+      set({ busy: false });
+    }
+  },
+
+  async restParty() {
+    const id = get().activeCampaignId;
+    if (!id) return false;
+    set({ busy: true });
+    try {
+      const campaign = await api.restParty(id);
+      set((state) => ({
+        campaign,
+        campaigns: state.campaigns.map((entry) =>
+          entry.id === campaign.id
+            ? {
+                ...entry,
+                updatedAt: campaign.updatedAt,
+                counts: countsFor(campaign),
+              }
+            : entry,
+        ),
+      }));
+      get().notify("ok", "La party ha descansado y recuperado todo su HP.");
+      return true;
     } catch (error) {
       get().notify("error", describeError(error));
       throw error;

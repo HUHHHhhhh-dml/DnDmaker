@@ -34,7 +34,7 @@ export function EncountersPage() {
       <PageHeader
         eyebrow="Mesa · Encuentros"
         title="Encuentros"
-        description="Grupos de enemigos con recompensas y condiciones narrativas. El combate que los ejecuta llega en la Fase 3."
+        description="Grupos de enemigos con recompensas y condiciones narrativas. El DM los inicia desde La mesa y resuelve el combate con la party."
         actions={
           <LinkButton to="/encounters/new" variant="accent" size="sm" icon="plus">
             Nuevo encuentro
@@ -80,7 +80,7 @@ export function EncountersPage() {
           title={campaign.content.encounters.length === 0 ? "Sin encuentros" : "Nada coincide"}
           description={
             campaign.content.encounters.length === 0
-              ? "Prepara el primer grupo de enemigos y sus recompensas. Se jugará en la Fase 3."
+              ? "Prepara el primer grupo de enemigos y sus recompensas. Podrás iniciarlo desde La mesa con la party conectada."
               : "Prueba con otro nombre."
           }
           action={

@@ -280,6 +280,18 @@ export function validateCharacter(
   }
 
   const derived = calculateStats(character, content, rules);
+  if (
+    character.hpCurrent !== undefined &&
+    character.hpCurrent > derived.stats.hpMax
+  ) {
+    issues.push(
+      issue(
+        `${path}.hpCurrent`,
+        "El HP actual supera el máximo derivado; se ajustará al máximo al iniciar el combate.",
+        "warning",
+      ),
+    );
+  }
   for (const warning of derived.warnings) {
     issues.push(issue(path, warning, "warning"));
   }

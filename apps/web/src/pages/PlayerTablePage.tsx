@@ -16,6 +16,8 @@ import { EquipmentDoll } from "../components/EquipmentDoll";
 import { PlayerSheetEditor } from "../components/PlayerSheetEditor";
 import { StatPanel } from "../components/StatPanel";
 import { Icon } from "../components/Icons";
+import { PlayerCombatView } from "./PlayerCombatView";
+import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import {
   Button,
   ConfirmDialog,
@@ -46,6 +48,11 @@ export function PlayerTablePage() {
   const connected = usePlayerStore((state) => state.connected);
   const error = usePlayerStore((state) => state.error);
   const closed = usePlayerStore((state) => state.closed);
+  const combat = usePlayerStore((state) => state.combat);
+  const recentCombat = usePlayerStore((state) => state.recentCombat);
+  const dismissRecentCombat = usePlayerStore(
+    (state) => state.dismissRecentCombat,
+  );
   const leave = usePlayerStore((state) => state.leave);
 
   const [booting, setBooting] = useState(true);
@@ -69,6 +76,13 @@ export function PlayerTablePage() {
       cancelled = true;
     };
   }, [code, navigate]);
+
+  useEffect(() => {
+    if (combat || session?.status === "combat") {
+      setEditing(false);
+      setConfirmLeave(false);
+    }
+  }, [combat, session?.status]);
 
   const derived = useMemo(
     () =>
@@ -173,6 +187,30 @@ export function PlayerTablePage() {
     );
   }
 
+  // La mesa entra en combate: la ficha pasa a solo lectura y se muestra la
+  // pantalla de combate. Se mantiene el resultado hasta que el jugador vuelve.
+  if (session.status === "combat" || combat) {
+    return (
+      <div className="min-h-screen">
+        <PlayerHeader
+          campaignName={campaign.name}
+          code={code}
+          connected={connected}
+          hideNav
+        />
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
+          <PlayerCombatView
+            campaign={campaign}
+            character={character}
+            session={session}
+            code={code}
+            connected={connected}
+          />
+        </main>
+      </div>
+    );
+  }
+
   const itemsById = new Map(campaign.content.items.map((item) => [item.id, item]));
   const skillsById = new Map(
     campaign.content.skills.map((skill) => [skill.id, skill]),
@@ -198,6 +236,17 @@ export function PlayerTablePage() {
           <div className="mb-4 flex items-start gap-2 border-2 border-rust bg-rust/10 p-3 text-rust-deep">
             <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
             <p className="text-xs font-semibold leading-relaxed">{error}</p>
+          </div>
+        ) : null}
+
+        {recentCombat ? (
+          <div className="mb-5">
+            <CombatResultPanel
+              campaign={campaign}
+              combat={recentCombat}
+              onDismiss={dismissRecentCombat}
+              eyebrow="Tu último combate (reconexión)"
+            />
           </div>
         ) : null}
 
@@ -475,12 +524,15 @@ function PlayerHeader({
   connected,
   onLeave,
   closed = false,
+  hideNav = false,
 }: {
   campaignName: string;
   code: string;
   connected: boolean;
   onLeave?: () => void;
   closed?: boolean;
+  /** Durante el combate no se ofrece salir de la mesa. */
+  hideNav?: boolean;
 }) {
   return (
     <header className="border-b-2 border-ink bg-ink text-paper">
@@ -534,7 +586,7 @@ function PlayerHeader({
             >
               Salir
             </Button>
-          ) : (
+          ) : hideNav ? null : (
             <Link
               to="/"
               className="inline-flex items-center gap-2 border border-paper/30 px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-paper/70 transition-colors hover:border-paper hover:text-paper"

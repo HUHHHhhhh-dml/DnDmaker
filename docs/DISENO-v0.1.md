@@ -352,6 +352,7 @@ Ventaja frente a `DEF/3` plana: nunca llegas a inmunidad, escala mejor con stats
 | `seed` | `string` | Semilla del RNG. |
 | `units` | `CombatUnit[]` | |
 | `actions` | `Record<unitId, DeclaredAction[]>` | Hasta `skillSlots` por unidad. |
+| `lockedUnits` | `Record<unitId, boolean>` (opcional) | Lock por unidad, incluidas las que no declararon acciones; las derrotadas no cuentan. |
 | `specialCooldowns` | `Record<unitId, Record<specialId, number>>` | Rondas restantes de cada dominio/hábitat. |
 | `log` | `CombatEvent[]` | |
 | `winner` | `"players" \| "enemies" \| undefined` | |
