@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f2ede0;
+  --color-paper-light: #f8f4e9;
+  --color-paper-deep: #e5ddc9;
+  --color-ink: #17150f;
+  --color-ink-soft: #4b4639;
+  --color-ink-faint: #7d7665;
+  --color-rust: #a1261e;
+  --color-rust-deep: #7c1a15;
+  --color-amber: #d98b2b;
+  --color-gold: #d4a72c;
+  --color-steel: #33566b;
+  --color-moss: #4d5f3c;
+  --color-blood: #8b1d1d;
+
+  --font-display: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular,
+    Menlo, monospace;
+
+  --shadow-stamp: 4px 4px 0 0 #17150f;
+  --shadow-stamp-sm: 2px 2px 0 0 #17150f;
+  --shadow-stamp-lg: 6px 6px 0 0 #17150f;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    background-image:
+      radial-gradient(circle at 20% 15%, rgb(23 21 15 / 4%) 0 1px, transparent 1px),
+      linear-gradient(to right, rgb(23 21 15 / 4%) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(23 21 15 / 4%) 1px, transparent 1px);
+    background-size:
+      7px 7px,
+      28px 28px,
+      28px 28px;
+  }
+
+  ::selection {
+    background-color: var(--color-amber);
+    color: var(--color-ink);
+  }
+
+  * {
+    scrollbar-color: var(--color-ink-faint) transparent;
+    scrollbar-width: thin;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply border-2 border-ink bg-paper-light;
+    box-shadow: var(--shadow-stamp);
+  }
+
+  .panel-lg {
+    @apply border-2 border-ink bg-paper-light;
+    box-shadow: var(--shadow-stamp-lg);
+  }
+
+  .panel-dark {
+    @apply border-2 border-ink bg-ink text-paper;
+    box-shadow: var(--shadow-stamp);
+  }
+
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 border-2 border-ink px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-all duration-100 select-none;
+    clip-path: polygon(
+      0 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% 100%,
+      10px 100%,
+      0 calc(100% - 10px)
+    );
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+  }
+
+  .btn:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+
+  .btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--color-ink);
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-40;
+    transform: none;
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+  }
+
+  .btn-primary {
+    @apply bg-ink text-paper;
+  }
+
+  .btn-accent {
+    @apply bg-rust text-paper;
+  }
+
+  .btn-ghost {
+    @apply bg-paper-light text-ink;
+  }
+
+  .btn-dark-ghost {
+    @apply border-paper/70 bg-transparent text-paper;
+    box-shadow: 3px 3px 0 0 rgb(242 237 224 / 35%);
+  }
+
+  .btn-dark-ghost:hover {
+    box-shadow: 2px 2px 0 0 rgb(242 237 224 / 35%);
+  }
+
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-[10px] tracking-[0.12em];
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+
+  .btn-sm:hover {
+    box-shadow: 1px 1px 0 0 var(--color-ink);
+  }
+
+  .field {
+    @apply w-full border-2 border-ink bg-white/65 px-3 py-2 text-sm text-ink outline-none transition-colors;
+  }
+
+  .field:focus {
+    @apply bg-white;
+    box-shadow: inset 0 0 0 2px rgb(217 139 43 / 55%);
+  }
+
+  .field:disabled {
+    @apply cursor-not-allowed bg-paper-deep/60 text-ink-faint;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-[10px] font-bold uppercase tracking-[0.18em] text-ink-soft;
+  }
+
+  .field-hint {
+    @apply mt-1 block text-[11px] leading-snug text-ink-faint;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 border border-ink/60 bg-paper px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft;
+  }
+
+  .chip-accent {
+    @apply border-ink bg-amber/25 text-ink;
+  }
+
+  .chip-rust {
+    @apply border-rust/60 bg-rust/10 text-rust-deep;
+  }
+
+  .stat-tile {
+    @apply border-2 border-ink bg-paper-light px-3 py-2;
+  }
+
+  .display {
+    font-family: var(--font-display);
+    @apply uppercase leading-[0.9] tracking-[-0.02em];
+  }
+
+  .mono-label {
+    @apply font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint;
+  }
+
+  .cut-corner {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 12px) 0,
+      100% 12px,
+      100% 100%,
+      12px 100%,
+      0 calc(100% - 12px)
+    );
+  }
+
+  .pentagon {
+    clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+  }
+
+  .hexagon {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 border-l-4 border-transparent px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-paper/65 transition-colors;
+  }
+
+  .nav-link:hover {
+    @apply bg-paper/5 text-paper;
+  }
+
+  .nav-link-active {
+    @apply border-amber bg-paper/10 text-paper;
+  }
+
+  .table-line {
+    @apply border-b border-ink/15;
+  }
+
+  .link-quiet {
+    @apply underline decoration-ink/30 decoration-1 underline-offset-4 hover:decoration-rust;
+  }
+}
+
+@layer utilities {
+  .text-shadow-paper {
+    text-shadow: 1px 1px 0 rgb(242 237 224 / 35%);
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(23 21 15 / 7%) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(23 21 15 / 7%) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .bg-hatch {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgb(23 21 15 / 7%) 0 1px,
+      transparent 1px 7px
+    );
+  }
+
+  .animate-rise {
+    animation: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .animate-fade {
+    animation: fade 0.25s ease-out both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-fade {
+    animation: none;
+  }
+}
+
+/* Indicador de desplegable para los <select> del sistema de formularios. */
+select.field {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2317150f' stroke-width='2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 0.65rem;
+}
+
+select.field:disabled {
+  opacity: 0.5;
+}

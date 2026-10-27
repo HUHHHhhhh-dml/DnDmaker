@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+
+# datos locales
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/*.db
+data/uploads/
+data/backups/
+data/exports/
+
+# sistema
+.DS_Store
+*.tsbuildinfo
+coverage/

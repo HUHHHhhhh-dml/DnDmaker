@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D&D Companion App - Imperium Edition</title>
+    <style>
+        /* ================= PALETA Y CONFIGURACIÓN BASE ================= */
+        :root {
+            --bg-color: #ffffff;
+            --btn-gray: #d3d3d3;
+            --coin-orange: #ffa500;
+            --coin-gray: #808080;
+            --hp-red: #8b0000;
+            --util-blue: #a0c4ff;
+            --special-gold: #ffd700;
+            --text-dark: #333;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 800px;
+            height: 600px;
+            background-color: var(--bg-color);
+            border: 4px solid black;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            transition: opacity 0.5s ease-in-out;
+            opacity: 0;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+        .screen.active { display: flex; opacity: 1; }
+
+        /* ================= BOTONES Y FORMAS GEOMÉTRICAS ================= */
+        .menu-btn {
+            background-color: var(--btn-gray);
+            border: 2px solid black;
+            padding: 12px 35px;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 15px;
+            width: 220px;
+            text-align: center;
+            box-shadow: 4px 4px 0px black;
+            clip-path: polygon(0 0, 90% 0, 100% 20%, 100% 100%, 10% 100%, 0 80%);
+        }
+        .menu-btn:hover { background-color: #bbb; }
+
+        .pentagon {
+            width: 65px; height: 65px;
+            background-color: var(--btn-gray);
+            border: 2px solid black;
+            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; font-weight: bold; font-size: 11px;
+            background-size: cover; background-position: center; text-align: center;
+        }
+        .pentagon:hover { background-color: #bbb; }
+
+        .utility-wrapper { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; }
+        .utility-combat-icon {
+            width: 65px; height: 65px;
+            background-color: var(--btn-gray);
+            border: 2px solid black; border-radius: 50%;
+            position: relative; display: flex; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 10px; text-align: center;
+            background-size: cover; background-position: center;
+        }
+        .utility-combat-icon::after {
+            content: ''; position: absolute;
+            top: -2px; right: -2px; bottom: -2px; left: -2px;
+            border: 4px solid transparent; border-right: 4px solid var(--util-blue);
+            border-radius: 50%; pointer-events: none;
+        }
+
+        /* Dominios y Habitat (Formas Secretas) */
+        .special-btn {
+            width: 65px; height: 65px;
+            background-color: var(--special-gold);
+            border: 2px solid black;
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; font-weight: bold; font-size: 10px;
+            background-size: cover; background-position: center; text-align: center;
+            box-shadow: 0 0 10px var(--special-gold);
+        }
+
+        .def-badge, .atk-badge {
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 13px; border: 2px solid black;
+        }
+        .def-badge { width: 60px; height: 65px; background-color: var(--util-blue); clip-path: polygon(0% 0%, 100% 0%, 100% 65%, 50% 100%, 0% 65%); }
+        .atk-badge { width: 75px; height: 45px; background-color: black; color: white; clip-path: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%); }
+
+        .coins-container { display: flex; justify-content: center; gap: 3px; margin-top: 4px; }
+        .coin { width: 12px; height: 12px; border-radius: 50%; background-color: var(--coin-orange); border: 1px solid black; }
+        .coin.tails { background-color: var(--coin-gray); }
+        .flip-anim { animation: flip 0.5s ease-in-out; }
+        @keyframes flip { 0% { transform: scaleX(1); } 50% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+
+        .info-box { border: 2px solid black; padding: 8px; background: white; text-align: center; font-weight: bold; font-size: 13px; box-shadow: 2px 2px 0px black; }
+        .btn-small { border: 2px solid black; background: white; padding: 4px 10px; cursor: pointer; font-weight: bold; }
+
+        /* ================= SISTEMA DE CAPAS INDEPENDIENTES (PERSONAJE DINÁMICO) ================= */
+        .character-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .start-btn { background-color: white; border: 2px solid black; padding: 8px 30px; font-size: 20px; font-weight: bold; cursor: pointer; margin-bottom: 15px; box-shadow: 3px 3px 0px black; border-radius: 4px; }
+        
+        .char-box { width: 200px; height: 300px; position: relative; }
+        .char-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+        
+        .hp-semi-container { width: 206px; height: 40px; background-color: white; border: 3px solid black; border-top: none; border-radius: 0 0 120px 120px; position: relative; overflow: hidden; }
+        .hp-semi-fill { width: 100%; height: 100%; background-color: var(--hp-red); transition: width 0.3s ease; }
+        .hp-text { position: absolute; top: 8px; left: 0; width: 100%; text-align: center; color: black; font-weight: bold; font-size: 16px; z-index: 10; }
+
+        /* ================= LAYOUTS ================= */
+        .combat-layout { display: grid; grid-template-columns: 1fr 1.5fr 1fr; width: 100%; height: 100%; }
+        .col-left { display: flex; flex-direction: column; gap: 15px; justify-content: center; align-items: flex-start; }
+        .col-right { display: flex; flex-direction: column; gap: 12px; justify-content: center; align-items: flex-end; }
+
+        .inv-layout { display: grid; grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr; width: 100%; height: 100%; align-items: center; }
+        .inv-slot-box {
+            width: 75px; height: 75px; border: 2px solid black; background: white;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; font-weight: bold; font-size: 11px; text-align: center;
+            box-shadow: 2px 2px 0px black; background-size: cover; background-position: center;
+        }
+        .inv-slot-box span { font-size: 9px; color: #333; font-weight: bold; margin-top: 3px; background: rgba(255,255,255,0.7); padding: 1px 3px; border-radius: 3px; }
+        .inv-col-skills { grid-column: 1 / span 5; display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
+
+        /* Modales */
+        .modal { display: none; position: absolute; top: 12%; left: 12%; width: 76%; height: 76%; background: rgba(0,0,0,0.95); color: white; z-index: 100; padding: 25px; box-sizing: border-box; border: 4px solid var(--btn-gray); }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    
+    <div id="main-menu" class="screen active" style="flex-direction: column; justify-content: center; padding-left:100px;">
+        <div style="font-size: 64px; font-weight: bold; margin-bottom: 50px; text-shadow: 2px 2px white;">PROTOCOL LIFE</div>
+        <button class="menu-btn" onclick="changeScreen('combat-menu')">PLAY</button>
+        <button class="menu-btn" onclick="openSettings()">Settings</button>
+        <button class="menu-btn" onclick="alert('Juego cerrado')">Quit</button>
+    </div>
+
+    
+    <div id="combat-menu" class="screen">
+        <div class="combat-layout">
+            <div class="col-left">
+                <div id="combat-skills-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+                    <div id="d20-container" style="display: flex; align-items: center; justify-content: center; gap: 15px; margin: 10px 0; background: #333; padding: 10px; border-radius: 8px; color: white;">
+                        <div id="d20-dice" onclick="rollD20()" style="width: 45px; height: 45px; background: #8b0000; border: 2px solid #ffd700; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s;">20</div>
+                        <span style="font-size: 14px; font-family: monospace;">Resultado d20: <strong id="d20-result" style="color: #ffd700; font-size: 18px;">-</strong></span>
+                    </div>
+                <div style="display:flex; gap:15px;">
+                    <div class="utility-wrapper" onclick="useUtility()">
+                        <div class="utility-combat-icon" id="combat-util-icon">Utilidad</div>
+                        <div id="util-uses-text" style="font-weight:bold; font-size:13px;">3/3</div>
+                    </div>
+                    
+                    <div id="combat-secret-section" style="display:none; gap:10px;">
+                        <div class="utility-wrapper" onclick="activateDomain()">
+                            <div class="special-btn" id="combat-domain-icon" style="background-color:#9370DB;">Dominio</div>
+                            <div style="font-weight:bold; font-size:10px; color:#9370DB;">DOM</div>
+                        </div>
+                        <div class="utility-wrapper" onclick="activateHabitat()">
+                            <div class="special-btn" id="combat-habitat-icon">Habitat</div>
+                            <div style="font-weight:bold; font-size:10px; color:var(--special-gold);">HAB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="character-zone">
+                <div id="active-buff-indicator" style="color:var(--special-gold); font-weight:bold; margin-bottom:5px; height:15px;"></div>
+                <button class="start-btn" onclick="restoreHP()">Start!</button>
+                <div class="char-box" id="combat-char-box"></div>
+                <div class="hp-semi-container">
+                    <div class="hp-semi-fill" id="hp-fill"></div>
+                    <div class="hp-text"><span id="current-hp">50</span>/<span id="max-hp">50</span></div>
+                </div>
+            </div>
+
+            <div class="col-right">
+                <button class="menu-btn" style="width:130px; font-size:16px; padding:8px;" onclick="changeScreen('inventory-menu')">Inventario</button>
+                <div class="info-box" style="width: 100px;">Damage Dealt<br><span id="dmg-dealt" style="font-size:20px;">&</span></div>
+                <div class="info-box" style="width: 100px;">
+                    Damage Taken<br>
+                    <div style="display:flex; justify-content:center; gap:4px; margin-top:4px;">
+                        <input type="number" id="dmg-input" style="width:40px; text-align:center;" value="0">
+                        <button class="btn-small" style="padding:1px 6px;" onclick="applyDamage()">></button>
+                    </div>
+                </div>
+                <div class="def-badge">DEF<br><span id="total-def" style="font-size:16px;">0</span></div>
+                <button class="btn-small" onclick="openSettings()">Settings</button>
+                <button class="btn-small" onclick="changeScreen('main-menu')">Save & Quit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="inventory-menu" class="screen">
+        <div class="inv-layout">
+            <div style="display:flex; flex-direction:column; gap:60px; align-items:center;">
+                <div class="utility-wrapper" onclick="openEquipModal('utility')">
+                    <div class="inv-slot-box" style="border-radius:50%;" id="slot-utility">Utilidad<br><span id="slot-utility-name">Ninguno</span></div>
+                </div>
+                <div class="atk-badge">ATK<br><span id="total-atk">0</span></div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:50px; align-items:center;">
+                <div class="inv-slot-box" id="slot-horns" onclick="openEquipModal('horns')">Horns<br><span id="slot-horns-name">Ninguno</span></div>
+                <div class="inv-slot-box" id="slot-hand" onclick="openEquipModal('hand')">Hand<br><span id="slot-hand-name">Ninguno</span></div>
+            </div>
+
+            <div class="character-zone">
+                <button class="menu-btn" style="width:160px; padding:8px; font-size:16px; margin-bottom:10px;" onclick="changeScreen('combat-menu')">Save & Fight!</button>
+                <div class="char-box" id="inv-char-box" style="height:260px;"></div>
+                <div class="hp-semi-container">
+                    <div class="hp-semi-fill" id="inv-hp-fill"></div>
+                </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:50px; align-items:center;">
+                <div class="inv-slot-box" id="slot-armor" onclick="openEquipModal('armor')">Armor<br><span id="slot-armor-name">Ninguno</span></div>
+                <div class="inv-slot-box" id="slot-leg" onclick="openEquipModal('leg')">Leg<br><span id="slot-leg-name">Ninguno</span></div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:40px; align-items:center;">
+                <div class="info-box" style="background:#ffa500; width:100px; font-size:11px; padding:5px;">
+                    CODE HERE<br>
+                    <input type="text" id="decode-input" style="width:65px; margin-top:2px; text-align:center;">
+                    <button onclick="decodeItem()" style="margin-top:3px; font-size:10px; font-weight:bold; cursor:pointer;">DECODE</button>
+                    <div id="decode-indicator" style="width:10px; height:10px; border-radius:50%; background:gray; display:inline-block; margin-left:3px; vertical-align:middle;"></div>
+                </div>
+                <div class="def-badge">DEF<br><span id="inv-total-def">0</span></div>
+            </div>
+
+            <div class="inv-col-skills">
+                <div style="text-align:center;"><div class="pentagon" id="slot-skill1" onclick="openEquipModal('skill1')">1</div><div id="slot-skill1-name" style="font-size:10px; font-weight:bold; margin-top:3px;">Vacío</div></div>
+                <div style="text-align:center;"><div class="pentagon" id="slot-skill2" onclick="openEquipModal('skill2')">2</div><div id="slot-skill2-name" style="font-size:10px; font-weight:bold; margin-top:3px;">Vacío</div></div>
+                <div style="text-align:center;"><div class="pentagon" id="slot-skill3" onclick="openEquipModal('skill3')">3</div><div id="slot-skill3-name" style="font-size:10px; font-weight:bold; margin-top:3px;">Vacío</div></div>
+                
+                <div id="inv-secret-section" style="display:none; gap:30px;">
+                    <div style="text-align:center;"><div class="special-btn" id="slot-domain" style="background-color:#9370DB;" onclick="openEquipModal('domain')">DOM</div><div id="slot-domain-name" style="font-size:10px; font-weight:bold; margin-top:3px;">Vacío</div></div>
+                    <div style="text-align:center;"><div class="special-btn" id="slot-habitat" onclick="openEquipModal('habitat')">HAB</div><div id="slot-habitat-name" style="font-size:10px; font-weight:bold; margin-top:3px;">Vacío</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="equip-modal" class="modal">
+        <h3 id="modal-title" style="margin-top:0;">Seleccionar Objeto</h3>
+        <div id="modal-items-list" style="display:flex; gap:12px; flex-wrap:wrap; max-height:240px; overflow-y:auto; padding:5px;"></div>
+        <div style="margin-top:20px; display:flex; gap:10px;">
+            <button class="btn-small" style="background:#ffcccc; border-color:red; color:black;" onclick="equipItem(null)">Desequipar Slot</button>
+            <button class="btn-small" onclick="closeEquipModal()">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal"><h2>Settings</h2><button class="btn-small" onclick="closeSettings()">Cerrar</button></div>
+</div>
+
+<script>
+    const CHARACTER_IMAGE_PATH = "https://i.imgur.com/0P1GjK6.png";
+
+    // ================= BASE DE DATOS FUSIONADA =================
+    const database = {
+                horns: [
+            { code: "AASS-164", name: "CIVIL", hp: 3, def: 2, atk: 3, img: "https://i.imgur.com/AZmlFCq.png", desc: "Cuernos otorgados a civiles para reducir Incidentes." },
+            { code: "ADTH-376", name: "WARRIOR", hp: 5, def: 5, atk: 5, img: "https://i.imgur.com/5uLe10o.png", desc: "Los aspirantes a ser guerreros usan estos cuernos." },
+            { code: "AEVJ-183", name: "PSYCHIC", hp: 7, def: 3, atk: 3, img: "https://i.imgur.com/q5ss83Q.png", desc: "Aquellos que buscan ser parte de la Orquesta, deberan de conquistar los dotes de estos cuernos." },
+            { code: "BKRW-182", name: "SHOOTER", hp: 4, def: 0, atk: 6, img: "https://i.imgur.com/qA2e6kj.png", desc: "Ideales para mantener el equilibrio a la hora de apuntar."},
+            { code: "ATMG-343", name: "LONG", hp: -2, def: 5, atk: 7, img: "https://i.imgur.com/QH1iFDG.png", desc: "Cuernos usados para intentar pertencer a una Armada." },
+            { code: "BQSY-406", name: "BROKEN", hp: -5, def: -10, atk: 2, img: "https://i.imgur.com/pbg3xef.png", desc: "Nadie sabe de donde salieron, pero probablemente se puedan arreglar." },
+            { code: "COSW-856", name: "SILENT", hp: 3, def: 0, atk: 3, img: "https://i.imgur.com/tjzMdY2.png", desc: "Cortos, pero ideales para escabullirse." },
+            { code: "GKOB-832", name: "LONG SINGLE HORN", hp: -5, def: -10, atk: 10, img: "https://i.imgur.com/gkX6DAC.png", desc: "Cuerno que busca dar tributo a la Diosa de la Catastrofe. Permite usar la Odachi con mayor precision." },
+            { code: "NNWB-487", name: "LONG FRONT HORNS", hp: -10, def: -10, atk: 30, img: "https://i.imgur.com/pi1ljAK.png", desc: "La Diosa de la Catastrofe es una maestra en el uso de Odachis. Permite usar la Odachi con una mayor perfeccion." },
+            { code: "JEGC-705", name: "BLACK HELMET", hp: 20, def: 10, atk: 0, img: "https://i.imgur.com/A1GtfKy.png", desc: "Los doctores de la Armada 8 se enfrentan a muchos desafios, este casco les permite sobrevivir un par de dias mas en los HYPER-ARO's." },
+            { code: "OHBT-545", name: "BACK LONG HORNS", hp: 60, def: 20, atk: -30, img: "https://i.imgur.com/JkQFGWb.png", desc: "La Armada 2 es conocida por otras Armadas por ser los mas colaboradores. Estos cuernos son un simbolo de ello." },
+            { code: "OPGB-568", name: "BLINDING", hp: 50, def: 35, atk: -10, img: "https://i.imgur.com/IKNPxma.png", desc: "A veces, estar ciego permite tener mejor deteccion de los alrededores." },
+            { code: "OUAP-366", name: "RED CROWN", hp: 30, def: 10, atk: 20, img: "https://i.imgur.com/3LnDqg3.png", desc: "Cuernos Rojos que a veces son confudidos por una corona. Permite controlar la sangre de los enemigos de nivel menor o similar." },
+            { code: "QCBX-532", name: "TANKS", hp: 50, def: 50, atk: -30, img: "https://i.imgur.com/CQHvr4o.png", desc: "Un tanque ciego, es un buen tanque! Ya casi no los usan, pero en su momento los mejores Juggernauts los usaban mucho." },
+            { code: "QQQM-190", name: "PURIFIER HELMET", hp: 50, def: 25, atk: 20, img: "", desc: "Los Purifiers son la mejor fuerza de la Armada 2, donde hay uno, hay cinco." },
+            { code: "ROEW-896", name: "DREAM HELMET", hp: 20, def: 30, atk: 15, img: "https://i.imgur.com/ASg3OSK.png", desc: "Casco materializado por el supuesto dios del orden. Una leyenda de Dream." },
+            { code: "SMOS-548", name: "NEG HORNS", hp: -100, def: 30, atk: 70, img: "https://i.imgur.com/R7mJUf6.png", desc: "Son usados por algunos candidatos a la Armada 7." },
+            { code: "TEOF-313", name: "ARMADA 4 HELMET", hp: 50, def: -15, atk: 25, img: "https://i.imgur.com/0yJMRed.png", desc: "Casco otorgado por Quiro, un simple soldado." },
+            { code: "VIOJ-695", name: "THE DEVIL'S WHITE HORNS", hp: 100, def: 20, atk: 90, luck: 5, img: "https://i.imgur.com/gwHoBbV.png", desc: "La leyenda dice que Demil se los extrajo a un Angel Caido. Fueron otorgados exclusivamente a Arzu. Aunque sean una copia, siguen siendo viables." }
+        ],
+        hand: [
+            { code: "OPMS-356", name: "BROKEN FETTERS", hp: -50, def: -30, atk: 50, img: "https://i.imgur.com/Dlk5P3P.png", desc: "Herramienta especializada de Kol para algunos Purifiers. Captan la energia del usuario y la libera al entrar a combate."},
+            { code: "QLNN-727", name: "ROOT ARM", hp: 25, def: 20, atk: 20, img: "https://i.imgur.com/FUC5GWM.png", desc: "Brazo hecho por Shao Neil. De sus mejores creaciones." },
+            { code: "XJZW-672", name: "THE ARPA", hp: 0, def: 0, atk: 100, luck: 2, img: "https://i.imgur.com/OXbJByE.png", desc: "Arzu era el que comandaba, Zahid el que las creaba." },
+            { code: "ZEXW-468", name: "KOL'S LAMP", hp: 0, def: 0, atk: 0, img: "https://i.imgur.com/1z2Mrgt.png", desc: "''Yo, hijo del Abismo Blanco, te entrego mi LUZ eterna.''" },
+            { code: "ODXJ-859", name: "MULTI ARM", hp: 25, def: -10, atk: 20, img: "https://i.imgur.com/AsgrUfp.png", desc: "''Muchos brazos en uno!''" }    
+        ],
+        armor: [
+            { code: "ADIN-551", name: "CIVILIAN CLOTHES", hp: 2, def: 0, atk: 0, img: "", desc: "Ropa sencilla con el simbolo de la armada 2 en uno de los brazos."},
+            { code: "AFAB-745", name: "SIMPLE ARMOR", hp: 3, def: 5, atk: 0, img: "https://i.imgur.com/LVdVAqQ.png", desc: "Armadura basica usada por novatos." },
+            { code: "AFPI-599", name: "GREY CAPE", hp: 3, def: 2, atk: 0, img: "https://i.imgur.com/nGQ66af.png", desc: "Capa gris usada por aquellos que buscan ser parte de la Orquesta." },
+            { code: "AGTL-208", name: "HUNTER CLOTHES", hp: 3, def: 1, atk: 0, img: "https://i.imgur.com/0ED3DLv.png", desc: "Los cazadores tienden a usar ropa sencilla para conseguir mejor movimiento." },
+            { code: "AOHY-182", name: "LONG ARMOR", hp: 2, def: 2, atk: 3, img: "https://i.imgur.com/QAwDo16.png", desc: "Armdadura usada por aquellos que buscan ser parte de una Armada." },
+            { code: "APBJ-501", name: "BROKEN LONG", hp: 2, def: -4, atk: 2, img: "https://i.imgur.com/ubOgHBc.png", desc: "Capa de aspecto raro y descuidado, tal vez se pueda arreglar." },
+            { code: "AQHJ-372", name: "CLOAK", hp: 0, def: 2, atk: 2, img: "https://i.imgur.com/MrZEcn7.png", desc: "Perfecta para ocultarse en zonas oscuras." },
+            { code: "OBEJ-440", name: "THE YELLOW EYES", hp: 100, def: 60, atk: 0, img: "https://i.imgur.com/gNJU1MB.png", desc: "Propuesta por un investigador olvidad. Nadie sabe que Armada la hizo." },
+            { code: "OJJF-702", name: "PURIFING ARMOR", hp: 100, def: 60, atk: 20, img: "https://i.imgur.com/rSXsvTA.png", desc: "Una armadura usada por los Purifiers, el mejor ejercito de la Armada 2."},
+            { code: "PKJK-349", name: "HEXAGONAL CLOAK", hp: 200, def: 30, atk: 20, img: "https://i.imgur.com/TMm6Vd2.png", desc: "Capa otorgada por Orel, Aspirante de la Armada 6." },
+            { code: "WARN-768", name: "THE WHITE SKIN", hp: 500, def: 100, atk: 40, luck: 5, img: "https://i.imgur.com/BmCUlzr.png", desc: "El Hanfu original fue hecho personalmente por Demil de la Armada 2. Aunque sea una copia, la calidad es increible." },
+            { code: "ZUFJ-326", name: "MACIEL'S ARMOR", hp: 100, def: 50, atk: 15, img: "https://i.imgur.com/J5TwZrG.png", desc: "Armadura de Maciel, parece unica en su tipo, tal vez se pueda Despertar." },
+            
+            { code: "AEQG-534", name: "BROKEN PROTOCOL-T", hp: -15, def: -7, atk: 10, img: "https://i.imgur.com/fgS3fa6.png", desc: "Protocolo destrozado, un simple cacho azul." },
+            { code: "AJYH-481", name: "FRAGMENT OF ANOMALY", hp: 5, def: 10, atk: -3, img: "https://i.imgur.com/pEiiBzK.png", desc: "Fragmento que flota y sigue al usuario, a que anomalia le pertenecera?" },
+            { code: "OYNR-867", name: "DAMAGE REACTOR", hp: 75,def: 50, atk: -40, img: "https://i.imgur.com/iLm4iLn.png", desc: "Algunos tanques de la Armada 6 usan reactores para ayudar a sus equipos." },
+            { code: "QFTB-375", name: "BIRD CAGE", hp: 0, def: 20, atk: 30, img: "https://i.imgur.com/Lmlm0yJ.png", desc: "La Armada 7 es conocida por ser la mas pacifica. La conservacion de las aves es una de sus mayores prioridades." },
+            { code: "RYBQ-672-1", name: "KOL'S DEFENSE STANCE", hp: 50, def: 75, atk: -50, img: "https://i.imgur.com/smwZnsv.png", desc: "El Arbitro Kol usa esta capa como su estandar, seguro tiene cosas mejores..." },
+            { code: "RYBQ-672-2", name: "KOL'S ATTACK STANCE", hp: -50, def: -15, atk: 50, img: "https://i.imgur.com/fMf406H.png", desc: "Al entrar en modo Ataque, la capa se libera y genera una reaccion ofensiva, impulsando las capacidades del usuario." },
+            { code: "TUEP-886", name: "ENERGY CONVERTOR", hp: -50, def: -20, atk: 60, img: "https://i.imgur.com/e4VsOKI.png", desc: "Una tecnologia desarrollada por la Armada 8 y adaptada a otras Armadas. Este pedazo de tecnologia ha estado en uso casi todo el tiempo desde que Arnok esta con vida!" },
+            { code: "XMYX-454", name: "DREAM ANCHOR", hp: -50, def: -20, atk: 100, img: "https://i.imgur.com/MF23izU.png", desc: "Monolito que atraviesa al usuario y lo consume lentamente, imposible removerlo sin morir en el intento." },
+            
+            { code: "JAIS-932", name: "DYING WISH", hp: 150, def: -20, atk: 40, luck: 5, img: "https://i.imgur.com/TXv0Dv7.png", desc: "Los Aspirantes de la Armada 5 no buscaban ser Demil, sino que buscaban contener a uno. Esta armadura esta hecha con pedazos de otros Aspirantes." },
+            { code: "RUTI-674", name: "WHITE FEATHER", hp: 125, def: 40, atk: 25, img: "https://i.imgur.com/DA1AYvC.png", desc: "La Armada 7 solo despliega a sus mejores guerreros cuando sus habitats estan en peligro."},
+            { code: "IJTR-235", name: "", hp: -15, def: -7, atk: 10, img: "" },
+            { code: "FDJE-452", name: "", hp: -15, def: -7, atk: 10, img: "" },
+            { code: "GMIT-867", name: "", hp: -15, def: -7, atk: 10, img: "" },
+
+            { code: "YAPX-889", name: "THE EMBODIMENT OF LIGHT", hp: 300, def: -70, atk: 70, luck: 10, img: "https://i.imgur.com/4x6MsO9.png", desc: "El Corazon del clon de Arzu. Irradia LUZ." }
+            
+        ],
+        leg: [
+            { code: "PLNW-528", name: "ENERGY RODS", hp: 0, def: 5, atk: 20, img: "https://i.imgur.com/EJhATKA.png", desc: "Algunos soldados de la Armada 6 los usan para neutralizar enemigos."},
+            { code: "PWBE-747", name: "WHITE BOOTS", hp: 0, def: 20, atk: 10, img: "https://i.imgur.com/lbbnJVa.png", desc: "Usadas por los Purifiers cada vez que hay un terreno complicado." },
+            { code: "QGWL-184", name: "ENDING RODS", hp: 0, def: 15, atk: 25, img: "https://i.imgur.com/WsEvvH5.png", desc: "Usado por los mejores Juggernauts durante tiempos de Guerra." },
+            { code: "XHDD-991", name: "PILLARS OF LIFE", hp: 50, def: 10, atk: -50, luck: 5, img: "https://i.imgur.com/wJ51WvQ.png", desc: "''Sacanos de aqui, solo queremos vivir''" },
+            { code: "WPTE-392", name: "PILLARS OF HEART", hp: 0, def: 50, atk: 20, luck: 5, img: "https://i.imgur.com/KGOG9xR.png", desc: "''No caigan, hijos mios, puesto que yo rompere las Puertas Del Infierno para traer felicidad a todos ustedes''" }
+        ],
+        utility: [
+            { code: "BAHW-367", name: "HEALING INJECTION", type: "HP", value: 20, uses: 10, img: "" },
+            { code: "CLYK-643", name: "PURIFIER INJECTION", type: "HP", value: 150, uses: 3, img: "" },
+            { code: "UJER-891", name: "CONCENTRATION PILL", type: "LUCK", value: 15, uses: 3, img: "" }
+
+        ],
+        skills: [
+            { code: "AACZ-996", name: "LANCE", coins: 2, base: 5, coin: 5, dmg: 10, coinDmg: 5, img: "https://i.imgur.com/jCykKga.jpeg", weaponImg: "https://i.imgur.com/Heed9XW.png"},
+            { code: "ARIH-655", name: "PSYCHIC WAND", coins: 1, base: 3, coin: 2, dmg: 5, coinDmg: 2, img: "https://i.imgur.com/RZRWQgV.jpeg", weaponImg: "https://i.imgur.com/xvIVhTV.png" },
+            { code: "AYSF-664", name: "SIMPEL REVOLVER", coins: 3, base: 10, coin: 2, dmg: 15, coinDmg: 5, img: "", weaponImg: "https://i.imgur.com/P8oDpXx.png" },
+            { code: "BETI-928", name: "ODACHI", coins: 3, base: 5, coin: 7, dmg: 20, coinDmg: 5, img: "https://i.imgur.com/0SpT5Fo.jpeg", weaponImg: "https://i.imgur.com/fdOBtYE.png" },
+            { code: "BQDF-568", name: "BROKEN PROTOCOL", coins: 5, base: 1, coin: 3, dmg: -3, coinDmg: 2, img: "", weaponImg: "https://i.imgur.com/EPLBVN2.png" },
+            { code: "BSGO-728", name: "SIMPLE DAGGER", coins: 2, base: 5, coin: 5, dmg: 20, coinDmg: 5, img: "", weaponImg: "https://i.imgur.com/8nRwImG.png" },
+            { code: "BTAH-885", name: "SIMPLE RIFLE", coins: 1, base: 10, coin: 5, dmg: 20, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/jY4pBVx.png" },
+            { code: "BTXR-470", name: "CHARGE RIFLE", coins: 3, base: 10, coin: 10, dmg: 20, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/nK8Osa5.png" },
+            { code: "MHFE-928", name: "PURIFIER CLAW", coins: 7, base: 10, coin: 3, dmg: 150, coinDmg: -20, img: "", weaponImg: "https://i.imgur.com/ZGphvuq.png" },
+            { code: "MTVT-926", name: "PURIFIER RIFLE", coins: 3, base: 10, coin: 6, dmg: 40, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/er8VEHt.png" },
+            { code: "NEOF-723", name: "PURIFIER SUP. ROD", coins: 4, base: 5, coin: 4, dmg: -30, coinDmg: 15, img: "", weaponImg: "https://i.imgur.com/wmPFpOo.png" },
+            { code: "OBDI-167", name: "BLACK FEATHER", coins: 2, base: 5, coin: 10, dmg: 30, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/URKE271.png" },
+            { code: "OMWW-114", name: "MACHINE GUN", coins: 10, base: 2, coin: 5, dmg: 5, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/46bKmSV.png" },
+            { code: "PILS-457", name: "THE END", coins: 1, base: 30, coin: -5, dmg: 100, coinDmg: -50, img: "", weaponImg: "https://i.imgur.com/TmVcf0i.png" },
+            { code: "QQGV-591", name: "KOL'S ABYSS", coins: 5, base: 10, coin: 5, dmg: 20, coinDmg: 20, img: "", weaponImg: "https://i.imgur.com/2JV5AS8.png" },
+            { code: "WZSA-628", name: "ANGEL'S CLAWS", coins: 12, base: 0, coin: 10, dmg: 50, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/aFsU1iW.png" },
+            { code: "SOXX-721", name: "THE YELLOW EYES", coins: 3, base: 10, coin: 20, dmg: 30, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/4lE3pWL.png" },
+            { code: "VEVY-199", name: "THE TRUMPET", coins: 2, base: 20, coin: 20, dmg: 50, coinDmg: 10, img: "", weaponImg: "https://i.imgur.com/5QexSMi.png" },
+            
+            { code: "WEFE-421", name: "3rd ODACHI", coins: 5, base: 10, coin: 15, dmg: 50, coinDmg: 15, img: "", weaponImg: "https://i.imgur.com/fmXmPqt.png" },
+            { code: "JFEI-435", name: "FEURE v20.S", coins: 2, base: 20, coin: 20, dmg: 0, coinDmg: 60, img: "", weaponImg: "https://i.imgur.com/LauG1j8.png" },
+            { code: "FIOE-124", name: "LIMBO'S SCYTHE", coins: 1, base: 80, coin: -50, dmg: 150, coinDmg: -75, img: "", weaponImg: "https://i.imgur.com/KVDXG7t.png" },
+            { code: "NWEI-123", name: "PUKI' FIH", coins: 5, base: 20, coin: 10, dmg: 10, coinDmg: 20, img: "", weaponImg: "https://i.imgur.com/xe6T2Gq.png" }
+        ],
+        domains: [
+            { code: "JASIF!!8", name: "Kiteretsu no Toppa / Ruptura de protocolo", dmg: 150, def: 100, hp: 60, turns: 4, img: "" },
+            { code: "JD830\!8", name: "Mirābēru / Velo de espejos", dmg: 50, def: 150, hp: 100, turns: 4, img: "" },
+            { code: "9834JD!8", name: "Kami no Mohō / Expansión de Dominio: Imitación de los Dioses", dmg: 200, def: 50, hp: 50, turns: 4, img: "" },
+         
+        ],
+        habitats: [
+            { code: "ASDE01!3", name: "The Beginning at the Sky and the Limit at Hell", dmg: 100, def: 100, hp: 100, turns: 4, img: "" }
+        ]
+    };
+
+    let gameState = {
+        unlocked: { horns: ["AASS-164", "ADTH-376", "AEVJ-183", "BKRW-182", "ATMG-343", "BQSY-406", "COSW-856", "GKOB-832", "OHBT-545", "OPGB-568", "OUAP-366", "QCBX-532","ROEW-896", "SMOS-548", "TEOF-313"], 
+        hand: ["OPMS-356", "QLMN-727", "ZEXW-468", "ODXJ-859"], 
+        armor: ["ADIN-551", "AFAB-745", "AFPI-599", "AGTL-208", "AOHY-182", "APBJ-501", "AQHJ-372", "OBEJ-440", "OJJF-702", "PKJK-349", "ZUFJ-326", "AEQG-534", "AJYH-481", "OYNR-867", "QFTB-375", "RYBQ-672-1", "RYBQ-672-2", "TUEP-886", "XMYX-454"], 
+        leg: ["PLNW-528", "PWBE-747", "QGWL-184"], 
+        utility: ["BAHW-367", "CLYK-643"], 
+        skills: ["AACZ-996", "ARIH-655", "AYSF-664", "BETI-928", "BQDF-568", "BSGO-728", "BTAH-885", "BTXR-470", "MHFE-928", "MTVT-926", "NEOF-723", "OBDI-167", "OMWW-114", "PILS-457", "QQGV-591"], 
+        domains: [], 
+        habitats: [] },
+        equipped: { horns: null, hand: null, armor: null, leg: null, utility: null, skill1: "BASE", skill2: null, skill3: null, domain: null, habitat: null },
+        hpCurrent: 50,
+        utilUsesLeft: 1,
+        specialUnlocked: false,
+        activeBuff: null,
+        domainUsedThisCombat: false,  // <-- NUEVO
+        habitatUsedThisCombat: false   // <-- NUEVO 
+    };
+    let skillWeaponOverride = null; // Guarda el sprite de la habilidad actual
+    let stats = { hpMax: 50, def: 0, atk: 0 };
+    let activeSlotType = ''; 
+
+    function saveGame() { localStorage.setItem('dnd_imperium_save_v7', JSON.stringify(gameState)); }
+    function loadGame() {
+        const savedData = localStorage.getItem('dnd_imperium_save_v7');
+        if (savedData) { try { gameState = JSON.parse(savedData); } catch(e) { console.error(e); } }
+    }
+
+    function changeScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display = 'none'; });
+        const nextScreen = document.getElementById(screenId);
+        nextScreen.style.display = 'flex';
+        setTimeout(() => nextScreen.classList.add('active'), 50);
+        updateUI();
+    }
+
+    function openSettings() { document.getElementById('settings-modal').style.display = 'block'; }
+    function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+
+    function renderCharacterLayers() {
+    let layersHtml = `<img src="${CHARACTER_IMAGE_PATH}" class="char-layer" onerror="this.style.display='none'">`;
+    const layersOrder = ['leg', 'armor', 'horns', 'hand'];
+    layersOrder.forEach(slot => {
+        const code = gameState.equipped[slot];
+        
+        // CORRECCIÓN: Si hay un aspecto de skill activo en la mano, se queda fijo
+        if (slot === 'hand' && skillWeaponOverride) {
+            layersHtml += `<img src="${skillWeaponOverride}" class="char-layer" onerror="this.style.display='none';">`;
+        } 
+        // Si no, dibuja el arma del inventario normal
+        else if (code) {
+            const item = database[slot].find(i => i.code === code);
+            if (item && item.img) layersHtml += `<img src="${item.img}" class="char-layer" onerror="this.style.display='none';">`;
+        }
+    });
+    document.getElementById('combat-char-box').innerHTML = layersHtml;
+    document.getElementById('inv-char-box').innerHTML = layersHtml;
+}
+
+    function calculateStats() {
+        stats.hpMax = 50; stats.def = 0; stats.atk = 0; stats.luck = 0;
+
+        ['horns', 'hand', 'armor', 'leg'].forEach(slot => {
+            const itemCode = gameState.equipped[slot];
+            const slotElement = document.getElementById(`slot-${slot}`);
+            if (itemCode) {
+                const item = database[slot].find(i => i.code === itemCode);
+                if (item) {
+                    stats.hpMax += item.hp; 
+                    stats.def += item.def; 
+                    stats.atk += item.atk;
+                    if (item.luck) stats.luck += item.luck;
+                    document.getElementById(`slot-${slot}-name`).innerText = item.name;
+                    if (item.img) slotElement.style.backgroundImage = `url('${item.img}')`;
+                    else slotElement.style.backgroundImage = 'none';
+                }
+            } else {
+                document.getElementById(`slot-${slot}-name`).innerText = "Ninguno";
+                slotElement.style.backgroundImage = 'none';
+            }
+        });
+        const utilCode = gameState.equipped.utility;
+        if (gameState.activeBuff && gameState.activeBuff.turnsLeft > 0) {
+            stats.atk += gameState.activeBuff.dmg;
+            stats.def += gameState.activeBuff.def;
+            stats.hpMax += gameState.activeBuff.hp;
+            }
+        }
+
+        if (stats.hpMax <= 0) stats.hpMax = 10;
+        if (gameState.hpCurrent > stats.hpMax) gameState.hpCurrent = stats.hpMax;
+
+        ['skill1', 'skill2', 'skill3'].forEach(sSlot => {
+            const sCode = gameState.equipped[sSlot];
+            const slotElement = document.getElementById(`slot-${sSlot}`);
+            const sItem = database.skills.find(s => s.code === sCode);
+            if (sItem) {
+                document.getElementById(`slot-${sSlot}-name`).innerText = sItem.name;
+                if(sItem.img) { slotElement.style.backgroundImage = `url('${sItem.img}')`; slotElement.innerText = ""; }
+                else { slotElement.style.backgroundImage = 'none'; slotElement.innerText = sSlot.replace('skill', ''); }
+            } else {
+                document.getElementById(`slot-${sSlot}-name`).innerText = "Vacío";
+                slotElement.style.backgroundImage = 'none'; slotElement.innerText = sSlot.replace('skill', '');
+            }
+        });
+        
+        ['domain', 'habitat'].forEach(specSlot => {
+            const code = gameState.equipped[specSlot];
+            const elem = document.getElementById(`slot-${specSlot}`);
+            const item = database[specSlot + 's'].find(i => i.code === code);
+            if(item) {
+                document.getElementById(`slot-${specSlot}-name`).innerText = item.name;
+                if(item.img) { elem.style.backgroundImage = `url('${item.img}')`; elem.innerText = ""; }
+                else { elem.style.backgroundImage = 'none'; elem.innerText = specSlot.slice(0,3).toUpperCase(); }
+            } else {
+                document.getElementById(`slot-${specSlot}-name`).innerText = "Vacío";
+                elem.style.backgroundImage = 'none'; elem.innerText = specSlot.slice(0,3).toUpperCase();
+            }
+        });
+
+        const utCode = gameState.equipped.utility;
+        const utSlotElement = document.getElementById(`slot-utility`);
+        const utItem = database.utility.find(u => u.code === utCode);
+        if (utItem) {
+            document.getElementById(`slot-utility-name`).innerText = utItem.name;
+            if(utItem.img) utSlotElement.style.backgroundImage = `url('${utItem.img}')`;
+            else utSlotElement.style.backgroundImage = 'none';
+        } else {
+            document.getElementById(`slot-utility-name`).innerText = "Ninguno";
+            utSlotElement.style.backgroundImage = 'none';
+        }
+    
+
+    // AÑADIDO: El parametro preserveSkills evita que las monedas se borren al atacar
+    function updateUI(preserveSkills = false) {
+        calculateStats();
+        renderCharacterLayers();
+        
+        document.getElementById('inv-secret-section').style.display = gameState.specialUnlocked ? "flex" : "none";
+        document.getElementById('combat-secret-section').style.display = gameState.specialUnlocked ? "flex" : "none";
+        
+        const hpPercent = (gameState.hpCurrent / stats.hpMax) * 100;
+        document.getElementById('hp-fill').style.width = `${hpPercent}%`;
+        document.getElementById('inv-hp-fill').style.width = `${hpPercent}%`;
+        document.getElementById('current-hp').innerText = gameState.hpCurrent;
+        document.getElementById('max-hp').innerText = stats.hpMax;
+
+        document.getElementById('total-def').innerText = stats.def;
+        document.getElementById('inv-total-def').innerText = stats.def;
+        document.getElementById('total-atk').innerText = stats.atk;
+
+        const utCode = gameState.equipped.utility;
+        const utItem = database.utility.find(u => u.code === utCode);
+        const combatUtilIcon = document.getElementById('combat-util-icon');
+        if (utItem) {
+            if(utItem.img) { combatUtilIcon.style.backgroundImage = `url('${utItem.img}')`; combatUtilIcon.innerText = ""; }
+            else { combatUtilIcon.style.backgroundImage = 'none'; combatUtilIcon.innerText = utItem.name; }
+            document.getElementById('util-uses-text').innerText = `${gameState.utilUsesLeft}/${utItem.uses}`;
+        } else {
+            combatUtilIcon.style.backgroundImage = 'none'; combatUtilIcon.innerText = "Utilidad";
+            document.getElementById('util-uses-text').innerText = "0/0";
+        }
+
+        const buffInd = document.getElementById('active-buff-indicator');
+        if (gameState.activeBuff && gameState.activeBuff.turnsLeft > 0) {
+            buffInd.innerText = `[${gameState.activeBuff.name} ACTIVO: ${gameState.activeBuff.turnsLeft} Turnos]`;
+        } else { buffInd.innerText = ""; }
+
+        // Si estamos tirando monedas, NO re-dibujamos los pentagonos para no borrar las caras/cruces
+        if (!preserveSkills) {
+            renderCombatSkills();
+        }
+    }
+
+    function restoreHP() {
+    if (gameState.activeBuff) {
+        gameState.hpCurrent = Math.max(0, gameState.hpCurrent - gameState.activeBuff.hp);
+        gameState.activeBuff = null;
+    }
+    calculateStats();
+    gameState.hpCurrent = stats.hpMax;
+    const utItem = database.utility.find(u => u.code === gameState.equipped.utility);
+    gameState.utilUsesLeft = utItem ? utItem.uses : 0;
+    document.getElementById('dmg-dealt').innerText = "&";
+
+    skillWeaponOverride = null; 
+    
+    // === [NUEVO] RESETEAR USOS DE DOMINIO/HÁBITAT Y QUITAR EL FONDO ===
+    gameState.domainUsedThisCombat = false;
+    gameState.habitatUsedThisCombat = false;
+    const combatScreen = document.getElementById('combat-menu');
+    combatScreen.style.backgroundImage = "none"; 
+    combatScreen.style.background = "var(--bg-color)"; // Devuelve el fondo por defecto
+
+    saveGame(); updateUI();
+    }
+
+    // ================= MECÁNICAS SECRETAS =================
+    function activateDomain() {
+    const code = gameState.equipped.domain;
+    if (!code) return alert("No tienes ningún Dominio equipado.");
+    if (gameState.domainUsedThisCombat) return alert("Ya has desplegado tu Dominio en este combate. ¡Solo se puede usar una vez!");
+    if (gameState.activeBuff) return alert("Ya tienes un efecto activo en el combate.");
+
+    const item = database.domains.find(d => d.code === code);
+    gameState.activeBuff = { name: item.name, dmg: item.dmg, def: item.def, hp: item.hp, turnsLeft: item.turns };
+    gameState.hpCurrent += item.hp;
+    
+    // Marcar como usado este combate
+    gameState.domainUsedThisCombat = true;
+
+    // === AQUÍ ESTÁ EL FONDO CORREGIDO ===
+    const combatMenu = document.getElementById('combat-menu');
+    if (item.img) {
+        combatMenu.style.backgroundImage = `url('${item.img}')`;
+        combatMenu.style.backgroundSize = "cover";
+        combatMenu.style.backgroundPosition = "center";
+    } else {
+        combatMenu.style.background = "white";
+    }
+
+    alert(`¡DOMINIO DESPLEGADO: ${item.name}!\n\nObtienes +${item.dmg} DMG, +${item.def} DEF y +${item.hp} HP Max durante los próximos ${item.turns} turnos.`);
+    saveGame(); updateUI();
+    }
+
+    function activateHabitat() {
+    const code = gameState.equipped.habitat;
+    if (!code) return alert("No tienes ningún Habitat Imperium equipado.");
+    if (gameState.habitatUsedThisCombat) return alert("Ya has reclamado el Habitat en este combate. ¡Solo se puede usar una vez!");
+
+    const item = database.habitats.find(h => h.code === code);
+    
+    gameState.hpCurrent = stats.hpMax;
+    const utItem = database.utility.find(u => u.code === gameState.equipped.utility);
+    gameState.utilUsesLeft = utItem ? utItem.uses : 0;
+    
+    gameState.activeBuff = { name: item.name, dmg: item.dmg, def: item.def, hp: item.hp, turnsLeft: item.turns };
+    gameState.hpCurrent += item.hp; 
+    
+    gameState.habitatUsedThisCombat = true;
+
+    // === AQUÍ ESTÁ EL FONDO CORREGIDO ===
+    const combatMenu = document.getElementById('combat-menu');
+    if (item.img) {
+        combatMenu.style.backgroundImage = `url('${item.img}')`;
+        combatMenu.style.backgroundSize = "cover";
+        combatMenu.style.backgroundPosition = "center";
+    } else {
+        combatMenu.style.background = "white";
+    }
+
+    alert(`¡HABITAT IMPERIUM ACTIVADO: ${item.name}!\n\nTus recursos fueron restaurados.\nObtienes +${item.dmg} DMG, +${item.def} DEF y +${item.hp} HP Max durante ${item.turns} turnos.`);
+    saveGame(); updateUI();
+    }
+
+    function applyDamage() {
+        const y = parseInt(document.getElementById('dmg-input').value) || 0;
+        let dmgTaken = Math.floor(y - (stats.def / 3));
+        if (dmgTaken < 0) dmgTaken = 0;
+        gameState.hpCurrent -= dmgTaken;
+        if (gameState.hpCurrent < 0) gameState.hpCurrent = 0;
+        saveGame(); updateUI();
+    }
+
+    function useUtility() {
+        const utCode = gameState.equipped.utility;
+        if (!utCode) return alert("No tienes utilidad equipada.");
+        if (gameState.utilUsesLeft > 0) {
+            const utItem = database.utility.find(u => u.code === utCode);
+            gameState.utilUsesLeft--;
+            if (utItem.type === "HP") gameState.hpCurrent = Math.min(stats.hpMax, gameState.hpCurrent + utItem.value);
+            if (utItem.luck) {
+                gameState.nextRollLuckBonus = utItem.luck;
+                alert(`Te concentras con profundidad...\nTu próximo ataque tendrá +${utItem.luck}% extra de probabilidad de sacar caras.`);
+            }
+            saveGame(); updateUI();
+        } else alert("Sin usos.");
+    }
+
+    function renderCombatSkills() {
+        const container = document.getElementById('combat-skills-list');
+        container.innerHTML = '';
+        ['skill1', 'skill2', 'skill3'].forEach(sSlot => {
+            const code = gameState.equipped[sSlot]; if (!code) return;
+            const skill = database.skills.find(s => s.code === code); if (!skill) return;
+            let coinsHtml = ''; for(let i=0; i<skill.coins; i++) { coinsHtml += `<div class="coin"></div>`; }
+            const bgStyle = skill.img ? `background-image: url('${skill.img}'); color:transparent;` : '';
+            
+            // Renderizado base de los botones de ataque en combate (incluye la palabra Clash)
+            container.innerHTML += `
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div>
+                        <div class="pentagon" style="${bgStyle}" onclick="useSkill('${skill.code}', '${sSlot}')">${skill.img ? '' : skill.name[0]}</div>
+                        <div class="coins-container" id="coins-${sSlot}">${coinsHtml}</div>
+                    </div>
+                    <div style="font-size:12px; font-weight:bold;">Clash: <span id="clash-${sSlot}">0</span></div>
+                </div>`;
+        });
+    }
+
+    // AÑADIDO: Lógica de combate congelada para no resetear las visuales de la moneda
+    function useSkill(code, slotId) {
+    const skill = database.skills.find(s => s.code === code);
+    
+    // === MODIFICADO: Guardamos el sprite en la variable global si la skill tiene uno ===
+    if (skill.weaponImg) {
+        skillWeaponOverride = skill.weaponImg;
+    }
+    // Forzamos el redibujado con el nuevo aspecto
+    renderCharacterLayers();
+
+    const coinsDiv = document.getElementById(`coins-${slotId}`).children;
+    let headsCount = 0; let clashTotal = skill.base;
+    let damageTotal = stats.atk + skill.dmg;
+
+    document.getElementById(`clash-${slotId}`).innerText = clashTotal;
+
+    let activeLuck = gameState.nextRollLuckBonus || 0;
+    let probCara = 0.5 + (stats.luck / 100) + (activeLuck / 100);
+    if (probCara > 0.9) probCara = 0.9;
+
+    for(let i=0; i<skill.coins; i++) {
+        const coinUI = coinsDiv[i]; coinUI.classList.remove('flip-anim', 'tails');
+        void coinUI.offsetWidth; coinUI.classList.add('flip-anim');
+        const isHeads = Math.random() < probCara;
+        
+        setTimeout(() => {
+            if (isHeads) { 
+                coinUI.classList.remove('tails'); 
+                headsCount++; 
+                clashTotal += skill.coin; 
+                damageTotal += skill.coinDmg; 
+            } else { 
+                coinUI.classList.add('tails'); 
+            }
+            
+            document.getElementById(`clash-${slotId}`).innerText = clashTotal;
+
+            if (i === skill.coins - 1) {
+                if (headsCount === skill.coins) { damageTotal *= 2; alert("¡CARAS COMPLETAS! Daño x2"); }
+                document.getElementById('dmg-dealt').innerText = damageTotal;
+                
+                // === ¡EL TIMEOUT DE 1500ms QUE ESTABA AQUÍ SE ELIMINÓ! ===
+                // El arma ya no se restaurará sola al terminar el ataque.
+
+                if (gameState.activeBuff && gameState.activeBuff.turnsLeft > 0) {
+                    gameState.activeBuff.turnsLeft--;
+                    if (gameState.activeBuff.turnsLeft <= 0) {
+                        alert(`Los efectos de ${gameState.activeBuff.name} se han desvanecido.`);
+                        gameState.hpCurrent = Math.min(gameState.hpCurrent, stats.hpMax - gameState.activeBuff.hp);
+                        gameState.activeBuff = null;
+                        const combatMenu = document.getElementById('combat-menu');
+                        combatMenu.style.backgroundImage = "none";
+                        combatMenu.style.background = "var(--bg-color)";
+                    }
+                }
+                saveGame(); 
+                updateUI(true); 
+            }
+        }, 250);
+    }
+    gameState.nextRollLuckBonus = 0;
+}
+
+    function openEquipModal(slotType) {
+        activeSlotType = slotType;
+        const modal = document.getElementById('equip-modal');
+        const container = document.getElementById('modal-items-list');
+        container.innerHTML = '';
+        
+        let dbCategory = slotType;
+        if (slotType.startsWith('skill')) dbCategory = 'skills';
+        else if (slotType === 'domain') dbCategory = 'domains';
+        else if (slotType === 'habitat') dbCategory = 'habitats';
+
+        document.getElementById('modal-title').innerText = `Equipar en: ${slotType.toUpperCase()}`;
+        const unlockedCodes = gameState.unlocked[dbCategory] || [];
+        if(unlockedCodes.length === 0) container.innerHTML = '<div style="color:white; font-weight:bold;">Sin objetos disponibles.</div>';
+        
+        unlockedCodes.forEach(code => {
+            const item = database[dbCategory].find(i => i.code === code);
+            if (!item) return;
+            let statsHtml = '';
+            
+           if (['horns', 'hand', 'armor', 'leg'].includes(dbCategory)) {
+                statsHtml = `<strong>HP:</strong> ${item.hp>=0?'+':''}${item.hp || 0}<br><strong>DEF:</strong> ${item.def>=0?'+':''}${item.def || 0}<br><strong>ATK:</strong> ${item.atk>=0?'+':''}${item.atk || 0}`;
+                if (item.luck) statsHtml += `<br><span style="color:#d4af37;"><strong>LUCK:</strong> +${item.luck}%</span>`;
+            } else if (dbCategory === 'skills') {
+                statsHtml = `<strong>Monedas:</strong> ${item.coins}<br><strong>Base:</strong> ${item.base}<br><strong>Coin:</strong> +${item.coin}<br><strong>Dmg:</strong> ${item.dmg}<br><strong>Coin Dmg:</strong> +${item.coinDmg}`;
+            } else if (dbCategory === 'utility') {
+                statsHtml = `<strong>Efecto:</strong> ${item.type} +${item.value}<br><strong>Usos:</strong> ${item.uses}`;
+                if (item.luck) statsHtml += `<br><span style="color:#d4af37;"><strong>LUCK:</strong> +${item.luck}%</span>`;
+            } else if (dbCategory === 'domains' || dbCategory === 'habitats') {
+                statsHtml = `<span style="color:purple;"><strong>Turnos:</strong> ${item.turns}</span><br><strong>DMG:</strong> +${item.dmg}<br><strong>DEF:</strong> +${item.def}<br><strong>HP:</strong> +${item.hp}`;
+            }
+
+            container.innerHTML += `
+            <div style="background: white; border:2px solid black; padding:10px; width:145px; font-weight:bold; font-size:11px; color: black; box-shadow: 3px 3px 0px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 5px;">
+                <div style="border-bottom: 2px solid black; padding-bottom:3px; margin-bottom:5px;">${item.name}</div>
+                <div style="color:#444; line-height:1.3; font-weight:normal;">${statsHtml}</div>
+                <div style="display: flex; gap: 5px; margin-top: auto; padding-top: 5px;">
+                    <button onclick="equipItem('${item.code}')" style="flex: 1; font-size: 10px; font-weight: bold; cursor: pointer; padding: 4px; border: 1px solid black; background: #e0e0e0; border-radius: 3px;">EQUIPAR</button>
+                    <button onclick="showItemDesc('${dbCategory}', '${item.code}')" style="width: 25px; font-size: 12px; cursor: pointer; border: 1px solid black; background: #fff; border-radius: 3px;" title="Ver descripción">📋</button>
+                </div>
+            </div>`;
+        });
+        modal.style.display = 'block';
+    }
+
+    function equipItem(code) {
+        gameState.equipped[activeSlotType] = code;
+        if(activeSlotType === 'utility') {
+            const utItem = database.utility.find(u => u.code === code);
+            gameState.utilUsesLeft = utItem ? utItem.uses : 0;
+        }
+        document.getElementById('equip-modal').style.display = 'none';
+        saveGame(); updateUI();
+    }
+    function closeEquipModal() { document.getElementById('equip-modal').style.display = 'none'; }
+
+    function decodeItem() {
+        const input = document.getElementById('decode-input').value.toUpperCase().trim();
+        const indicator = document.getElementById('decode-indicator');
+        document.getElementById('decode-input').value = '';
+        
+        if (input === "ARHJOE!23D") {
+            gameState.specialUnlocked = true;
+            if (!gameState.unlocked.domains.includes("DOM-01")) gameState.unlocked.domains.push("DOM-01");
+            if (!gameState.unlocked.habitats.includes("HAB-01")) gameState.unlocked.habitats.push("HAB-01");
+            indicator.style.background = '#9370DB';
+            alert("¡SISTEMA CLASIFICADO DESBLOQUEADO!\n\nLas interfaces de Dominios y Habitat Imperium ahora están disponibles en el sistema.");
+            saveGame(); updateUI();
+            setTimeout(() => { indicator.style.background = 'gray'; }, 3000);
+            return;
+        }
+
+        let foundCategory = null;
+        Object.keys(database).forEach(cat => {
+            if (database[cat].some(i => i.code === input) && !gameState.unlocked[cat].includes(input)) foundCategory = cat;
+        });
+        if (foundCategory) {
+            gameState.unlocked[foundCategory].push(input); indicator.style.background = 'green';
+            alert(`¡DESBLOQUEADO!: ${input}`); saveGame(); updateUI();
+        } else { indicator.style.background = 'red'; alert("Código inválido o ya registrado."); }
+        setTimeout(() => { indicator.style.background = 'gray'; }, 3000);
+    }
+    function rollD20() {
+    const dice = document.getElementById('d20-dice');
+    const resultText = document.getElementById('d20-result');
+    
+    // Animación rápida de golpe
+    dice.style.transform = "scale(0.8)";
+    setTimeout(() => dice.style.transform = "scale(1)", 100);
+    
+    // Generar número entre 1 y 20
+    const roll = Math.floor(Math.random() * 20) + 1;
+    resultText.innerText = roll;
+    
+    // Color especial si es crítico (1 o 20)
+    if (roll === 20) resultText.style.color = "#00ff00";
+    else if (roll === 1) resultText.style.color = "#ff0000";
+    else resultText.style.color = "#ffd700";
+    }
+
+    function showItemDesc(category, code) {
+        const item = database[category].find(i => i.code === code);
+        if (item && item.desc) {
+        alert(`📖 ${item.name}\n\n${item.desc}`);
+        } else {
+        alert(`📖 ${item.name}\n\nEste objeto aún no tiene una descripción clasificada en la base de datos.`);
+    }
+}
+    loadGame();
+    updateUI();
+</script>
+</body>
+</html>

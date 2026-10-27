@@ -1,0 +1,30 @@
+{
+  "name": "protocol-life",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PROTOCOL LIFE \u2014 estudio del DM y mesa de rol local-first",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm run dev -w @protocol-life/server",
+    "dev:web": "npm run dev -w @protocol-life/web",
+    "build": "npm run build -w @protocol-life/web",
+    "start": "npm run start -w @protocol-life/server",
+    "seed": "npm run seed -w @protocol-life/server",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npm run typecheck -w @protocol-life/shared && npm run typecheck -w @protocol-life/server && npm run typecheck -w @protocol-life/web"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
