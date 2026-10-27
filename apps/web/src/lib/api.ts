@@ -1,6 +1,7 @@
 import type {
   Campaign,
   CampaignContent,
+  CampaignSettings,
   Character,
   ContentType,
   EffectDefinition,
@@ -119,6 +120,7 @@ export const api = {
     name: string;
     description?: string;
     seed?: boolean;
+    settings?: Partial<CampaignSettings>;
   }): Promise<Campaign> {
     return request("/api/campaigns", {
       method: "POST",

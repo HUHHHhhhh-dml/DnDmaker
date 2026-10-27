@@ -240,6 +240,9 @@ describe("Fase 2 — sala en vivo", () => {
     expect(state.role).toBe("player");
     expect(state.character?.id).toBe(playerCharacterId);
     expect(state.campaign.settings.pin).toBeUndefined();
+    expect(state.campaign.settings.baseCharacterImage).toBe(
+      "/assets/base-character.png",
+    );
     expect(state.campaign.content.characters).toHaveLength(2);
     expect(
       state.campaign.content.characters.some((character) => character.kind === "enemy"),

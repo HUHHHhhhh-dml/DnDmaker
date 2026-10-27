@@ -352,7 +352,11 @@ export function ItemEditorPage() {
             <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               02 · Imagen
             </h2>
-            <ImageField value={draft.image} onChange={(value) => patch({ image: value })} />
+            <ImageField
+              value={draft.image}
+              onChange={(value) => patch({ image: value })}
+              hint="Ideal: PNG 200×300 transparente y en el mismo lienzo que la imagen base. Se usa en el slot y como capa sobre el personaje."
+            />
           </section>
 
           <section className="panel p-4">
@@ -480,7 +484,7 @@ export function ItemEditorPage() {
               </div>
               <div className="relative aspect-[4/3] bg-grid bg-paper-deep">
                 {draft.image ? (
-                  <img src={draft.image} alt="" className="h-full w-full object-cover" />
+                  <img src={draft.image} alt="" className="h-full w-full object-contain p-2" />
                 ) : (
                   <div className="flex h-full items-center justify-center">
                     <div className="flex h-20 w-20 items-center justify-center border-2 border-ink bg-paper-light pentagon">

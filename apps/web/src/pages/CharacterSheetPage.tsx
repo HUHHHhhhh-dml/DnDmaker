@@ -486,7 +486,7 @@ export function CharacterSheetPage() {
                         {item ? (
                           <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-ink/15 pt-2">
                             {item.image ? (
-                              <img src={item.image} alt="" className="h-8 w-8 border border-ink object-cover" />
+                              <img src={item.image} alt="" className="h-8 w-8 border border-ink bg-paper-deep object-contain p-0.5" />
                             ) : null}
                             <span className="text-xs font-semibold">{item.name}</span>
                             <span className="font-mono text-[9px] text-ink-faint">
@@ -674,7 +674,7 @@ export function CharacterSheetPage() {
                           <img
                             src={item.image}
                             alt=""
-                            className="h-10 w-10 shrink-0 border border-ink object-cover"
+                            className="h-10 w-10 shrink-0 border border-ink bg-paper-deep object-contain p-0.5"
                           />
                         ) : (
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-ink/20 bg-paper-deep">

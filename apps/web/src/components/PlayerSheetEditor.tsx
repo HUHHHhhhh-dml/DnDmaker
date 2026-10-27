@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
-  EQUIPMENT_SLOT_HINTS,
   EQUIPMENT_SLOT_LABELS,
-  EQUIPMENT_SLOTS,
   STAT_KEYS,
   STAT_LABELS,
   calculateStats,
@@ -13,6 +11,7 @@ import {
   type StatKey,
 } from "@protocol-life/shared";
 import { usePlayerStore } from "../store/usePlayerStore";
+import { EquipmentDoll } from "./EquipmentDoll";
 import { ImageField } from "./ImageField";
 import { Icon } from "./Icons";
 import { StatPanel } from "./StatPanel";
@@ -50,10 +49,6 @@ export function PlayerSheetEditor({
 
   const derived = calculateStats(draft, campaign.content, campaign.rules);
   const itemsById = new Map(campaign.content.items.map((item) => [item.id, item]));
-  const skillsById = new Map(
-    campaign.content.skills.map((skill) => [skill.id, skill]),
-  );
-
   // El estado del jugador incluye lo bloqueado que lleva la party para que los
   // stats de todos se calculen bien. El editor solo ofrece lo desbloqueado más
   // lo que ya lleva esta ficha (aunque el DM lo haya vuelto a bloquear).
@@ -323,89 +318,35 @@ export function PlayerSheetEditor({
 
       <section className="panel p-4">
         <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-          03 · Equipo
+          03 · Equipo y skills
         </h2>
         <p className="mb-4 mt-2 text-[11px] text-ink-faint">
-          Cinco slots. Cada objeto suma sus stats y efectos pasivos al total. Solo
-          aparecen los objetos desbloqueados por el DM (y los que ya lleva tu ficha).
+          Pulsa un cuadrado para abrir el objeto, o un pentágono para elegir skill.
+          Solo aparecen los objetos y skills desbloqueados por el DM (y los que ya
+          lleve tu ficha).
         </p>
-        <div className="space-y-3">
-          {EQUIPMENT_SLOTS.map((slot) => {
-            const currentId = draft.equipment[slot];
-            const item = currentId ? itemsById.get(currentId) : null;
-            return (
-              <div key={slot} className="border-2 border-ink/30 bg-paper/40 p-2.5">
-                <div className="grid gap-2 sm:grid-cols-[130px_minmax(0,1fr)] sm:items-center">
-                  <div>
-                    <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink-soft">
-                      {EQUIPMENT_SLOT_LABELS[slot]}
-                    </div>
-                    <div className="text-[10px] text-ink-faint">
-                      {EQUIPMENT_SLOT_HINTS[slot]}
-                    </div>
-                  </div>
-                  <Select
-                    value={currentId ?? ""}
-                    onValueChange={(value) => patchEquipment(slot, value || null)}
-                  >
-                    <option value="">— Vacío —</option>
-                    {selectableItems
-                      .filter((entry) => entry.slot === slot || entry.id === currentId)
-                      .map((entry) => (
-                        <option key={entry.id} value={entry.id}>
-                          {entry.name}
-                          {entry.slot !== slot ? " (slot distinto)" : ""}
-                        </option>
-                      ))}
-                  </Select>
-                </div>
-                {item ? (
-                  <p className="mt-2 border-t border-ink/15 pt-2 text-[11px] text-ink-soft">
-                    <span className="font-semibold text-ink">{item.name}</span>
-                    {item.description ? ` · ${item.description}` : ""}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+        <EquipmentDoll
+          character={draft}
+          items={selectableItems}
+          skills={selectableSkills}
+          effects={campaign.content.effects}
+          baseImage={campaign.settings.baseCharacterImage}
+          derived={derived.stats}
+          editable
+          onEquip={(slot, itemId) => patchEquipment(slot, itemId)}
+          onSkillChange={(index, skillId) => patchSkill(index, skillId)}
+        />
       </section>
 
       <section className="panel p-4">
         <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-          04 · Skills y especiales
+          04 · Especiales
         </h2>
         <p className="mb-4 mt-2 text-[11px] text-ink-faint">
-          Tres slots de skill. Dominio y hábitat son habilidades especiales de tu
-          ficha. Solo se ofrecen las skills desbloqueadas por el DM (y las que ya
-          lleves).
+          Dominio y hábitat son habilidades especiales de equipo. Tus skills
+          equipadas se eligen desde los pentágonos del muñeco.
         </p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[0, 1, 2].map((index) => {
-            const skillId = draft.skills[index] ?? null;
-            const skill = skillId ? skillsById.get(skillId) : null;
-            return (
-              <Field
-                key={index}
-                label={`Skill ${index + 1}`}
-                hint={skill ? `${skill.coins} monedas` : undefined}
-              >
-                <Select
-                  value={skillId ?? ""}
-                  onValueChange={(value) => patchSkill(index, value || null)}
-                >
-                  <option value="">— Vacío —</option>
-                  {selectableSkills.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name} ({option.coins} monedas)
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            );
-          })}
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Dominio" hint="Habilidad especial de equipo.">
             <Select
               value={draft.special?.domainId ?? ""}

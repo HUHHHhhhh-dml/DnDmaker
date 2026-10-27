@@ -66,6 +66,8 @@ Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislami
 - **Permisos de servidor**: el jugador solo edita su propia ficha; no puede tocar contenido, campaña, export ni otras fichas. En combate no se edita (preparado para Fase 3).
 - **Estado del jugador saneado**: sin enemigos, sin notas del DM, sin PIN y sin encuentros.
 - **Biblioteca por desbloqueo**: el DM ve todos los objetos/skills y decide con un interruptor cuáles aparecen a los jugadores. Hay vistas “DM · todo” y “Jugadores · desbloqueados”.
+- **Muñeco de equipo del jugador**: slots alrededor de la imagen base, overlay de objetos con imagen y stats, y capas de equipo sobre el personaje. Las skills se eligen desde sus pentágonos.
+- **Imagen base configurable**: el DM la elige en la campaña nueva o en los ajustes; el seed trae una base 200×300 y arte local para varios objetos.
 - **Reconexión**: recargar la pestaña recupera la sesión guardada; cerrar la sala libera las fichas.
 - **Recuperación del DM**: abrir una sala nueva reemplaza la anterior y permite fijar el PIN desde la propia mesa.
 
@@ -74,6 +76,10 @@ Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislami
 | Mesa del jugador | Entrada a la sala |
 |---|---|
 | ![Mesa del jugador](./docs/screenshots/fase-2-mesa-jugador.png) | ![Join](./docs/screenshots/fase-2-join.png) |
+
+| Muñeco de equipo | Overlay de objetos |
+|---|---|
+| ![Muñeco](./docs/screenshots/fase-2-muneco-equipo.png) | ![Overlay](./docs/screenshots/fase-2-overlay-objetos.png) |
 
 | Biblioteca del DM | Biblioteca de jugadores |
 |---|---|
@@ -90,10 +96,11 @@ protocol-life/
   apps/
     web/                 # React + Vite + Tailwind + Zustand
       src/
-        components/      # layout, UI, tarjetas, editor de ficha del jugador
+        components/      # layout, UI, tarjetas, muñeco de equipo, editor del jugador
         pages/           # estudio del DM + JoinPage/PlayerTablePage
         store/           # useAppStore (DM), useLiveStore (mesa DM), usePlayerStore
         lib/             # api, sessionAuth, helpers
+      public/assets/     # imagen base y arte local del seed
     server/              # Fastify + SQLite + Drizzle + Socket.IO
       src/
         app.ts           # buildApp (rutas, realtime, estáticos, errores)
@@ -128,6 +135,7 @@ protocol-life/
 - **Tokens:** el DM y cada jugador reciben un token aleatorio. Se guardan en `localStorage` con claves separadas por rol; cada pestaña tiene su propio contexto en memoria.
 - **Desbloqueo:** `unlocked?: boolean` en `Item` y `Skill`. Ausente o `false` = solo DM. Los jugadores solo pueden elegir contenido desbloqueado; el servidor rechaza con `403 content_locked`. Lo que ya lleva un personaje se conserva en su ficha aunque el DM lo vuelva a bloquear.
 - **Contenido JSON validado:** las entidades completas viven en columnas JSON validadas con Zod; las tiendas/mazmorras del modelo se guardan en `campaigns.extras`.
+- **Base visual:** `campaign.settings.baseCharacterImage` (default `/assets/base-character.png`). Las imágenes de objeto se usan a la vez como arte del slot y como capa sobre la base; el seed trae capas locales 200×300 para CIVIL, WARRIOR, SIMPLE ARMOR, WHITE BOOTS y BROKEN FETTERS. El arte de ejemplo viene del prototipo original y se puede reemplazar subiendo imágenes.
 - **Stats derivados:** `(base + planos) × (1 + porcentajes)`, Skill Slots limitados a `1..rules.maxSkillSlots`.
 - **Moneda:** **Clean Shards**. Nunca dinero real.
 

@@ -20,10 +20,10 @@ const imageSchema = z
   .refine(
     (value) =>
       value === "" ||
-      value.startsWith("/uploads/") ||
+      (value.startsWith("/") && !value.startsWith("//")) ||
       /^https?:\/\//i.test(value) ||
       value.startsWith("data:image/"),
-    "Usa una URL http(s), un archivo subido (/uploads/...) o déjalo vacío",
+    "Usa una URL http(s), un archivo subido (/uploads/...), una ruta local (/assets/...) o déjalo vacío",
   );
 const tagSchema = z.string().trim().max(40);
 const tagsSchema = z.array(tagSchema).max(20);
@@ -365,6 +365,7 @@ export const campaignSettingsSchema = z.object({
   allowPlayerEditDuringCombat: z.boolean(),
   requirePin: z.boolean().optional(),
   pin: z.string().max(12).optional(),
+  baseCharacterImage: imageSchema.optional(),
 });
 
 export const campaignContentSchema = z.object({

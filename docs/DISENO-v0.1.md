@@ -213,8 +213,10 @@ CombatUnit 1─* AppliedEffect ──1 EffectDefinition
 | `schemaVersion` | `number` | `1` en v0.1. |
 | `createdAt` / `updatedAt` | ISO string | Auditoría. |
 | `rules` | `Ruleset` | Parámetros del motor. |
-| `settings` | `CampaignSettings` | Jugadores, permisos, PIN. |
+| `settings` | `CampaignSettings` | Jugadores, permisos, PIN e imagen base del muñeco de equipo. |
 | `content` | objeto | Items, skills, effects, specials, characters, encounters, shops, dungeons. |
+
+`CampaignSettings` incluye `maxPlayers`, `allowPlayerEdit`, `allowPlayerEditDuringCombat`, `requirePin`, `pin` y `baseCharacterImage` (imagen base del muñeco de equipo; default `/assets/base-character.png`).
 
 #### Item
 

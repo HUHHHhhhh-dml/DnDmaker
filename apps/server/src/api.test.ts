@@ -63,6 +63,31 @@ describe("Fase 1 — API", () => {
     expect(campaign.content.items).toEqual([]);
     expect(campaign.rules.defenseConstant).toBe(100);
     expect(campaign.settings.maxPlayers).toBe(6);
+    expect(campaign.settings.baseCharacterImage).toBe("/assets/base-character.png");
+
+    const customImage = await app.inject({
+      method: "PATCH",
+      url: `/api/campaigns/${campaign.id}`,
+      payload: { settings: { baseCharacterImage: "/assets/base-character.png" } },
+    });
+    expect(customImage.statusCode).toBe(200);
+    expect(
+      (customImage.json() as Campaign).settings.baseCharacterImage,
+    ).toBe("/assets/base-character.png");
+
+    const clearedImage = await app.inject({
+      method: "PATCH",
+      url: `/api/campaigns/${campaign.id}`,
+      payload: { settings: { baseCharacterImage: "" } },
+    });
+    expect(clearedImage.statusCode).toBe(200);
+    expect((clearedImage.json() as Campaign).settings.baseCharacterImage).toBe("");
+
+    await app.inject({
+      method: "PATCH",
+      url: `/api/campaigns/${campaign.id}`,
+      payload: { settings: { baseCharacterImage: "/assets/base-character.png" } },
+    });
   });
 
   it("crea efecto, objeto, skill y personaje; equipa y deriva stats", async () => {

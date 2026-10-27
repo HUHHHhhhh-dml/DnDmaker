@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   Campaign,
+  CampaignSettings,
   ContentType,
   EffectDefinition,
   Item,
@@ -34,7 +35,12 @@ interface AppState {
   loadAll: () => Promise<void>;
   selectCampaign: (id: string) => Promise<void>;
   refreshCampaign: () => Promise<void>;
-  createCampaign: (input: { name: string; description?: string; seed?: boolean }) => Promise<Campaign>;
+  createCampaign: (input: {
+    name: string;
+    description?: string;
+    seed?: boolean;
+    settings?: Partial<CampaignSettings>;
+  }) => Promise<Campaign>;
   updateCampaign: (patch: unknown) => Promise<Campaign>;
   deleteCampaign: (id: string) => Promise<void>;
 

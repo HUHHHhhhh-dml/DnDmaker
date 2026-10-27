@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  DEFAULT_BASE_CHARACTER_IMAGE,
   HP_PERSISTENCE_LABELS,
   TIE_RULE_LABELS,
   type Campaign,
@@ -19,6 +20,7 @@ import {
   TextInput,
   Toggle,
 } from "./ui";
+import { ImageField } from "./ImageField";
 import { Icon } from "./Icons";
 
 /* -------------------------------------------------------------------------- */
@@ -38,6 +40,9 @@ export function NewCampaignModal({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [seed, setSeed] = useState(true);
+  const [baseCharacterImage, setBaseCharacterImage] = useState<string | undefined>(
+    DEFAULT_BASE_CHARACTER_IMAGE,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,6 +50,7 @@ export function NewCampaignModal({
     setName("");
     setDescription("");
     setSeed(true);
+    setBaseCharacterImage(DEFAULT_BASE_CHARACTER_IMAGE);
     setError(null);
   }, [open]);
 
@@ -58,6 +64,7 @@ export function NewCampaignModal({
         name: name.trim(),
         description: description.trim() || undefined,
         seed,
+        settings: { baseCharacterImage: baseCharacterImage ?? "" },
       });
       onClose();
       navigate("/");
@@ -105,6 +112,13 @@ export function NewCampaignModal({
             placeholder="Una campaña sobre…"
           />
         </Field>
+        <ImageField
+          value={baseCharacterImage}
+          onChange={setBaseCharacterImage}
+          label="Imagen base de los jugadores"
+          hint="Se usa en el muñeco de equipo. Ideal PNG 200×300 con transparencia; puedes subir otra o quitarla."
+          shape="portrait"
+        />
         <div className="border-2 border-ink bg-paper/60 p-3">
           <Toggle
             checked={seed}
@@ -312,6 +326,13 @@ export function EditCampaignModal({
                 maxLength={2000}
               />
             </Field>
+            <ImageField
+              value={settings.baseCharacterImage}
+              onChange={(value) => patchSettings({ baseCharacterImage: value ?? "" })}
+              label="Imagen base de los jugadores"
+              hint="Ideal PNG 200×300 con transparencia. Se usa en el muñeco de equipo del jugador."
+              shape="portrait"
+            />
             <dl className="grid gap-3 border-t-2 border-ink/15 pt-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="mono-label">Creada</dt>

@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  EQUIPMENT_SLOTS,
-  EQUIPMENT_SLOT_LABELS,
   SESSION_STATUS_LABELS,
   STAT_KEYS,
   STAT_LABELS,
@@ -14,6 +12,7 @@ import {
   type Skill,
 } from "@protocol-life/shared";
 import { usePlayerStore } from "../store/usePlayerStore";
+import { EquipmentDoll } from "../components/EquipmentDoll";
 import { PlayerSheetEditor } from "../components/PlayerSheetEditor";
 import { StatPanel } from "../components/StatPanel";
 import { Icon } from "../components/Icons";
@@ -317,53 +316,20 @@ export function PlayerTablePage() {
                 </section>
 
                 <section className="panel p-4">
-                  <SectionTitle title="Equipo" />
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {EQUIPMENT_SLOTS.map((slot) => {
-                      const itemId = character.equipment[slot];
-                      const item = itemId ? itemsById.get(itemId) : null;
-                      return (
-                        <div
-                          key={slot}
-                          className={cx(
-                            "flex items-start gap-2 border-2 p-2",
-                            item
-                              ? "border-ink/30 bg-paper/50"
-                              : "border-dashed border-ink/20",
-                          )}
-                        >
-                          {item?.image ? (
-                            <img
-                              src={item.image}
-                              alt=""
-                              className="h-10 w-10 shrink-0 border border-ink object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-ink/20 bg-paper-deep">
-                              <Icon name="cube" size={15} className="text-ink-faint" />
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-ink-faint">
-                              {EQUIPMENT_SLOT_LABELS[slot]}
-                            </div>
-                            <div className="truncate text-xs font-semibold">
-                              {item?.name ?? "Vacío"}
-                            </div>
-                            {item?.description ? (
-                              <p className="mt-0.5 line-clamp-1 text-[10px] text-ink-soft">
-                                {item.description}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <SectionTitle title="Equipo y skills" />
+                  <EquipmentDoll
+                    character={character}
+                    items={campaign.content.items}
+                    skills={campaign.content.skills}
+                    effects={campaign.content.effects}
+                    baseImage={campaign.settings.baseCharacterImage}
+                    derived={derived.stats}
+                    editable={false}
+                  />
                 </section>
 
                 <section className="panel p-4">
-                  <SectionTitle title="Skills y especiales" />
+                  <SectionTitle title="Detalle de skills y especiales" />
                   <div className="space-y-2">
                     {character.skills.map((skillId, index) => {
                       const skill = skillId ? skillsById.get(skillId) : null;

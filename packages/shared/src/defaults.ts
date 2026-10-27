@@ -35,11 +35,14 @@ export const DEFAULT_RULES: Ruleset = {
   hpPersistence: "persist",
 };
 
+export const DEFAULT_BASE_CHARACTER_IMAGE = "/assets/base-character.png";
+
 export const DEFAULT_SETTINGS: CampaignSettings = {
   maxPlayers: 6,
   allowPlayerEdit: true,
   allowPlayerEditDuringCombat: false,
   requirePin: false,
+  baseCharacterImage: DEFAULT_BASE_CHARACTER_IMAGE,
 };
 
 export const EQUIPMENT_SLOTS = [

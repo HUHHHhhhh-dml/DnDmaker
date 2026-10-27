@@ -295,6 +295,8 @@ export interface CampaignSettings {
   allowPlayerEditDuringCombat: boolean;
   requirePin?: boolean;
   pin?: string;
+  /** Imagen base para el muñeco de equipo de los jugadores. */
+  baseCharacterImage?: string;
 }
 
 export interface CampaignContent {

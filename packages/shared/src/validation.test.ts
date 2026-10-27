@@ -163,6 +163,13 @@ describe("esquemas Zod", () => {
     ).toBe(true);
     expect(
       itemInputSchema.safeParse({
+        name: "Asset",
+        slot: "hand",
+        image: "/assets/items/civil.png",
+      }).success,
+    ).toBe(true);
+    expect(
+      itemInputSchema.safeParse({
         name: "Raro",
         slot: "hand",
         image: "javascript:alert(1)",

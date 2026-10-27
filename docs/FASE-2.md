@@ -27,6 +27,7 @@
 | PIN | ✅ | Host con PIN 4321; join sin PIN/incorrecto → 403. |
 | Presencia | ✅ | Test Socket.IO real y E2E: “En línea”, contador y estado del DM. |
 | Contenido bloqueado | ✅ | El estado del jugador excluye objetos/skills sin desbloquear; equipar uno devuelve 403 `content_locked`; al desbloquear el DM aparece en vivo. |
+| Muñeco visual | ✅ | E2E: clic en un slot abre el overlay con imagen/stats; equipar actualiza el slot y las capas; el seed usa base 200×300. |
 | Reconexión / persistencia | ✅ | Recarga de `/table` con auto-resume; tokens en SQLite + localStorage. |
 | Cierre de sala | ✅ | El jugador recibe “La sala se cerró”; fichas liberadas. |
 | API/permisos | ✅ | 52 tests de Vitest, incluidos 14 de sesiones y 3 de Socket.IO. |
@@ -98,7 +99,22 @@ Jugador (navegador)                       ├─ campaign:refresh ─► DM
 - Los **efectos** siguen compartidos para que los stats derivados y las referencias funcionen; si más adelante se quiere ocultarlos también, se les añade el mismo campo.
 - Las dos vistas del DM permiten comprobar de un vistazo qué verá la mesa; el filtro “Solo DM” enseña lo que todavía no se ha desbloqueado.
 
-### 3.5 Tiempo real
+### 3.5 Muñeco de equipo y base visual
+
+- `CampaignSettings.baseCharacterImage` define la imagen base del jugador. Default: `/assets/base-character.png`; el DM puede subir otra o quitarla al crear/editar la campaña.
+- El editor del jugador usa un **muñeco** (no listas desplegables):
+  - imagen base al centro, con capas de equipo encima (orden `leg → armor → horns → hand`);
+  - slots alrededor: utilidad, cuernos, mano, armadura, piernas;
+  - ATK/DEF derivados y barra de HP;
+  - tres pentágonos de skill.
+- Al pulsar un slot se abre un overlay con los objetos de ese slot: imagen grande, nombre, stats debajo, efectos y botón **Equipar**. El slot se rellena con `Item.image`.
+- Al pulsar un pentágono se abre el selector de skills con monedas, clash/daño y Equipar.
+- El editor solo ofrece objetos/skills desbloqueados o ya equipados; el servidor mantiene la validación `content_locked`.
+- La vista de ficha (sin editar) usa el mismo muñeco en modo lectura.
+- Formato recomendado: imagen base y capas PNG **200×300** con transparencia y el mismo lienzo. `Item.image` hace de arte del slot y de capa.
+- El seed incluye arte local para CIVIL, WARRIOR, SIMPLE ARMOR, WHITE BOOTS y BROKEN FETTERS (tomado del prototipo original); se puede reemplazar desde el editor.
+
+### 3.6 Tiempo real
 
 Socket.IO en `/socket.io`, autenticado por `{ code, token }`:
 
@@ -131,6 +147,10 @@ El cliente del jugador y el del DM tienen stores separados (`usePlayerStore`, `u
 | Jugador | Entrada |
 |---|---|
 | ![Mesa del jugador](./screenshots/fase-2-mesa-jugador.png) | ![Join](./screenshots/fase-2-join.png) |
+
+| Muñeco de equipo | Overlay de objetos |
+|---|---|
+| ![Muñeco](./screenshots/fase-2-muneco-equipo.png) | ![Overlay](./screenshots/fase-2-overlay-objetos.png) |
 
 | Biblioteca del DM (todo) | Biblioteca de jugadores |
 |---|---|
@@ -194,6 +214,8 @@ Además, E2E manual con Playwright:
 - **Sin kick/expulsión:** el DM puede cerrar la sala o el jugador salir. Un kick por jugador queda para Fase 3/4.
 - **Sin reconexión visual avanzada:** Socket.IO reconecta; la presencia se actualiza. No hay grace period explícito.
 - **Sin sync offline:** el servidor manda; si se cae, el cliente muestra reconexión y refetchea al volver.
+- **Arte del muñeco:** base y capas deben compartir lienzo (recomendado 200×300). Si se sube arte de carta en vez de capa, el muñeco puede verse raro; se puede cambiar desde el editor.
+- **Inventario:** sigue usando un selector de lista; el muñeco visual cubre equipo y skills.
 - **Direcciones LAN:** se detectan IPv4 no internas; si hay varias, se ordenan las privadas primero. Puede requerir elegir otra IP manualmente en redes complejas.
 - **Vite en LAN:** `server.host: true` y `allowedHosts: true`; pensado para desarrollo local. En producción sirve Fastify.
 
@@ -220,4 +242,7 @@ Además, E2E manual con Playwright:
 | `apps/web/src/pages/JoinPage.tsx` | Entrada del jugador. |
 | `apps/web/src/pages/PlayerTablePage.tsx` | Ficha y party del jugador. |
 | `apps/web/src/components/PlayerSheetEditor.tsx` | Editor restringido del jugador. |
+| `apps/web/src/components/EquipmentDoll.tsx` | Muñeco, capas y overlays de objetos/skills. |
+| `apps/web/src/components/CampaignModals.tsx` | Nueva campaña y ajustes, incluida la imagen base. |
+| `apps/web/public/assets/` | Imagen base y arte local del seed. |
 | `packages/shared/src/session.ts` | Contrato público de sesión. |
