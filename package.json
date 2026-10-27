@@ -1,9 +1,9 @@
 {
   "name": "protocol-life",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "PROTOCOL LIFE \u2014 estudio del DM y mesa de rol local-first",
+  "description": "PROTOCOL LIFE — estudio del DM y mesa de rol local-first",
   "workspaces": [
     "packages/*",
     "apps/*"

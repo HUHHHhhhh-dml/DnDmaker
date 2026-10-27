@@ -408,6 +408,25 @@ export const campaignImportSchema = z.object({
 });
 
 /* -------------------------------------------------------------------------- */
+/* Sesiones (Fase 2)                                                          */
+/* -------------------------------------------------------------------------- */
+
+export const sessionJoinSchema = z.object({
+  name: z.string().trim().min(1, "Escribe tu nombre").max(40),
+  pin: z.string().max(12).optional(),
+  characterId: idSchema.optional(),
+});
+
+/** Ajustes de PIN que el DM puede fijar al abrir/reabrir una sala. */
+export const hostSessionSchema = z.object({
+  requirePin: z.boolean().optional(),
+  pin: z.string().max(12).optional(),
+});
+
+export type SessionJoinInput = z.infer<typeof sessionJoinSchema>;
+export type HostSessionInput = z.infer<typeof hostSessionSchema>;
+
+/* -------------------------------------------------------------------------- */
 /* Tipos inferidos (útiles en la API)                                         */
 /* -------------------------------------------------------------------------- */
 

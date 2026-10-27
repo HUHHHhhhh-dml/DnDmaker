@@ -68,6 +68,9 @@ export function DashboardPage() {
             <Button variant="ghost" icon="edit" size="sm" onClick={() => context?.onEditCampaign?.()}>
               Ajustes
             </Button>
+            <LinkButton to="/table" variant="ghost" size="sm" icon="broadcast">
+              Mesa
+            </LinkButton>
             <Button
               variant="ghost"
               icon="download"
@@ -304,13 +307,13 @@ export function DashboardPage() {
           </div>
 
           <div className="border-2 border-dashed border-ink/30 p-4">
-            <div className="mono-label mb-2">Fase 1 · alcance</div>
+            <div className="mono-label mb-2">Fase 2 · mesa en vivo</div>
             <ul className="space-y-1.5 text-[11px] leading-snug text-ink-soft">
               {[
-                "CRUD de campaña y contenido",
-                "Ficha con stats derivados",
-                "Seed + SQLite persistente",
-                "Export / import JSON",
+                "Sala LAN con link + PIN",
+                "Fichas compartidas en vivo",
+                "Permisos por token de sesión",
+                "Party y presencia en tiempo real",
               ].map((entry) => (
                 <li key={entry} className="flex items-start gap-1.5">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-moss" />
@@ -319,8 +322,14 @@ export function DashboardPage() {
               ))}
             </ul>
             <p className="mt-3 border-t border-ink/15 pt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
-              Host/join y combate: Fase 2–3
+              Combate y encuentros: Fase 3
             </p>
+            <Link
+              to="/table"
+              className="mt-3 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rust hover:underline"
+            >
+              Abrir la mesa →
+            </Link>
           </div>
         </aside>
       </div>

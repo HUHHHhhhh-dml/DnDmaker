@@ -80,12 +80,24 @@ CREATE TABLE IF NOT EXISTS specials (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL UNIQUE REFERENCES campaigns(id) ON DELETE CASCADE,
+  code TEXT NOT NULL UNIQUE,
+  dm_token TEXT NOT NULL,
+  status TEXT NOT NULL,
+  players TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_items_campaign ON items(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_skills_campaign ON skills(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_effects_campaign ON effects(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_characters_campaign ON characters(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_encounters_campaign ON encounters(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_specials_campaign ON specials(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_code ON sessions(code);
 `;
 
 export interface OpenDatabaseOptions {

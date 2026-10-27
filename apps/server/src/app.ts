@@ -7,8 +7,10 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
 import { dbPath as defaultDbPath, uploadsDir as defaultUploadsDir, webDistDir as defaultWebDistDir } from "./config";
 import { openDatabase } from "./db";
+import { createRealtime, type RealtimeService } from "./realtime";
 import { HttpError, Repository } from "./repository";
 import { errorPayload, registerRoutes, uploadLimits } from "./routes";
+import { SessionService } from "./sessions";
 
 export interface BuildAppOptions {
   /** Ruta del SQLite; `:memory:` para tests. */
@@ -24,6 +26,8 @@ export interface BuildAppOptions {
 export interface BuiltApp {
   app: FastifyInstance;
   repository: Repository;
+  sessions: SessionService;
+  realtime: RealtimeService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp> {
@@ -33,6 +37,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
 
   const { sqlite, db } = openDatabase({ dbPath: file });
   const repository = new Repository(db, sqlite);
+  const sessions = new SessionService(db, repository);
+  sessions.resetPresence();
 
   if (options.seed !== false) {
     const seeded = repository.ensureSeedCampaign();
@@ -47,10 +53,17 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     bodyLimit: 10 * 1024 * 1024,
   });
 
+  const realtime = createRealtime(app, sessions);
+
   await app.register(cors, { origin: true });
   await app.register(multipart, { limits: uploadLimits });
 
-  await registerRoutes(app, { repo: repository, uploadsDir: uploads });
+  await registerRoutes(app, {
+    repo: repository,
+    uploadsDir: uploads,
+    sessions,
+    realtime,
+  });
 
   const webIndex = join(webDist, "index.html");
   const hasWebBuild = existsSync(webIndex);
@@ -109,11 +122,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
 
   app.addHook("onClose", async () => {
     try {
+      realtime.close();
+    } catch {
+      // ya estaba cerrado
+    }
+    try {
       sqlite.close();
     } catch {
       // ya estaba cerrada
     }
   });
 
-  return { app, repository };
+  return { app, repository, sessions, realtime };
 }

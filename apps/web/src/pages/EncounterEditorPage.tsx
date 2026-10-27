@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  CURRENCY_NAME,
   EQUIPMENT_SLOT_LABELS,
   encounterInputSchema,
   type Encounter,
@@ -357,7 +358,7 @@ export function EncounterEditorPage() {
               03 · Recompensas
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Oro del juego" hint="Nunca dinero real.">
+              <Field label={CURRENCY_NAME} hint="Moneda de campaña. Nunca dinero real.">
                 <NumberInput
                   value={draft.currency}
                   onValueChange={(value) => patch({ currency: value })}
@@ -477,7 +478,7 @@ export function EncounterEditorPage() {
               </div>
               {draft.rewardItemIds.length > 0 || draft.currency ? (
                 <div className="mt-3 flex flex-wrap gap-1 border-t border-ink/15 pt-2">
-                  {draft.currency ? <span className="chip">{draft.currency} oro</span> : null}
+                  {draft.currency ? <span className="chip">{draft.currency} {CURRENCY_NAME}</span> : null}
                   {draft.rewardItemIds.map((itemId) => {
                     const item = itemsById.get(itemId);
                     return item ? (

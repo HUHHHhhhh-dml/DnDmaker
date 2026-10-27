@@ -12,6 +12,9 @@ import type {
 
 export const SCHEMA_VERSION = 1 as const;
 
+/** Moneda de campaña. Nunca dinero real. */
+export const CURRENCY_NAME = "Clean Shards";
+
 export const DEFAULT_STATS: Stats = {
   hpMax: 50,
   def: 0,

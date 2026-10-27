@@ -10,6 +10,7 @@ import type {
   Encounter,
   Item,
   Ruleset,
+  Session,
   Skill,
 } from "@protocol-life/shared";
 
@@ -107,6 +108,26 @@ export const specials = sqliteTable("specials", {
   name: text("name").notNull(),
   code: text("code"),
   data: text("data", { mode: "json" }).$type<unknown>().notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/** Sala en vivo (Fase 2). Una sesión activa por campaña. */
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  campaignId: text("campaign_id")
+    .notNull()
+    .unique()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
+  code: text("code").notNull().unique(),
+  dmToken: text("dm_token").notNull(),
+  status: text("status")
+    .$type<Session["status"]>()
+    .notNull()
+    .default("lobby"),
+  players: text("players", { mode: "json" })
+    .$type<Session["players"]>()
+    .notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

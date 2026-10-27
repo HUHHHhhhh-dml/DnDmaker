@@ -50,7 +50,7 @@ El prototipo es un HTML único con `localStorage` y datos hardcodeados. **No se 
 | **Status effects** | Set inicial: **Burn, Bleed, Protection, Haste**. Data-driven; se amplían después. |
 | **Dominios/hábitats** | Cuestan **1 Skill Slot**, son **1 vez por combate**, aplican al equipo. `cooldown` queda opcional en el modelo para futuras habilidades reutilizables, pero **no se usa en v0.1**. |
 | **Imágenes** | **Upload local principal**; URL opcional para pruebas. |
-| **Tiendas** | Son de campaña, con **oro del juego**; **nunca dinero real**. |
+| **Tiendas** | Son de campaña, con **Clean Shards** (moneda del juego); **nunca dinero real**. |
 | **Descartado** | Cuentas de usuario, IA automática, app móvil nativa. No se harán ni después. |
 
 ---

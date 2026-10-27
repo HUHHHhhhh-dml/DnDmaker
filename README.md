@@ -1,10 +1,10 @@
 # PROTOCOL LIFE
 
-Aplicación para que un **DM** cree y dirija su campaña de rol con contenido personalizado, y para que su mesa se conecte desde el navegador. El combate está inspirado en *Limbus Company*: skills con monedas, clash, DEF y status effects.
+Aplicación para que un **DM** cree y dirija su campaña de rol con contenido personalizado, y para que su mesa se conecte desde el navegador por la WiFi local. El combate está inspirado en *Limbus Company*: skills con monedas, clash, DEF y status effects.
 
-> **Estado actual: Fase 1 completada** — estudio del DM local (campaña, objetos, skills, efectos, personajes y encuentros), persistencia en SQLite, seed y export/import. Host/join y combate llegan en las fases 2 y 3.
+> **Estado actual: Fase 2 completada** — estudio del DM + mesa en vivo LAN (link/QR + PIN, sesiones con tokens, fichas compartidas en tiempo real y presencia). El combate llega en la Fase 3.
 
-![Panel de campaña](./docs/screenshots/fase-1-panel.png)
+![Mesa del DM con una jugadora conectada](./docs/screenshots/fase-2-mesa-dm.png)
 
 ## Arranque rápido
 
@@ -16,40 +16,67 @@ npm install
 npm run dev
 ```
 
-- Web (Vite): <http://localhost:5173>
+- Estudio del DM: <http://localhost:5173>
 - API (Fastify): <http://localhost:3001/api/health>
+- En la terminal, Vite muestra la **IP LAN** (por ejemplo `http://192.168.0.122:5173`).
 
-En el primer arranque se crea automáticamente la campaña **Campaña de prueba** con 7 objetos, 5 skills, 4 efectos, 4 personajes y 1 encuentro. Todo es editable desde la app.
+En el primer arranque se crea automáticamente la campaña **Campaña de prueba** con 7 objetos, 5 skills, 4 efectos, 4 personajes y 1 encuentro. Todo es editable.
 
 Los datos viven en `data/protocol-life.sqlite` (ignorado por git). Las imágenes subidas van a `data/uploads/`.
+
+### Jugar en LAN
+
+1. El DM abre **Mesa → Abrir sala**. Puede activar un PIN; el servidor genera un código de 6 caracteres.
+2. La pantalla de mesa muestra el **link LAN**, el **QR** y el **PIN**.
+3. Los jugadores (misma WiFi) abren el link desde el móvil u otro PC.
+4. Eligen nombre, PIN y ficha libre (o crean una nueva).
+5. Ya están dentro: ven su ficha, la party y editan su personaje si el DM lo permite.
+
+Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislamiento de clientes* del router. En desarrollo la web escucha en `0.0.0.0:5173` y la API en `0.0.0.0:3001`; en producción `npm run build && npm start` sirve ambos en el puerto de la API.
 
 ## Scripts
 
 | Comando | Qué hace |
 |---|---|
-| `npm run dev` | Levanta servidor (3001) y web (5173) con recarga en caliente. |
+| `npm run dev` | Levanta servidor (3001) y web (5173), con LAN habilitada y recarga en caliente. |
 | `npm run dev:server` / `npm run dev:web` | Solo uno de los dos. |
-| `npm test` | Tests de Vitest: motor de stats, validación, API e import/export. |
+| `npm test` | Vitest: stats, validación, API, sesiones/permisos, Socket.IO e import/export. |
 | `npm run typecheck` | TypeScript estricto en los tres workspaces. |
 | `npm run build` | Build de producción de la web (`apps/web/dist`). |
-| `npm start` | Arranca el servidor; si existe `apps/web/dist`, también sirve la web. |
+| `npm start` | Arranca el servidor; si existe `apps/web/dist`, también sirve la web y el socket. |
 | `npm run seed` | Garantiza que exista la campaña inicial (no borra ni duplica). |
 
-## Qué incluye la Fase 1
+## Qué incluye
 
-- **Monorepo npm workspaces** con `apps/web`, `apps/server` y `packages/shared`.
-- **Shared:** tipos del contrato v0.1, esquemas Zod, motor puro de stats derivados, validación de referencias y utilidades (`coinChance`, `mitigation`).
-- **Servidor:** Fastify + SQLite + Drizzle, CRUD de campañas y contenido, subida local de imágenes, export/import JSON con remapeo de IDs y seed.
-- **Web:** layout del estudio, dashboard, biblioteca de objetos con filtros, editores de objetos/skills/efectos, fichas de personaje con equipo y stats en vivo, editor de encuentros, ajustes de reglas de campaña.
-- **Diseño:** UI en español, estética de papel + bordes negros + formas geométricas; responsive.
-- **Persistencia:** SQLite (WAL) con escritura inmediata; recargar la página no pierde nada.
-- **Tests:** stats derivados, validación, API real con SQLite en disco y ciclo export → import.
+### Fase 1 — Estudio del DM
+
+- Monorepo npm workspaces con `apps/web`, `apps/server` y `packages/shared`.
+- Tipos del contrato v0.1, esquemas Zod, motor puro de stats derivados y validación de referencias.
+- Fastify + SQLite + Drizzle, CRUD de campañas, objetos, skills, efectos, personajes y encuentros.
+- Subida local de imágenes, export/import JSON con remapeo de IDs y seed editable.
+- Web con dashboard, bibliotecas, editores, ficha con equipo y stats en vivo, ajustes de reglas.
+- UI en español, estética de papel + bordes negros + formas geométricas, responsive.
+
+### Fase 2 — Mesa en vivo
+
+- **Host/join LAN** con código de 6 caracteres, link construido con la IP LAN, QR y PIN opcional.
+- **Sesiones con tokens**: `dmToken` y un `playerToken` por jugador, persistidos en SQLite y en `localStorage`.
+- **Fichas compartidas**: el DM y los jugadores editan; los cambios se empujan por Socket.IO sin recargar.
+- **Party y presencia** en vivo: quién está en línea, su ficha y sus stats derivados.
+- **Permisos de servidor**: el jugador solo edita su propia ficha; no puede tocar contenido, campaña, export ni otras fichas. En combate no se edita (preparado para Fase 3).
+- **Estado del jugador saneado**: sin enemigos, sin notas del DM, sin PIN y sin encuentros.
+- **Reconexión**: recargar la pestaña recupera la sesión guardada; cerrar la sala libera las fichas.
+- **Recuperación del DM**: abrir una sala nueva reemplaza la anterior y permite fijar el PIN desde la propia mesa.
 
 ### Capturas
 
-| Ficha con stats derivados | Arsenal |
+| Mesa del jugador | Entrada a la sala |
 |---|---|
-| ![Ficha](./docs/screenshots/fase-1-ficha.png) | ![Arsenal](./docs/screenshots/fase-1-arsenal.png) |
+| ![Mesa del jugador](./docs/screenshots/fase-2-mesa-jugador.png) | ![Join](./docs/screenshots/fase-2-join.png) |
+
+| Panel del DM | Ficha con stats derivados |
+|---|---|
+| ![Panel](./docs/screenshots/fase-1-panel.png) | ![Ficha](./docs/screenshots/fase-1-ficha.png) |
 
 ## Estructura
 
@@ -58,104 +85,137 @@ protocol-life/
   apps/
     web/                 # React + Vite + Tailwind + Zustand
       src/
-        components/      # layout, UI, tarjetas, editores de acciones
-        pages/           # dashboard, bibliotecas, editores, ficha
-        store/           # estado global (Zustand)
-        lib/             # cliente HTTP y helpers
-    server/              # Fastify + SQLite + Drizzle
+        components/      # layout, UI, tarjetas, editor de ficha del jugador
+        pages/           # estudio del DM + JoinPage/PlayerTablePage
+        store/           # useAppStore (DM), useLiveStore (mesa DM), usePlayerStore
+        lib/             # api, sessionAuth, helpers
+    server/              # Fastify + SQLite + Drizzle + Socket.IO
       src/
-        app.ts           # buildApp (rutas, estáticos, errores)
-        db.ts            # apertura SQLite + DDL idempotente
+        app.ts           # buildApp (rutas, realtime, estáticos, errores)
+        db.ts            # SQLite + DDL idempotente (incluye sessions)
         schema.ts        # tablas Drizzle
         repository.ts    # CRUD, validación, export/import
-        routes.ts        # API HTTP + uploads
+        sessions.ts      # salas, tokens, presencia, saneado
+        realtime.ts      # Socket.IO
+        routes.ts        # API HTTP + auth de sesión + uploads
+        network.ts       # detección de IPs LAN
         seed.ts          # contenido inicial
   packages/
-    shared/              # tipos, Zod, stats, validación
-  docs/                  # diseño, contrato, handoff y capturas
+    shared/              # tipos, Zod, stats, validación, contrato de sesión
+  docs/                  # diseño, contrato, notas y capturas
   data/                  # SQLite/uploads (git-ignored)
 ```
 
 ## Stack
 
-- **Web:** React 19, TypeScript, Vite 8, Tailwind CSS 4, Zustand 5, React Router 7.
-- **Servidor:** Node, Fastify 5, SQLite con `better-sqlite3` y Drizzle ORM.
+- **Web:** React 19, TypeScript, Vite 8, Tailwind CSS 4, Zustand 5, React Router 7, Socket.IO Client, `qrcode.react`.
+- **Servidor:** Node, Fastify 5, Socket.IO 4, SQLite (`better-sqlite3`) y Drizzle ORM.
 - **Compartido:** Zod 4 + motor puro de stats y validación.
-- **Tests:** Vitest 5.
+- **Tests:** Vitest 5 + `socket.io-client` en integración.
 - **Monorepo:** npm workspaces (Node 26, npm 11).
 
 ### Notas de implementación
 
-- **SQLite:** `better-sqlite3@13` compila/funciona en Node 26, así que no hizo falta recurrir a `node:sqlite`. El driver es síncrono y el servidor es local.
-- **Drizzle sin `drizzle-kit`:** en Fase 1 el DDL es idempotente y vive en `apps/server/src/db.ts`; así `npm run dev` no exige migraciones manuales. Cuando el esquema crezca se añadirá `drizzle-kit`.
-- **Contenido en JSON validado:** las tablas espejan `name`, `code`, `slot`… para listar, pero la entidad completa vive en una columna JSON validada con Zod. Las tiendas y mazmorras (modelo sin UI aún) se guardan en `campaigns.extras` para no perderlas en export/import.
-- **Stats derivados:** `(base + modificadores planos) × (1 + porcentajes)`, con Skill Slots limitados a `1..rules.maxSkillSlots`. Los `modifyStat` de efectos equipados se aplican como pasivos; los triggers se usarán en combate.
-- **Efectos pasivos:** un objeto puede arrastrar efectos con stacks; si dos objetos aportan el mismo efecto, los stacks se acumulan respetando `maxStacks`.
+- **SQLite:** `better-sqlite3@13` funciona en Node 26. WAL, FKs y DDL idempotente; no hace falta `drizzle-kit` en esta fase.
+- **Sesiones en SQLite:** una sala activa por campaña. Los tokens son secretos y nunca salen en las vistas públicas. La presencia se resetea al arrancar el servidor y se reconstruye al reconectar.
+- **Mutaciones por HTTP, eventos por Socket.IO:** el servidor valida permisos y después emite `campaign:refresh`/`session:players`; el cliente nunca muta por socket.
+- **PIN:** usa los ajustes de la campaña y se puede fijar al abrir la sala. Es una barrera de conveniencia en LAN, **no autenticación fuerte**.
+- **Tokens:** el DM y cada jugador reciben un token aleatorio. Se guardan en `localStorage` con claves separadas por rol; cada pestaña tiene su propio contexto en memoria.
+- **Contenido JSON validado:** las entidades completas viven en columnas JSON validadas con Zod; las tiendas/mazmorras del modelo se guardan en `campaigns.extras`.
+- **Stats derivados:** `(base + planos) × (1 + porcentajes)`, Skill Slots limitados a `1..rules.maxSkillSlots`.
+- **Moneda:** **Clean Shards**. Nunca dinero real.
 
 ## Modelo y decisiones
 
 El diseño v0.1 está cerrado en [`docs/DISENO-v0.1.md`](./docs/DISENO-v0.1.md) y el contrato en [`docs/schema-v0.1.ts`](./docs/schema-v0.1.ts).
 
-Puntos clave:
-
-- 1 DM + hasta 6 jugadores, LAN con link/QR + PIN (Fase 2).
+- 1 DM + hasta 6 jugadores por sala, LAN con link/QR + PIN.
 - 2 Skill Slots base, máximo 6; dominios/hábitats cuestan 1 slot y son 1 vez por combate.
 - DEF porcentual: `DEF / (DEF + 100)`, daño mínimo 1.
 - Empate de clash: se cancelan ambas acciones.
 - HP persistente entre combates; el DM descansa al equipo fuera de combate.
 - Imágenes: upload local + URL opcional.
 - En combate nadie edita fichas; el DM solo controla enemigos.
+- Side-view híbrido decidido para Fase 3: party por capas, enemigos con sprite único, fallback a retrato.
 - Sin cuentas, sin IA automática, sin app móvil nativa.
 
-## API (Fase 1)
+## API
 
-Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } }`.
+Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } }`. Cuando hay una sala abierta, las mutaciones requieren `x-session-token` (o `Authorization: Bearer`); si no hay sala, se mantiene el modo local de Fase 1.
 
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/health` | Estado del servidor. |
-| GET/POST | `/api/campaigns` | Listar / crear campaña (con `seed` opcional). |
+| GET | `/api/network` | IPs LAN detectadas para el link. |
+| GET/POST | `/api/campaigns` | Listar / crear campaña. |
 | GET/PATCH/DELETE | `/api/campaigns/:id` | Obtener / editar / borrar campaña. |
-| GET | `/api/campaigns/:id/export` | Exportar campaña completa en JSON. |
-| POST | `/api/campaigns/import` | Importar JSON exportado (crea otra campaña y remapea referencias). |
+| POST | `/api/campaigns/:id/session` | Abrir (o reemplazar) la sala; acepta `requirePin`/`pin`. |
+| GET | `/api/sessions/:code` | Info pública de la sala (sin tokens). |
+| GET | `/api/sessions/:code/state` | Estado para DM o jugador según token; el jugador recibe campaña saneada. |
+| POST | `/api/sessions/:code/join` | Unirse con nombre, PIN y ficha opcional. |
+| POST | `/api/sessions/:code/leave` | Salir y liberar la ficha. |
+| POST | `/api/sessions/:code/close` | Cerrar la sala (solo DM). |
+| GET | `/api/campaigns/:id/export` | Exportar campaña (solo DM si hay sala). |
+| POST | `/api/campaigns/import` | Importar JSON y remapear referencias. |
 | GET/POST | `/api/campaigns/:id/:type` | Listar / crear contenido (`items`, `skills`, `effects`, `characters`, `encounters`). |
-| GET/PATCH/DELETE | `/api/content/:type/:id` | Leer / editar / borrar una entidad. |
-| GET | `/api/campaigns/:id/characters/:characterId/sheet` | Ficha con equipo y stats derivados resueltos. |
+| GET/PATCH/DELETE | `/api/content/:type/:id` | Leer / editar / borrar; el jugador solo puede editar su ficha. |
+| GET | `/api/campaigns/:id/characters/:charId/sheet` | Ficha con equipo y stats derivados. |
 | POST | `/api/uploads` | Subir imagen (multipart `file`, máx. 5 MB). |
 | GET | `/uploads/:file` | Servir imagen subida. |
 
-Borrar contenido referenciado devuelve **409** con la lista de referencias; no se permite romper fichas ni encuentros.
+**Socket.IO** (mismo origen, path `/socket.io`; auth `{ code, token }`):
+
+- Servidor → cliente: `session:state`, `session:players`, `campaign:refresh`, `session:closed`, `session:error`.
+- El cliente no muta por socket: las escrituras van por HTTP y se validan en el servidor.
+
+### Permisos
+
+- **DM:** todo el contenido, campaña, fichas y cierre de sala.
+- **Jugador:** solo su propia ficha, si `allowPlayerEdit` y fuera de combate. No puede cambiar `kind`/`ownerId` ni borrar contenido.
+- Los GET de contenido son locales/LAN; la vista del jugador usa el estado saneado. La seguridad asume una WiFi de confianza y **no está pensada para exponer el servidor a internet**.
 
 ## Import / export
 
-- Export: descarga un JSON con `schemaVersion: 1`, reglas, settings y todo el contenido (incluidas tiendas/mazmorras del modelo).
-- Import: valida el JSON con Zod, comprueba referencias, genera IDs nuevos para la campaña **y todo el contenido**, remapeando equipo, skills, efectos, inventarios, encuentros y recompensas. Se puede importar el mismo archivo varias veces sin colisiones.
+- Export: JSON con `schemaVersion: 1`, reglas, settings y todo el contenido.
+- Import: valida con Zod, comprueba referencias, genera IDs nuevos para campaña y contenido, y remapea equipo, skills, efectos, inventarios, encuentros y recompensas. Se puede importar el mismo archivo varias veces sin colisiones.
 
 ## Variables de entorno
 
 | Variable | Default | Uso |
 |---|---|---|
 | `PORT` | `3001` | Puerto del servidor. |
-| `HOST` | `127.0.0.1` | Interfaz de escucha (en Fase 2 será `0.0.0.0` para LAN). |
+| `HOST` | `0.0.0.0` | Interfaz de escucha; LAN habilitada. Usa `127.0.0.1` para aislar. |
 | `PROTOCOL_DATA_DIR` | `./data` | Carpeta de datos. |
 | `PROTOCOL_DB` | `./data/protocol-life.sqlite` | Ruta del SQLite. |
 | `PROTOCOL_UPLOADS_DIR` | `./data/uploads` | Carpeta de imágenes. |
 | `PROTOCOL_WEB_DIST` | `./apps/web/dist` | Build web que sirve el servidor (si existe). |
-| `PROTOCOL_API_URL` | `http://127.0.0.1:3001` | Destino del proxy de Vite. |
+| `PROTOCOL_API_URL` | `http://127.0.0.1:3001` | Destino del proxy de Vite (API + Socket.IO). |
 | `VITE_API_URL` | vacío (same-origin) | API base del cliente si se sirve por separado. |
+
+## Tests
+
+```bash
+npm test
+```
+
+- `packages/shared`: stats derivados, porcentajes, stacks, límites, referencias, schemas Zod y campaña.
+- `apps/server/src/api.test.ts`: CRUD, ficha derivada, persistencia, export/import.
+- `apps/server/src/sessions.test.ts`: host/join, PIN, tokens, permisos, saneado, límite de jugadores, salida/cierre y liberación de fichas.
+- `apps/server/src/realtime.test.ts`: dos clientes Socket.IO reales, presencia, refresco al editar y cierre de sala.
 
 ## Roadmap
 
 - **Fase 1 — Estudio del DM:** completada.
-- **Fase 2 — Mesa en vivo:** host/join con código + PIN, sesión con tokens, fichas compartidas, presencia y permisos.
-- **Fase 3 — Encuentros y combate:** `CombatState`, declaraciones, clash, monedas, DEF, efectos, utilidad, log animado, consola del DM y side-view híbrido (party por capas, enemigos con sprite único).
-- **Fase 4 — Contenido avanzado:** tiendas, mazmorras, balance, animaciones, backup/restore.
+- **Fase 2 — Mesa en vivo:** completada.
+- **Fase 3 — Encuentros y combate:** `CombatState`, declaraciones, clash, monedas, DEF, efectos, utilidad, log animado, consola del DM y side-view híbrido.
+- **Fase 4 — Contenido avanzado:** tiendas con Clean Shards, mazmorras, balance, animaciones, backup/restore.
 
 ## Documentos
 
 - [Diseño v0.1](./docs/DISENO-v0.1.md)
 - [Contrato de datos v0.1](./docs/schema-v0.1.ts)
-- [Handoff / plan de Fase 1](./docs/HANDOFF-FASE-1.md)
 - [Notas de implementación de Fase 1](./docs/FASE-1.md)
+- [Notas de implementación de Fase 2](./docs/FASE-2.md)
 - [Decisión de side-view (Fase 3)](./docs/DECISION-SIDE-VIEW.md)
+- [Handoff / plan de Fase 1](./docs/HANDOFF-FASE-1.md)
 - [Prototipo original](./reference/protocol-game-v1.1.html) (solo referencia estética/mecánica)

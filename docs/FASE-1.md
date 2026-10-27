@@ -28,7 +28,7 @@
 | Recargar y que persista | ✅ | Test de integración cerrando y reabriendo SQLite; Playwright con `reload`. |
 | Exportar/importar campaña | ✅ | Test de API + flujo Playwright con descarga y subida real del JSON. |
 | `npm run dev` sin pasos manuales | ✅ | `concurrently` levanta web + servidor; seed automático en base vacía. |
-| Tests unitarios de stats y validación | ✅ | `npm test` (25 tests de shared + 10 de API). |
+| Tests unitarios de stats y validación | ✅ | `npm test` (25 de shared + 10 de API de Fase 1; la suite completa incluye Fase 2). |
 
 ## 3. Decisiones de implementación
 
@@ -127,7 +127,9 @@ También se verificó el flujo completo en navegador (Playwright, contra `npm ru
 - El borrado de una campaña es inmediato y en cascada; la UI pide confirmación y recuerda exportar antes.
 - **Visual de combate:** no hay side-view todavía. La decisión para Fase 3 está cerrada en [DECISION-SIDE-VIEW.md](./DECISION-SIDE-VIEW.md): party por capas, enemigos por sprite único y fallback automático.
 
-## 7. Siguiente fase (Fase 2)
+## 7. Siguiente fase (Fase 2) — completada
+
+> La Fase 2 ya está implementada y documentada en [FASE-2.md](./FASE-2.md). Se mantiene este plan como referencia histórica.
 
 1. Host/join LAN: código de sala + PIN, `dmToken`/`playerToken`, presencia y reconexión.
 2. Sesión con Socket.IO y `state:full` tras cada mutación.

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   CHARACTER_KIND_LABELS,
+  CURRENCY_NAME,
   EQUIPMENT_SLOT_LABELS,
   calculateStats,
   type CampaignContent,
@@ -394,7 +395,7 @@ export function EncounterCard({
         {encounter.rewards ? (
           <div className="flex flex-wrap gap-1">
             {encounter.rewards.currency ? (
-              <span className="chip">{encounter.rewards.currency} oro</span>
+              <span className="chip">{encounter.rewards.currency} {CURRENCY_NAME}</span>
             ) : null}
             {encounter.rewards.itemIds?.length ? (
               <span className="chip">

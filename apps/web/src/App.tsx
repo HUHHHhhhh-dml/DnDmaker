@@ -9,8 +9,11 @@ import { EncounterEditorPage } from "./pages/EncounterEditorPage";
 import { EncountersPage } from "./pages/EncountersPage";
 import { ItemEditorPage } from "./pages/ItemEditorPage";
 import { ItemsPage } from "./pages/ItemsPage";
+import { JoinPage } from "./pages/JoinPage";
+import { PlayerTablePage } from "./pages/PlayerTablePage";
 import { SkillEditorPage } from "./pages/SkillEditorPage";
 import { SkillsPage } from "./pages/SkillsPage";
+import { TablePage } from "./pages/TablePage";
 import { LinkButton, PageHeader } from "./components/ui";
 
 function NotFoundPage() {
@@ -36,8 +39,13 @@ function NotFoundPage() {
 export function App() {
   return (
     <Routes>
+      {/* Experiencia del jugador: fuera del Layout del DM. */}
+      <Route path="join/:code" element={<JoinPage />} />
+      <Route path="play/:code" element={<PlayerTablePage />} />
+
       <Route element={<Layout />}>
         <Route index element={<DashboardPage />} />
+        <Route path="table" element={<TablePage />} />
         <Route path="items" element={<ItemsPage />} />
         <Route path="items/new" element={<ItemEditorPage />} />
         <Route path="items/:itemId" element={<ItemEditorPage />} />

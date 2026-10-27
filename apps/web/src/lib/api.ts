@@ -5,10 +5,17 @@ import type {
   ContentType,
   EffectDefinition,
   Encounter,
+  HostSessionResponse,
   Item,
+  JoinSessionResponse,
+  PublicSession,
+  SessionInfo,
+  SessionJoinInput,
+  SessionStateResponse,
   Skill,
   ValidationIssue,
 } from "@protocol-life/shared";
+import { getSessionToken } from "./sessionAuth";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
@@ -57,6 +64,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.body && !(init.body instanceof FormData)) {
     headers.set("content-type", "application/json");
   }
+  const token = getSessionToken();
+  if (token) headers.set("x-session-token", token);
 
   let response: Response;
   try {
@@ -199,6 +208,54 @@ export const api = {
     const form = new FormData();
     form.append("file", file);
     return request("/api/uploads", { method: "POST", body: form });
+  },
+
+  /* -------------------------------------------------------------------- */
+  /* Fase 2 — mesa en vivo                                                */
+  /* -------------------------------------------------------------------- */
+
+  hostSession(
+    campaignId: string,
+    input: { requirePin?: boolean; pin?: string } = {},
+  ): Promise<HostSessionResponse & { lanIps: string[] }> {
+    return request(`/api/campaigns/${campaignId}/session`, {
+      method: "POST",
+      body: body(input),
+    });
+  },
+
+  getSessionInfo(code: string): Promise<SessionInfo> {
+    return request(`/api/sessions/${encodeURIComponent(code)}`);
+  },
+
+  getSessionState(code: string): Promise<SessionStateResponse> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/state`);
+  },
+
+  joinSession(
+    code: string,
+    input: SessionJoinInput,
+  ): Promise<JoinSessionResponse> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/join`, {
+      method: "POST",
+      body: body(input),
+    });
+  },
+
+  leaveSession(code: string): Promise<PublicSession> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/leave`, {
+      method: "POST",
+    });
+  },
+
+  closeSession(code: string): Promise<void> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/close`, {
+      method: "POST",
+    });
+  },
+
+  getNetwork(): Promise<{ lanIps: string[] }> {
+    return request("/api/network");
   },
 };
 

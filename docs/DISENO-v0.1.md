@@ -68,7 +68,7 @@ Incluye:
 - IA automática de enemigos: **descartado** (el DM controla a los enemigos).
 - App móvil nativa: **descartado** (la web será responsive).
 - Mazmorras jugables (solo modelo y editor básico).
-- Tiendas funcionales en v0.1 (el modelo queda listo). **Ojo:** las tiendas son de campaña, con oro del juego; nunca dinero real.
+- Tiendas funcionales en v0.1 (el modelo queda listo). **Ojo:** las tiendas son de campaña, con **Clean Shards** (moneda del juego); nunca dinero real.
 - Mapas con grid, niebla de guerra, tokens.
 - Voz/video integrados.
 - Balanceo automático o “recomendador” de encuentros.
@@ -731,7 +731,7 @@ protocol-life/
 - **Rive** o **Spine** para personajes 2D con esqueleto y estados (idle, attack, hit, death).
 - **PixiJS/Phaser** si el side-view necesita muchas partículas o sprites.
 - **Recomendación:** empezar con CSS + Lottie; si el side-view crece, Rive (más fácil de integrar y animar que Spine).
-- Regla de oro: la animación **nunca** bloquea la lógica. El cliente encola los `CombatEvent` y los reproduce en una timeline; si el jugador salta la animación, el estado ya está resuelto en el servidor.
+- Regla clave: la animación **nunca** bloquea la lógica. El cliente encola los `CombatEvent` y los reproduce en una timeline; si el jugador salta la animación, el estado ya está resuelto en el servidor.
 
 ### 8.9 Testing
 
@@ -823,7 +823,7 @@ protocol-life/
 
 ### Fase 4 — Contenido avanzado y pulido
 
-- Tiendas funcionales (oro del juego, no dinero real).
+- Tiendas funcionales (Clean Shards, no dinero real).
 - Mazmorras (modelo + editor + recorrido básico).
 - Balance, animaciones, sonidos.
 - Deploy/túnel documentado (solo si algún día se juega fuera de LAN).

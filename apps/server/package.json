@@ -1,6 +1,6 @@
 {
   "name": "@protocol-life/server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Servidor local de PROTOCOL LIFE (Fastify + SQLite + Drizzle)",
@@ -18,11 +18,13 @@
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.7",
+    "socket.io": "^4.8.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.5",
+    "socket.io-client": "^4.8.4",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3"
   }

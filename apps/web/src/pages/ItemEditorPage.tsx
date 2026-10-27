@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  CURRENCY_NAME,
   EQUIPMENT_SLOT_HINTS,
   EQUIPMENT_SLOT_LABELS,
   STAT_HINTS,
@@ -303,7 +304,7 @@ export function ItemEditorPage() {
                   ))}
                 </Select>
               </Field>
-              <Field label="Precio" hint="Oro del juego. Las tiendas llegan en Fase 4.">
+              <Field label="Precio" hint={`${CURRENCY_NAME}. Moneda de campaña; las tiendas llegan en Fase 4.`}>
                 <NumberInput
                   value={draft.price}
                   onValueChange={(value) => patch({ price: value })}

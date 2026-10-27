@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import type { IconName } from "../components/Icons";
 import { Icon } from "../components/Icons";
 import { EditCampaignModal, NewCampaignModal } from "../components/CampaignModals";
 import { Button, LoadingBlock, NoticeBar, cx } from "../components/ui";
 import { useAppStore } from "../store/useAppStore";
+import { useLiveStore } from "../store/useLiveStore";
 
 interface NavItem {
   to: string;
@@ -16,6 +17,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Panel", icon: "grid", end: true },
+  { to: "/table", label: "Mesa", icon: "broadcast" },
   { to: "/items", label: "Objetos", icon: "cube", countKey: "items" },
   { to: "/skills", label: "Skills", icon: "sword", countKey: "skills" },
   { to: "/effects", label: "Efectos", icon: "flame", countKey: "effects" },
@@ -47,6 +49,15 @@ export function Layout() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  const liveCampaignId = campaign?.id;
+  useEffect(() => {
+    if (!liveCampaignId) return;
+    void useLiveStore.getState().resume(liveCampaignId);
+    return () => {
+      useLiveStore.getState().detach();
+    };
+  }, [liveCampaignId]);
 
   async function handleImportFile(file: File | undefined) {
     if (!file) return;
@@ -167,8 +178,8 @@ export function Layout() {
           )}
         </div>
         <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 border-t border-ink/15 px-4 py-5 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint sm:px-8">
-          <span>PROTOCOL LIFE · Fase 1 — estudio del DM</span>
-          <span>SQLite local · sin red, sin cuentas</span>
+          <span>PROTOCOL LIFE · Fase 2 — mesa en vivo</span>
+          <span>SQLite local · LAN misma WiFi · sin cuentas</span>
         </footer>
       </main>
 
@@ -203,6 +214,8 @@ function SidebarContent({
   const selectCampaign = useAppStore((state) => state.selectCampaign);
   const campaign = useAppStore((state) => state.campaign);
   const exportCampaign = useAppStore((state) => state.exportCampaign);
+  const liveSession = useLiveStore((state) => state.session);
+  const liveConnected = useLiveStore((state) => state.connected);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -218,7 +231,7 @@ function SidebarContent({
               LIFE
             </div>
             <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-paper/50">
-              DM Studio · v0.1
+              DM Studio · v0.2
             </div>
           </div>
         </div>
@@ -280,12 +293,36 @@ function SidebarContent({
           </NavLink>
         ))}
 
+        {liveSession ? (
+          <div className="mt-5 px-5">
+            <Link
+              to="/table"
+              className="block border border-amber/60 bg-amber/10 px-3 py-2 transition-colors hover:bg-amber/20"
+            >
+              <div className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-amber">
+                <span
+                  className={
+                    liveConnected
+                      ? "h-1.5 w-1.5 rounded-full bg-emerald-400"
+                      : "h-1.5 w-1.5 rounded-full bg-amber"
+                  }
+                />
+                Sala en vivo · {liveSession.code}
+              </div>
+              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-paper/45">
+                {liveSession.players.length} jugador
+                {liveSession.players.length === 1 ? "" : "es"} · abrir mesa
+              </div>
+            </Link>
+          </div>
+        ) : null}
+
         <div className="mt-6 px-5 pb-2 font-mono text-[9px] uppercase tracking-[0.24em] text-paper/35">
-          Siguiente
+          En marcha
         </div>
         <div className="space-y-1 px-5">
           <p className="text-[10px] leading-relaxed text-paper/40">
-            Fase 2: host/join LAN con link + PIN.
+            Fase 2: mesa LAN con link + PIN.
             <br />
             Fase 3: encuentros y combate.
           </p>

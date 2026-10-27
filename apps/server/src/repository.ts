@@ -465,6 +465,38 @@ export class Repository {
     })();
   }
 
+  /** Campaña a la que pertenece una entidad (para permisos de sesión). */
+  getContentCampaignId(type: ContentType, id: string): string {
+    const row = this.findContentRow(type, id);
+    if (!row) {
+      throw new HttpError(404, "content_not_found", "El contenido no existe.");
+    }
+    return row.campaignId;
+  }
+
+  /**
+   * Asigna o libera el dueño de un personaje. Se usa al entrar/salir de una
+   * sesión para que los jugadores puedan reclamar su ficha.
+   */
+  setCharacterOwner(characterId: string, ownerId: string | null): Character {
+    const row = this.findContentRow("characters", characterId);
+    if (!row) {
+      throw new HttpError(404, "content_not_found", "El personaje no existe.");
+    }
+    const current = row.data as Character;
+    const next: Character = { ...current };
+    if (ownerId) next.ownerId = ownerId;
+    else delete next.ownerId;
+
+    const parsed = CONTENT_SCHEMAS.characters.entity.parse(next) as Character;
+    const now = nowIso();
+    this.sqlite.transaction(() => {
+      this.updateEntity("characters", characterId, parsed, now);
+      this.touchCampaign(row.campaignId, now);
+    })();
+    return parsed;
+  }
+
   getCharacterSheet(campaignId: string, characterId: string): CharacterSheet {
     const campaign = this.getCampaign(campaignId);
     const character = this.getContent("characters", characterId);
