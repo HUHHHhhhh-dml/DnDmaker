@@ -1,0 +1,124 @@
+.dice-cinematic {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  overflow: hidden;
+  pointer-events: none;
+  animation: dice-cinematic-in 180ms ease-out;
+}
+
+.dice-cinematic.is-exiting {
+  animation: dice-cinematic-out 280ms ease-in forwards;
+}
+
+/* La escena (el dado sobre el "tablero") ocupa la pantalla, pero la página
+   sigue viéndose: no hay backdrop ni viñeta. */
+.dice-cinematic-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.dice-cinematic-stage canvas {
+  display: block;
+}
+
+.dice-cinematic-pending {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 24px;
+  border: 1px solid var(--ui-line-strong);
+  background: rgba(18, 16, 12, 0.86);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  color: var(--ui-gold);
+  transform: translate(-50%, -50%);
+}
+
+.dice-cinematic-pending .dice-icon {
+  animation: dice-cinematic-pending-spin 1.8s linear infinite;
+  filter: drop-shadow(0 0 18px rgba(212, 167, 44, 0.35));
+}
+
+.dice-cinematic-pending span {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.dice-cinematic-skip {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right, 0px));
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+  border: 1px solid var(--ui-line-strong);
+  background: var(--ui-surface-2);
+  padding: 8px 14px;
+  color: var(--ui-text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+.dice-cinematic-skip:hover {
+  border-color: var(--ui-accent);
+  color: var(--ui-text);
+  background: var(--ui-surface-3);
+}
+
+.dice-cinematic-skip:focus-visible {
+  outline: 2px solid var(--ui-gold);
+  outline-offset: 3px;
+}
+
+@keyframes dice-cinematic-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dice-cinematic-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dice-cinematic-pending-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .dice-cinematic-skip {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-cinematic,
+  .dice-cinematic-pending .dice-icon {
+    animation: none;
+  }
+}

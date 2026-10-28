@@ -8,6 +8,7 @@ import {
   type DiceRoll,
   type DiceRolledEvent,
   type DiceSides,
+  type DiceThrowInput,
   type DungeonStateEvent,
   type LootDraft,
   type LootUpdatedEvent,
@@ -98,7 +99,11 @@ interface LiveState {
   /** DM: termina la run y devuelve a los jugadores a su hoja. */
   endDungeon: () => Promise<boolean>;
   /** DM: tirada compartida; el servidor decide el resultado. */
-  rollDice: (sides: DiceSides, count?: number) => Promise<DiceRoll | string>;
+  rollDice: (
+    sides: DiceSides,
+    count?: number,
+    throwInput?: DiceThrowInput,
+  ) => Promise<DiceRoll | string>;
 }
 
 const EMPTY_COMBAT = {
@@ -587,11 +592,11 @@ export const useLiveStore = create<LiveState>((set, get) => ({
     }
   },
 
-  async rollDice(sides, count = 1) {
+  async rollDice(sides, count = 1, throwInput) {
     const code = get().code;
     if (!code) return "No hay una sala abierta.";
     try {
-      const roll = await api.rollDice(code, sides, count);
+      const roll = await api.rollDice(code, sides, count, throwInput);
       set({ diceRolls: appendDiceRoll(get().diceRolls, roll) });
       return roll;
     } catch (error) {

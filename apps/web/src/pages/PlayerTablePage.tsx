@@ -21,6 +21,7 @@ import { PlayerCombatView } from "./PlayerCombatView";
 import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import { LootDraftPanel } from "../components/combat/LootDraftPanel";
 import { DiceCelebration } from "../components/dice/DiceCelebration";
+import { DiceCinematic } from "../components/dice/DiceCinematic";
 import { DiceRollToast } from "../components/dice/DiceRollToast";
 import { DiceTray } from "../components/dice/DiceTray";
 import { ShopScene } from "../components/shop/ShopScene";
@@ -744,6 +745,7 @@ function PlayerHeader({
           )}
         </div>
       </div>
+      <DiceCinematic rolls={diceRolls} />
       <DiceRollToast rolls={diceRolls} />
       <DiceCelebration rolls={diceRolls} />
     </header>

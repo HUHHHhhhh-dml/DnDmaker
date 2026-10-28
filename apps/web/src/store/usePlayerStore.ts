@@ -7,6 +7,7 @@ import type {
   DiceRoll,
   DiceRolledEvent,
   DiceSides,
+  DiceThrowInput,
   DungeonStateEvent,
   LootDraft,
   LootUpdatedEvent,
@@ -108,7 +109,11 @@ export interface PlayerState {
    */
   buyShopSkill: (skillId: string) => Promise<string | null>;
   /** Tira un dado en el servidor y devuelve la tirada o un mensaje de error. */
-  rollDice: (sides: DiceSides, count?: number) => Promise<DiceRoll | string>;
+  rollDice: (
+    sides: DiceSides,
+    count?: number,
+    throwInput?: DiceThrowInput,
+  ) => Promise<DiceRoll | string>;
 }
 
 let socket: Socket | null = null;
@@ -467,11 +472,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  async rollDice(sides, count = 1) {
+  async rollDice(sides, count = 1, throwInput) {
     const code = get().code;
     if (!code) return "No estás conectado a la mesa.";
     try {
-      const roll = await api.rollDice(code, sides, count);
+      const roll = await api.rollDice(code, sides, count, throwInput);
       set({ diceRolls: appendDiceRoll(get().diceRolls, roll) });
       return roll;
     } catch (error) {

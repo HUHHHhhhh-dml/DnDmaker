@@ -8,6 +8,7 @@ import type {
   ContentType,
   DiceRoll,
   DiceSides,
+  DiceThrowInput,
   Dungeon,
   DungeonInput,
   DungeonPatchInput,
@@ -501,15 +502,23 @@ export const api = {
   /* Dados de mesa (Fase 4E+)                                             */
   /* -------------------------------------------------------------------- */
 
-  /** Tirada compartida: el servidor decide el resultado y la emite a la sala. */
+  /**
+   * Tirada compartida: el servidor decide el resultado y la emite a la sala.
+   * `throwInput` es opcional; si se manda, la simulación usa esa dirección.
+   */
   rollDice(
     code: string,
     sides: DiceSides,
     count = 1,
+    throwInput?: DiceThrowInput,
   ): Promise<DiceRoll> {
     return request(`/api/sessions/${encodeURIComponent(code)}/dice`, {
       method: "POST",
-      body: body({ sides, count }),
+      body: body({
+        sides,
+        count,
+        ...(throwInput ? { throw: throwInput } : {}),
+      }),
     });
   },
 

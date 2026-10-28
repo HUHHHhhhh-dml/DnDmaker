@@ -499,6 +499,31 @@ export const diceRollInputSchema = z.object({
   sides: diceSidesSchema,
   /** Dados del mismo tipo que se tiran y se suman; 1 por defecto. */
   count: z.number().int().min(1).max(20).optional(),
+  /**
+   * Lanzamiento opcional para la simulación física (arrastrar y soltar).
+   * El servidor lo usa como condición inicial y añade su propia entropía.
+   */
+  throw: z
+    .object({
+      velocity: z
+        .tuple([
+          z.number().min(-10).max(10),
+          z.number().min(-10).max(10),
+          z.number().min(-10).max(10),
+        ])
+        .optional(),
+      angular: z
+        .tuple([
+          z.number().min(-40).max(40),
+          z.number().min(-40).max(40),
+          z.number().min(-40).max(40),
+        ])
+        .optional(),
+      start: z
+        .tuple([z.number().min(-3).max(3), z.number().min(-3).max(3)])
+        .optional(),
+    })
+    .optional(),
 });
 
 export type DiceRollInput = z.infer<typeof diceRollInputSchema>;

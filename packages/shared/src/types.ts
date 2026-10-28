@@ -565,6 +565,43 @@ export interface DiceRoller {
   name: string;
 }
 
+/**
+ * Frame grabado de una tirada física. El servidor simula el d20 y manda la
+ * trayectoria completa para que todos los clientes reproduzcan la misma caída.
+ */
+export interface DiceTrajectoryFrame {
+  /** Centro del dado [x, y, z] en unidades de mesa. */
+  p: [number, number, number];
+  /** Orientación [x, y, z, w]. */
+  q: [number, number, number, number];
+}
+
+export interface DiceTrajectoryImpact {
+  atMs: number;
+  x: number;
+  z: number;
+  /** Fuerza normalizada 0..1 para el anillo de impacto. */
+  strength: number;
+}
+
+export interface DiceTrajectory {
+  frames: DiceTrajectoryFrame[];
+  durationMs: number;
+  /** Cara que queda arriba; coincide con `DiceRoll.result`. */
+  face: number;
+  impacts: DiceTrajectoryImpact[];
+}
+
+/** Entrada opcional del lanzamiento (arrastrar y soltar) para la simulación. */
+export interface DiceThrowInput {
+  /** Velocidad inicial [x, y, z] en unidades de mesa. */
+  velocity?: [number, number, number];
+  /** Velocidad angular [x, y, z]. */
+  angular?: [number, number, number];
+  /** Punto de salida sobre la mesa [x, z]. */
+  start?: [number, number];
+}
+
 /** Una tirada compartida. Efímera: no se persiste en SQLite. */
 export interface DiceRoll {
   id: Id;
@@ -577,6 +614,11 @@ export interface DiceRoll {
   result: number;
   roller: DiceRoller;
   at: IsoDate;
+  /**
+   * Trayectoria física del d20. Solo la genera el servidor para un d20 único;
+   * el resto de tiradas siguen usando el pop.
+   */
+  trajectory?: DiceTrajectory;
 }
 
 /* ========================================================================== */

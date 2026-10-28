@@ -147,17 +147,7 @@
 @media (prefers-reduced-motion: reduce) {
   .dice-toast,
   .dice-toast-icon .dice-icon,
-  .dice-toast-breakdown {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono, monospace);
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  color: var(--ui-text-faint);
-}
-
-.dice-toast-progress {
+  .dice-toast-progress {
     animation: none;
   }
 }

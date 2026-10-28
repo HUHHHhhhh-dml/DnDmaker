@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DiceRoll } from "@protocol-life/shared";
+import {
+  isHeld,
+  useDiceCinematicVersion,
+} from "../../lib/diceCinematic";
 import { Icon } from "../Icons";
 import { DiceIcon } from "./DiceIcon";
 import "./DiceRollToast.css";
@@ -19,15 +23,18 @@ const seenDiceRollIds = new Set<string>();
  */
 export function DiceRollToast({ rolls }: { rolls: DiceRoll[] }) {
   const [current, setCurrent] = useState<DiceRoll | null>(null);
+  const cinematicVersion = useDiceCinematicVersion();
 
   useEffect(() => {
     if (current) return;
-    const next = rolls.find((roll) => !seenDiceRollIds.has(roll.id));
+    const next = rolls.find(
+      (roll) => !seenDiceRollIds.has(roll.id) && !isHeld(roll),
+    );
     if (next) {
       seenDiceRollIds.add(next.id);
       setCurrent(next);
     }
-  }, [rolls, current]);
+  }, [rolls, current, cinematicVersion]);
 
   useEffect(() => {
     if (!current) return;

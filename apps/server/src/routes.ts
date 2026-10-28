@@ -373,6 +373,7 @@ export async function registerRoutes(
         getSessionToken(request),
         input.sides,
         input.count ?? 1,
+        input.throw,
       );
       realtime.emitDice(code, roll);
       return roll;

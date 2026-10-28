@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { DiceRoll } from "@protocol-life/shared";
 import { diceOutcome, type DiceOutcomeKind } from "../../lib/dice";
+import {
+  isHeld,
+  useDiceCinematicVersion,
+} from "../../lib/diceCinematic";
 import { DiceIcon } from "./DiceIcon";
 import "./DiceCelebration.css";
 
@@ -57,11 +61,12 @@ export function DiceCelebration({ rolls }: { rolls: DiceRoll[] }) {
     kind: DiceOutcomeKind;
     hits: number;
   } | null>(null);
+  const cinematicVersion = useDiceCinematicVersion();
 
   useEffect(() => {
     if (current) return;
     for (const roll of rolls) {
-      if (seenCelebrationIds.has(roll.id)) continue;
+      if (seenCelebrationIds.has(roll.id) || isHeld(roll)) continue;
       const outcome = diceOutcome(roll);
       if (!outcome) {
         seenCelebrationIds.add(roll.id);
@@ -71,7 +76,7 @@ export function DiceCelebration({ rolls }: { rolls: DiceRoll[] }) {
       setCurrent({ roll, kind: outcome.kind, hits: outcome.hits });
       return;
     }
-  }, [rolls, current]);
+  }, [rolls, current, cinematicVersion]);
 
   useEffect(() => {
     if (!current) return;

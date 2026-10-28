@@ -17,6 +17,7 @@ import { LootDraftPanel } from "../components/combat/LootDraftPanel";
 import { ShopScene } from "../components/shop/ShopScene";
 import { DungeonScene } from "../components/dungeon/DungeonScene";
 import { DiceCelebration } from "../components/dice/DiceCelebration";
+import { DiceCinematic } from "../components/dice/DiceCinematic";
 import { DiceRollToast } from "../components/dice/DiceRollToast";
 import { DiceTray } from "../components/dice/DiceTray";
 import {
@@ -1249,6 +1250,7 @@ export function TablePage() {
         </div>
       )}
 
+      <DiceCinematic rolls={diceRolls} />
       <DiceRollToast rolls={diceRolls} />
       <DiceCelebration rolls={diceRolls} />
 
