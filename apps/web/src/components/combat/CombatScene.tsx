@@ -13,6 +13,7 @@ import {
   type CombatEvent,
   type CombatUnit,
   type DeclaredAction,
+  type Item,
   type PublicCombatState,
 } from "@protocol-life/shared";
 import { Icon } from "../Icons";
@@ -131,12 +132,18 @@ export function CombatScene({
   const [page, setPage] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [hostilesOpen, setHostilesOpen] = useState(false);
+  /** Utilidad elegida en el drawer: slot reservado y objetivo de apoyo. */
+  const [support, setSupport] = useState<{ utilityId: string; slot: number } | null>(
+    null,
+  );
   const [geometry, setGeometry] = useState<Record<string, { x: number; y: number }>>(
     {},
   );
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const legendRef = useRef<HTMLDivElement | null>(null);
+  const hostilesRef = useRef<HTMLDivElement | null>(null);
   const slotRefs = useRef(new Map<string, HTMLButtonElement>());
   const unitRefs = useRef(new Map<string, HTMLDivElement>());
 
@@ -213,13 +220,35 @@ export function CombatScene({
     [combat, disabled, isControlled],
   );
 
+  const supportCaster = support ? focusedUnit : null;
+  const supportUtility = supportCaster
+    ? findItem(content, supportCaster.equipment.utility ?? undefined)
+    : null;
+  const supportTargeting = Boolean(
+    support && supportCaster && canDeclare(supportCaster),
+  );
+
+  // Si la unidad deja de poder declarar (lock, fin de ronda o desconexión),
+  // se cancela el objetivo de apoyo pendiente.
+  useEffect(() => {
+    if (support && !supportTargeting) setSupport(null);
+  }, [support, supportTargeting]);
+
   const isTargetable = useCallback(
-    (unit: CombatUnit): boolean =>
-      targeting &&
-      Boolean(selectedUnit) &&
-      unit.team !== selectedUnit!.team &&
-      isAliveUnit(unit),
-    [targeting, selectedUnit],
+    (unit: CombatUnit): boolean => {
+      if (supportTargeting) {
+        // El apoyo solo alcanza a la propia unidad o a un aliado vivo.
+        if (!focusedUnit || unit.team !== focusedUnit.team) return false;
+        return isAliveUnit(unit);
+      }
+      return (
+        targeting &&
+        Boolean(selectedUnit) &&
+        unit.team !== selectedUnit!.team &&
+        isAliveUnit(unit)
+      );
+    },
+    [focusedUnit, supportTargeting, targeting, selectedUnit],
   );
 
   const pushNotice = useCallback((text: string) => setNotice(text), []);
@@ -236,25 +265,29 @@ export function CombatScene({
     setPage(0);
     setNotice(null);
     setLegendOpen(false);
+    setHostilesOpen(false);
+    setSupport(null);
   }, [combat.id, combat.round, combat.phase]);
 
-  // Leyenda: click en cualquier otro sitio (o Escape) la cierra.
+  // Leyenda/Hostiles: click fuera o Escape los cierra.
   useEffect(() => {
-    if (!legendOpen) return;
+    if (!legendOpen && !hostilesOpen) return;
     function onPointerDown(event: PointerEvent) {
-      const node = legendRef.current;
-      if (node && event.target instanceof Node && node.contains(event.target)) {
-        return;
-      }
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      const insideLegend = legendRef.current?.contains(target) ?? false;
+      const insideHostiles = hostilesRef.current?.contains(target) ?? false;
+      if (insideLegend || insideHostiles) return;
       setLegendOpen(false);
+      setHostilesOpen(false);
     }
     window.addEventListener("pointerdown", onPointerDown);
     return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [legendOpen]);
+  }, [legendOpen, hostilesOpen]);
 
   useEffect(() => {
-    if (targeting) setLegendOpen(false);
-  }, [targeting]);
+    if (targeting || support) setLegendOpen(false);
+  }, [targeting, support]);
 
   useEffect(() => {
     if (!focusedUnitId) return;
@@ -270,6 +303,8 @@ export function CombatScene({
       setSelectedSlot(null);
       setNotice(null);
       setLegendOpen(false);
+      setHostilesOpen(false);
+      setSupport(null);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -443,7 +478,72 @@ export function CombatScene({
     setSelectedSlot(null);
   }
 
+  function declareSupport(target: CombatUnit) {
+    if (!support || !focusedUnit) {
+      pushNotice("Elige la utilidad de apoyo en el drawer.");
+      return;
+    }
+    if (!canDeclare(focusedUnit)) {
+      pushNotice("No puedes declarar por esa unidad.");
+      return;
+    }
+    if (!isTargetable(target)) {
+      pushNotice(
+        "La utilidad solo puede aplicarse a un aliado vivo o a ti mismo.",
+      );
+      return;
+    }
+
+    const current = declaredActionsForUnit(
+      combat.actions,
+      focusedUnit.id,
+    ).map(toDeclaration);
+    const nextActions = current
+      .filter((action) => action.slot !== support.slot)
+      .concat({
+        slot: support.slot,
+        utilityId: support.utilityId,
+        targetId: target.id,
+      })
+      .sort((a, b) => a.slot - b.slot);
+
+    onDeclare(focusedUnit.id, nextActions);
+    pushNotice(
+      `Apoyo declarado: ${supportUtility?.name ?? "utilidad"} → ${target.name}.`,
+    );
+
+    const nextFocus = canInspect(target) ? target : focusedUnit;
+    setFocusedUnitId(nextFocus.id);
+    setSupport(null);
+    setSelectedSkillId(null);
+    setSelectedSlot(null);
+    setMode("sheet");
+    setPage(0);
+  }
+
   function handleSlotClick(unit: CombatUnit, slot: number) {
+    if (supportTargeting) {
+      // En la propia unidad, un slot libre pasa a ser el slot reservado para
+      // la utilidad; el sprite (no el slot) sirve para apuntarse a uno mismo.
+      if (
+        focusedUnit &&
+        unit.id === focusedUnit.id &&
+        !slotOccupied(unit.id, slot)
+      ) {
+        setSupport((current) =>
+          current ? { ...current, slot } : current,
+        );
+        setSelectedSlot({ unitId: unit.id, slot });
+        pushNotice(`SkillSlot ${slot} reservado para el apoyo.`);
+        return;
+      }
+      if (!isTargetable(unit)) {
+        pushNotice("La utilidad solo puede aplicarse a tu unidad o a un aliado.");
+        return;
+      }
+      declareSupport(unit);
+      return;
+    }
     if (targeting) {
       if (!isTargetable(unit)) {
         pushNotice("Ese SkillSlot no es un objetivo válido para esta skill.");
@@ -480,6 +580,14 @@ export function CombatScene({
   }
 
   function handleSpriteClick(unit: CombatUnit) {
+    if (supportTargeting) {
+      if (!isTargetable(unit)) {
+        pushNotice("La utilidad solo puede aplicarse a tu unidad o a un aliado.");
+        return;
+      }
+      declareSupport(unit);
+      return;
+    }
     if (targeting) {
       if (!isTargetable(unit)) {
         pushNotice("Ese objetivo no es válido para esta skill.");
@@ -497,6 +605,7 @@ export function CombatScene({
 
   function pickSkill(skillId: string) {
     if (!focusedUnit || !canDeclare(focusedUnit)) return;
+    setSupport(null);
     if (!selectedSlot || selectedSlot.unitId !== focusedUnit.id) {
       setSelectedSlot({ unitId: focusedUnit.id, slot: 1 });
     }
@@ -514,6 +623,7 @@ export function CombatScene({
       );
       return;
     }
+    setSupport(null);
     setFocusedUnitId(unit.id);
     setSelectedSlot({ unitId: unit.id, slot });
     setSelectedSkillId(null);
@@ -556,6 +666,10 @@ export function CombatScene({
     const count = slotsFor(unit);
     const hp = hpPercent(unit);
     const exact = exactHpFor(unit, viewer);
+    // El arte base mira a la izquierda. Los enemigos están a la izquierda de
+    // la escena, así que se refleja su pila completa para mirar al centro.
+    // La party (derecha) ya mira al centro sin reflejo.
+    const mirrored = unit.team === "enemies";
 
     return (
       <div
@@ -567,6 +681,9 @@ export function CombatScene({
         data-inspected={focusedUnitId === unit.id ? "true" : undefined}
         data-inspectable={inspectable ? "true" : "false"}
         data-targetable={targetable ? "true" : undefined}
+        data-support-targetable={
+          targetable && supportTargeting ? "true" : undefined
+        }
         data-locked={locked ? "true" : undefined}
       >
         <div className="sv-slots" data-count={count}>
@@ -639,43 +756,50 @@ export function CombatScene({
             <span className="sv-unit-active">ACTUANDO</span>
           ) : null}
 
-          {plan.kind === "layered" ? (
+          <span
+            className="sv-unit-sprite-frame"
+            data-mirror={mirrored ? "true" : undefined}
+          >
             <span className="sv-unit-sprite-stack">
-              <img
-                className="sv-unit-sprite"
-                src={plan.baseImage}
-                alt={unit.name}
-                draggable={false}
-              />
-              {plan.layers.map((layer) => (
+              {plan.kind === "layered" ? (
+                <>
+                  <img
+                    className="sv-unit-sprite"
+                    src={plan.baseImage}
+                    alt={unit.name}
+                    draggable={false}
+                  />
+                  {plan.layers.map((layer) => (
+                    <img
+                      key={layer.slot}
+                      className="sv-unit-sprite"
+                      src={layer.image}
+                      alt=""
+                      draggable={false}
+                      data-layer-slot={layer.slot}
+                    />
+                  ))}
+                </>
+              ) : plan.kind === "single" ? (
                 <img
-                  key={layer.slot}
                   className="sv-unit-sprite"
-                  src={layer.image}
-                  alt=""
+                  src={plan.image}
+                  alt={unit.name}
                   draggable={false}
-                  data-layer-slot={layer.slot}
                 />
-              ))}
+              ) : (
+                <span className="sv-unit-placeholder" aria-hidden>
+                  <img
+                    className="sv-unit-placeholder-art"
+                    src="/assets/combat/placeholder-unit.png"
+                    alt=""
+                    draggable={false}
+                  />
+                  <span className="sv-unit-placeholder-label">SIN SPRITE</span>
+                </span>
+              )}
             </span>
-          ) : plan.kind === "single" ? (
-            <img
-              className="sv-unit-sprite"
-              src={plan.image}
-              alt={unit.name}
-              draggable={false}
-            />
-          ) : (
-            <span className="sv-unit-placeholder" aria-hidden>
-              <img
-                className="sv-unit-placeholder-art"
-                src="/assets/combat/placeholder-unit.png"
-                alt=""
-                draggable={false}
-              />
-              <span className="sv-unit-placeholder-label">SIN SPRITE</span>
-            </span>
-          )}
+          </span>
 
           <span className="sv-speed-badge">
             SPD <b>{unit.stats.spd}</b>
@@ -712,6 +836,28 @@ export function CombatScene({
     );
   }
 
+  /**
+   * Formación por bando: 1–3 unidades en una fila centrada; 4–6 en dos filas
+   * (3 atrás, el resto delante). Las filas se centran por separado.
+   */
+  function renderSide(side: "enemy" | "party", units: CombatUnit[]) {
+    const twoRows = units.length > 3;
+    const back = twoRows ? units.slice(0, 3) : [];
+    const front = twoRows ? units.slice(3) : units;
+    return (
+      <div
+        className={`sv-side sv-side--${side}`}
+        data-count={units.length}
+        data-formation={twoRows ? "two-rows" : "one-row"}
+      >
+        {twoRows ? (
+          <div className="sv-rank sv-rank--back">{back.map(renderUnit)}</div>
+        ) : null}
+        <div className="sv-rank sv-rank--front">{front.map(renderUnit)}</div>
+      </div>
+    );
+  }
+
   const focusedSkills = focusedUnit
     ? equippedSkillsFor(content, focusedUnit)
     : [];
@@ -719,12 +865,92 @@ export function CombatScene({
   const safePage = Math.min(page, totalPages - 1);
   const visibleSkills = focusedSkills.slice(safePage * 3, safePage * 3 + 3);
 
+  const focusedUtility = focusedUnit
+    ? findItem(content, focusedUnit.equipment.utility ?? undefined)
+    : null;
+  const focusedDeclaredUtilities = focusedUnit
+    ? declaredActionsForUnit(combat.actions, focusedUnit.id).filter(
+        (action) => Boolean(action.utilityId),
+      ).length
+    : 0;
+  const focusedUtilityUses =
+    focusedUtility && focusedUnit
+      ? Math.max(0, focusedUnit.utilityUses - focusedDeclaredUtilities)
+      : 0;
+  const focusedSupportSlot =
+    focusedUnit && focusedUtility ? freeSupportSlot(focusedUnit) : null;
+  // Si el jugador abrió un slot ocupado, la carta lo muestra tal cual para que
+  // el motivo («Slot N ocupado») cuadre con lo que ve.
+  const focusedSupportSlotLabel =
+    focusedUnit && selectedSlot?.unitId === focusedUnit.id
+      ? selectedSlot.slot
+      : focusedSupportSlot;
+  const supportSlotTaken = Boolean(
+    focusedUnit &&
+      selectedSlot?.unitId === focusedUnit.id &&
+      slotOccupied(focusedUnit.id, selectedSlot.slot),
+  );
+  const supportBlockedReason = supportReason();
+
+  function slotOccupied(unitId: string, slot: number): boolean {
+    return declaredActionsForUnit(combat.actions, unitId).some(
+      (action) => action.slot === slot,
+    );
+  }
+
+  function freeSupportSlot(unit: CombatUnit): number | null {
+    if (
+      selectedSlot?.unitId === unit.id &&
+      !slotOccupied(unit.id, selectedSlot.slot)
+    ) {
+      return selectedSlot.slot;
+    }
+    for (let slot = 1; slot <= unit.stats.skillSlots; slot += 1) {
+      if (!slotOccupied(unit.id, slot)) return slot;
+    }
+    return null;
+  }
+
+  function supportReason(): string | null {
+    if (!focusedUnit) return "Elige una unidad en la escena.";
+    if (!focusedUtility) return "Sin utilidad equipada.";
+    if (!canDeclare(focusedUnit)) {
+      if (!isAliveUnit(focusedUnit)) return "La unidad está caída.";
+      if (isUnitLocked(combat, focusedUnit.id)) return "La unidad ya está lista.";
+      if (!isControlled(focusedUnit)) return "No controlas esta unidad.";
+      if (disabled) return "Sin conexión con la mesa.";
+      return "La ronda no admite declaración.";
+    }
+    if (focusedUtilityUses <= 0) {
+      return `Sin usos de ${focusedUtility.name}.`;
+    }
+    if (supportSlotTaken) {
+      return `El SkillSlot ${selectedSlot?.slot} está ocupado; elige otro.`;
+    }
+    if (focusedSupportSlot === null) return "No quedan SkillSlots libres.";
+    return null;
+  }
+
+  function handleSupportPick() {
+    if (!focusedUnit || !focusedUtility) return;
+    if (supportReason() !== null || focusedSupportSlot === null) return;
+    setSupport({ utilityId: focusedUtility.id, slot: focusedSupportSlot });
+    setSelectedSkillId(null);
+    setSelectedSlot({ unitId: focusedUnit.id, slot: focusedSupportSlot });
+    setMode("skills");
+    setPage(0);
+  }
+
   return (
     <div
       className={["sv-scene", className].filter(Boolean).join(" ")}
       data-scene={theme}
       data-viewer={viewer.role}
       data-has-layers={hasLayers ? "true" : "false"}
+      data-formation={
+        Math.max(party.length, enemies.length) > 3 ? "two-rows" : "one-row"
+      }
+      data-support-targeting={supportTargeting ? "true" : undefined}
     >
       <div className="sv-scene-bar">
         <div className="sv-scene-bar-tags">
@@ -800,45 +1026,8 @@ export function CombatScene({
             </span>
           </div>
 
-          <aside className="sv-intel" aria-label="HP de enemigos">
-            <div className="sv-intel-head">
-              <span>HOSTILES</span>
-              <b>{enemies.length}</b>
-            </div>
-            <div className="sv-intel-mode">
-              {viewer.role === "dm" ? "HP EXACTO" : "HP ESTIMADO · VISTA JUGADOR"}
-            </div>
-            {enemies.length === 0 ? (
-              <p className="sv-intel-mode">Sin hostiles</p>
-            ) : (
-              enemies.map((unit) => {
-                const exact = exactHpFor(unit, viewer);
-                return (
-                  <div key={unit.id} className="sv-intel-row">
-                    <div className="sv-intel-row-top">
-                      <span className="sv-intel-name">{unit.name}</span>
-                      <span
-                        className="sv-intel-hp"
-                        data-masked={exact ? undefined : "true"}
-                      >
-                        {hpReadout(unit, viewer)}
-                      </span>
-                    </div>
-                    <div className="sv-hpbar sv-hpbar--enemy">
-                      <span style={{ width: `${hpPercent(unit)}%` }} />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </aside>
-
-          <div className="sv-side sv-side--enemy" data-count={enemies.length}>
-            {enemies.map(renderUnit)}
-          </div>
-          <div className="sv-side sv-side--party" data-count={party.length}>
-            {party.map(renderUnit)}
-          </div>
+          {renderSide("enemy", enemies)}
+          {renderSide("party", party)}
 
           <svg className="sv-lines" aria-hidden>
             <defs>
@@ -897,35 +1086,113 @@ export function CombatScene({
             })}
           </svg>
 
-          <div className="sv-legend-wrap" ref={legendRef}>
-            <button
-              type="button"
-              className="sv-legend-toggle"
-              aria-label="Ver leyenda de líneas"
-              aria-expanded={legendOpen}
-              aria-controls="sv-line-legend"
-              title="Leyenda de líneas"
-              onClick={() => setLegendOpen((current) => !current)}
-            >
-              ?
-            </button>
-            {legendOpen ? (
-              <div
-                id="sv-line-legend"
-                className="sv-legend"
-                role="dialog"
-                aria-label="Leyenda de líneas"
+          <div className="sv-stage-tools">
+            <div className="sv-hostiles-wrap" ref={hostilesRef}>
+              <button
+                type="button"
+                className="sv-tool-btn sv-tool-btn--hostiles"
+                aria-label="Ver hostiles y su HP"
+                aria-expanded={hostilesOpen}
+                aria-controls="sv-hostiles-panel"
+                title="Hostiles y HP"
+                onClick={() =>
+                  setHostilesOpen((current) => {
+                    const next = !current;
+                    if (next) setLegendOpen(false);
+                    return next;
+                  })
+                }
               >
-                {(["blue", "yellow", "red", "green"] as LineTone[]).map(
-                  (tone) => (
-                    <span key={tone} className="sv-legend-item">
-                      <i style={{ background: TONE_COLOR[tone] }} />
-                      {TONE_LABEL[tone]}
+                !
+              </button>
+              {hostilesOpen ? (
+                <aside
+                  id="sv-hostiles-panel"
+                  className="sv-hostiles-panel"
+                  role="dialog"
+                  aria-label="HP de enemigos"
+                >
+                  <div className="sv-hostiles-head">
+                    <span>
+                      HOSTILES <b>{enemies.length}</b>
                     </span>
-                  ),
-                )}
-              </div>
-            ) : null}
+                    <button
+                      type="button"
+                      className="sv-hostiles-close"
+                      onClick={() => setHostilesOpen(false)}
+                      aria-label="Cerrar hostiles"
+                    >
+                      <Icon name="close" size={11} />
+                    </button>
+                  </div>
+                  <div className="sv-intel-mode">
+                    {viewer.role === "dm"
+                      ? "HP EXACTO"
+                      : "HP ESTIMADO · VISTA JUGADOR"}
+                  </div>
+                  {enemies.length === 0 ? (
+                    <p className="sv-intel-mode">Sin hostiles</p>
+                  ) : (
+                    enemies.map((unit) => {
+                      const exact = exactHpFor(unit, viewer);
+                      return (
+                        <div key={unit.id} className="sv-intel-row">
+                          <div className="sv-intel-row-top">
+                            <span className="sv-intel-name">{unit.name}</span>
+                            <span
+                              className="sv-intel-hp"
+                              data-masked={exact ? undefined : "true"}
+                            >
+                              {hpReadout(unit, viewer)}
+                            </span>
+                          </div>
+                          <div className="sv-hpbar sv-hpbar--enemy">
+                            <span style={{ width: `${hpPercent(unit)}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </aside>
+              ) : null}
+            </div>
+
+            <div className="sv-legend-wrap" ref={legendRef}>
+              <button
+                type="button"
+                className="sv-tool-btn sv-tool-btn--legend"
+                aria-label="Ver leyenda de líneas"
+                aria-expanded={legendOpen}
+                aria-controls="sv-line-legend"
+                title="Leyenda de líneas"
+                onClick={() =>
+                  setLegendOpen((current) => {
+                    const next = !current;
+                    if (next) setHostilesOpen(false);
+                    return next;
+                  })
+                }
+              >
+                ?
+              </button>
+              {legendOpen ? (
+                <div
+                  id="sv-line-legend"
+                  className="sv-legend"
+                  role="dialog"
+                  aria-label="Leyenda de líneas"
+                >
+                  {(["blue", "yellow", "red", "green"] as LineTone[]).map(
+                    (tone) => (
+                      <span key={tone} className="sv-legend-item">
+                        <i style={{ background: TONE_COLOR[tone] }} />
+                        {TONE_LABEL[tone]}
+                      </span>
+                    ),
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {notice ? (
@@ -1061,7 +1328,26 @@ export function CombatScene({
             </button>
           </div>
 
-          {selectedSkill ? (
+          {support ? (
+            <div className="sv-targeting-box sv-targeting-box--support">
+              <div className="sv-targeting-title">
+                <Icon name="users" size={13} /> Elige un aliado
+              </div>
+              <p>
+                {supportUtility?.name ?? "Utilidad"} · SkillSlot {support.slot}
+              </p>
+              <span className="sv-targeting-hint">
+                Solo tu unidad o un aliado vivo. La línea de apoyo es verde.
+              </span>
+              <button
+                type="button"
+                className="sv-text-btn"
+                onClick={() => setSupport(null)}
+              >
+                Cancelar apoyo
+              </button>
+            </div>
+          ) : selectedSkill ? (
             <div className="sv-targeting-box">
               <div className="sv-targeting-title">
                 <Icon name="crosshair" size={13} /> Elige un objetivo
@@ -1120,8 +1406,8 @@ export function CombatScene({
 
           <div className="sv-drawer-actions">
             <span className="sv-scene-mode">
-              Utilidad · dominio · hábitat · redirección en «Declaración
-              avanzada»
+              Utilidad como carta de APOYO · dominio, hábitat y redirección en
+              «Avanzado»
             </span>
           </div>
         </div>
@@ -1231,6 +1517,71 @@ export function CombatScene({
                   </div>
                 )}
 
+                {focusedUtility ? (
+                  <div className="sv-support">
+                    <div className="sv-support-head">
+                      <span>APOYO</span>
+                      <span>UTILIDAD EQUIPADA</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="sv-support-card"
+                      data-selected={
+                        support?.utilityId === focusedUtility.id
+                          ? "true"
+                          : undefined
+                      }
+                      disabled={supportBlockedReason !== null}
+                      onClick={handleSupportPick}
+                      aria-label={`Elegir ${focusedUtility.name} como apoyo`}
+                      title={
+                        supportBlockedReason ??
+                        "Elige un aliado vivo o a ti mismo"
+                      }
+                    >
+                      <span className="sv-support-icon">
+                        {focusedUtility.image || focusedUtility.icon ? (
+                          <img
+                            src={
+                              (focusedUtility.image ||
+                                focusedUtility.icon) as string
+                            }
+                            alt=""
+                          />
+                        ) : (
+                          <b>{initialFor(focusedUtility.name, 0)}</b>
+                        )}
+                      </span>
+                      <span className="sv-support-body">
+                        <span className="sv-support-name">
+                          {focusedUtility.name}
+                        </span>
+                        <span className="sv-support-kind">
+                          UTILIDAD · {utilityEffectLabel(focusedUtility)}
+                        </span>
+                        <span className="sv-support-meta">
+                          {focusedUtilityUses} usos restantes
+                          {focusedSupportSlotLabel
+                            ? ` · SkillSlot ${focusedSupportSlotLabel}`
+                            : ""}
+                        </span>
+                        {supportBlockedReason ? (
+                          <span className="sv-support-reason">
+                            {supportBlockedReason}
+                          </span>
+                        ) : (
+                          <span className="sv-support-hint">
+                            Aliado vivo o tu personaje · línea verde
+                          </span>
+                        )}
+                      </span>
+                      <span className="sv-support-arrow" aria-hidden>
+                        →
+                      </span>
+                    </button>
+                  </div>
+                ) : null}
+
                 <div className="sv-skill-foot">
                   <button
                     type="button"
@@ -1268,14 +1619,14 @@ export function CombatScene({
                     {viewer.role === "dm"
                       ? "el DM puede declarar por los hostiles"
                       : "el jugador controla su propia unidad"}
-                    . La declaración avanzada cubre utilidad, dominio, hábitat y
-                    redirección.
+                    . La utilidad equipada tiene su carta de APOYO; dominio,
+                    hábitat y redirección siguen en «Avanzado».
                   </p>
                 ) : (
                   <p className="sv-skill-note">
                     Al elegir una skill se iluminan los objetivos del bando
-                    contrario. Utilidad, dominio, hábitat y redirección se
-                    declaran en «Avanzado».
+                    contrario. La carta de APOYO declara la utilidad sobre un
+                    aliado; dominio, hábitat y redirección siguen en «Avanzado».
                   </p>
                 )}
               </>
@@ -1762,6 +2113,16 @@ function initialFor(name: string, fallbackIndex: number): string {
   const trimmed = name.trim();
   if (!trimmed) return String(fallbackIndex + 1);
   return trimmed.slice(0, 1).toUpperCase();
+}
+
+/** Tipo legible de la utilidad a partir de su `useEffect`. */
+function utilityEffectLabel(item: Pick<Item, "useEffect">): string {
+  const actions = item.useEffect ?? [];
+  if (actions.some((action) => action.type === "heal")) return "Curación";
+  if (actions.some((action) => action.type === "modifyStat")) return "Buff";
+  if (actions.some((action) => action.type === "damage")) return "Daño";
+  if (actions.some((action) => action.type === "applyEffect")) return "Efecto";
+  return "Utilidad";
 }
 
 function equippedSkillsFor(
