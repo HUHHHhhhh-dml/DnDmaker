@@ -115,12 +115,12 @@ export function PlayerTablePage() {
         />
         <main className="mx-auto max-w-3xl px-4 py-10 sm:px-8 sm:py-16">
           <div className="panel animate-rise p-6 text-center sm:p-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center border-2 border-ink bg-rust/15 pentagon">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center border border-ui-line-strong bg-rust/15 pentagon">
               <Icon name="broadcast" size={26} />
             </div>
             <div className="mono-label mt-4 text-center">Conexión terminada</div>
             <h1 className="display mt-2 text-4xl">La sala se cerró</h1>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ui-muted">
               El DM cerró esta mesa. Tu ficha queda guardada en la campaña; puedes
               volver a entrar cuando abra una sala nueva.
             </p>
@@ -160,11 +160,11 @@ export function PlayerTablePage() {
         />
         <main className="mx-auto max-w-3xl px-4 py-10 sm:px-8 sm:py-16">
           <div className="panel animate-rise p-6 text-center sm:p-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center border-2 border-ink bg-amber/25 hexagon">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center border border-ui-line-strong bg-amber/25 hexagon">
               <Icon name="alert" size={26} />
             </div>
             <h1 className="display mt-4 text-3xl">Tu ficha no está disponible</h1>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-soft">
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ui-muted">
               No pudimos cargar tu personaje en esta mesa. Vuelve a la sala de
               espera para entrar de nuevo.
             </p>
@@ -233,7 +233,7 @@ export function PlayerTablePage() {
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
         {error ? (
-          <div className="mb-4 flex items-start gap-2 border-2 border-rust bg-rust/10 p-3 text-rust-deep">
+          <div className="mb-4 flex items-start gap-2 border border-rust bg-rust/10 p-3 text-ui-danger">
             <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
             <p className="text-xs font-semibold leading-relaxed">{error}</p>
           </div>
@@ -246,6 +246,7 @@ export function PlayerTablePage() {
               combat={recentCombat}
               onDismiss={dismissRecentCombat}
               eyebrow="Tu último combate (reconexión)"
+              hideEnemyHp
             />
           </div>
         ) : null}
@@ -254,7 +255,7 @@ export function PlayerTablePage() {
           <div className="min-w-0 space-y-5">
             <section className="panel animate-rise overflow-hidden">
               <div className="grid sm:grid-cols-[190px_minmax(0,1fr)]">
-                <div className="relative min-h-[190px] border-b-2 border-ink bg-grid bg-paper-deep sm:border-b-0 sm:border-r-2">
+                <div className="relative min-h-[190px] border-b border-ui-line-strong bg-grid bg-ui-surface-3 sm:border-b-0 sm:border-r">
                   {character.portrait ? (
                     <img
                       src={character.portrait}
@@ -263,15 +264,15 @@ export function PlayerTablePage() {
                     />
                   ) : (
                     <div className="flex h-full min-h-[190px] items-center justify-center">
-                      <div className="flex h-24 w-24 items-center justify-center border-2 border-ink bg-paper-light pentagon">
-                        <span className="font-display text-3xl text-ink-faint">
+                      <div className="flex h-24 w-24 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon">
+                        <span className="font-display text-3xl text-ui-faint">
                           {character.name.slice(0, 1).toUpperCase()}
                         </span>
                       </div>
                     </div>
                   )}
                   <div className="absolute bottom-2 left-2">
-                    <span className="border border-ink bg-paper-light px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
+                    <span className="border border-ui-line-strong bg-ui-surface-2 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
                       Tu ficha
                     </span>
                   </div>
@@ -304,7 +305,7 @@ export function PlayerTablePage() {
                     )}
                   </div>
 
-                  <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+                  <p className="mt-2 text-xs leading-relaxed text-ui-muted">
                     {character.description || "Sin descripción todavía."}
                   </p>
 
@@ -318,10 +319,10 @@ export function PlayerTablePage() {
                     </div>
                   ) : null}
 
-                  <div className="mt-3 grid grid-cols-3 gap-px border-2 border-ink bg-ink/25 sm:grid-cols-6">
+                  <div className="mt-3 grid grid-cols-3 gap-px border border-ui-line-strong bg-ui-surface-1 sm:grid-cols-6">
                     {STAT_KEYS.map((key) => (
-                      <div key={key} className="bg-paper-light px-2 py-2 text-center">
-                        <div className="font-mono text-[8px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+                      <div key={key} className="bg-ui-surface-2 px-2 py-2 text-center">
+                        <div className="font-mono text-[8px] font-bold uppercase tracking-[0.12em] text-ui-faint">
                           {key === "hpMax" ? "HP" : STAT_LABELS[key]}
                         </div>
                         <div className="font-display text-xl leading-tight">
@@ -332,7 +333,7 @@ export function PlayerTablePage() {
                   </div>
 
                   {!canEdit ? (
-                    <p className="mt-3 flex items-start gap-1.5 text-[10px] leading-snug text-rust-deep">
+                    <p className="mt-3 flex items-start gap-1.5 text-[10px] leading-snug text-ui-danger">
                       <Icon name="alert" size={12} className="mt-0.5 shrink-0" />
                       {!campaign.settings.allowPlayerEdit
                         ? "El DM no permite que los jugadores editen su ficha."
@@ -356,7 +357,7 @@ export function PlayerTablePage() {
                   <SectionTitle
                     title="Stats derivados"
                     action={
-                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
                         equipo + efectos
                       </span>
                     }
@@ -386,13 +387,13 @@ export function PlayerTablePage() {
                         <div
                           key={index}
                           className={cx(
-                            "flex flex-wrap items-center gap-3 border-2 p-2",
+                            "flex flex-wrap items-center gap-3 border p-2",
                             skill
-                              ? "border-ink/30 bg-paper/50"
-                              : "border-dashed border-ink/20",
+                              ? "border-ui-line bg-ui-surface-2"
+                              : "border-dashed border-ui-line",
                           )}
                         >
-                          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+                          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ui-faint">
                             Slot {index + 1}
                           </span>
                           {skill ? (
@@ -401,14 +402,14 @@ export function PlayerTablePage() {
                                 <div className="text-sm font-semibold">{skill.name}</div>
                                 <CoinRow coins={skill.coins} />
                               </div>
-                              <div className="font-mono text-[9px] text-ink-soft">
+                              <div className="font-mono text-[9px] text-ui-muted">
                                 clash {skill.baseClash}+{skill.coinClash}/c · daño{" "}
                                 {skill.baseDamage}
                                 {signed(skill.coinDamage)}/c
                               </div>
                             </>
                           ) : (
-                            <span className="text-xs text-ink-faint">Vacío</span>
+                            <span className="text-xs text-ui-faint">Vacío</span>
                           )}
                         </div>
                       );
@@ -422,16 +423,16 @@ export function PlayerTablePage() {
                       return (
                         <div
                           key={field}
-                          className="border-2 border-ink/30 bg-paper/50 p-2"
+                          className="border border-ui-line bg-ui-surface-2 p-2"
                         >
-                          <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-ink-faint">
+                          <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-ui-faint">
                             {field === "domainId" ? "Dominio" : "Hábitat"}
                           </div>
                           <div className="text-xs font-semibold">
                             {special?.name ?? "Vacío"}
                           </div>
                           {special ? (
-                            <div className="mt-0.5 font-mono text-[9px] text-ink-faint">
+                            <div className="mt-0.5 font-mono text-[9px] text-ui-faint">
                               {special.duration} turnos ·{" "}
                               {special.oncePerCombat ? "1/combate" : "reusable"}
                             </div>
@@ -441,7 +442,7 @@ export function PlayerTablePage() {
                     })}
                   </div>
                   {equippedSkills.length === 0 ? (
-                    <p className="mt-3 text-[11px] text-ink-faint">
+                    <p className="mt-3 text-[11px] text-ui-faint">
                       No tienes skills equipadas. Puedes añadirlas desde «Editar
                       ficha».
                     </p>
@@ -451,11 +452,11 @@ export function PlayerTablePage() {
                 <section className="panel p-4">
                   <SectionTitle title="Inventario" count={character.inventory.length} />
                   {character.inventory.length === 0 ? (
-                    <p className="text-sm text-ink-soft">
+                    <p className="text-sm text-ui-muted">
                       Sin objetos en el inventario.
                     </p>
                   ) : (
-                    <div className="divide-y divide-ink/10">
+                    <div className="divide-y divide-[color:var(--ui-line)]">
                       {character.inventory.map((entry, index) => {
                         const item = itemsById.get(entry.itemId);
                         return (
@@ -467,18 +468,18 @@ export function PlayerTablePage() {
                               <Icon
                                 name="cube"
                                 size={13}
-                                className="shrink-0 text-ink-faint"
+                                className="shrink-0 text-ui-faint"
                               />
                               <span className="truncate text-xs font-semibold">
                                 {item?.name ?? "Objeto borrado"}
                               </span>
                               {item?.code ? (
-                                <span className="font-mono text-[9px] text-ink-faint">
+                                <span className="font-mono text-[9px] text-ui-faint">
                                   {item.code}
                                 </span>
                               ) : null}
                             </div>
-                            <span className="font-mono text-[10px] text-ink-soft">
+                            <span className="font-mono text-[10px] text-ui-muted">
                               ×{entry.qty}
                             </span>
                           </div>
@@ -535,42 +536,42 @@ function PlayerHeader({
   hideNav?: boolean;
 }) {
   return (
-    <header className="border-b-2 border-ink bg-ink text-paper">
+    <header className="border-b border-[var(--ui-line)] bg-[var(--ui-surface-1)] text-[var(--ui-text)]">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center border border-paper/60 bg-paper pentagon">
-            <span className="font-display text-sm text-rust">PL</span>
+          <div className="flex h-10 w-10 items-center justify-center border border-[var(--ui-line-strong)] bg-[var(--ui-surface-2)] pentagon">
+            <span className="font-display text-sm text-[var(--ui-accent)]">PL</span>
           </div>
           <div>
             <div className="font-display text-base leading-none tracking-wide">
               PROTOCOL LIFE
             </div>
-            <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.22em] text-paper/50">
+            <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.22em] text-[var(--ui-text-muted)]">
               Mesa de jugador
             </div>
           </div>
         </div>
 
-        <div className="hidden h-8 w-px bg-paper/20 sm:block" />
+        <div className="hidden h-8 w-px bg-[var(--ui-line)] sm:block" />
 
         <div className="min-w-0">
           <div className="truncate font-display text-lg leading-tight">
             {campaignName}
           </div>
-          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-paper/50">
+          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ui-text-muted)]">
             Sala <span className="text-amber">{code}</span>
           </div>
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-2 border border-paper/25 px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-paper/70">
+          <span className="flex items-center gap-2 border border-[var(--ui-line)] px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--ui-text-muted)]">
             <span
               className={cx(
                 "inline-block h-2 w-2 rounded-full",
                 closed
                   ? "bg-rust"
                   : connected
-                    ? "bg-emerald-400"
+                    ? "bg-ui-ok"
                     : "bg-amber",
               )}
             />
@@ -589,7 +590,7 @@ function PlayerHeader({
           ) : hideNav ? null : (
             <Link
               to="/"
-              className="inline-flex items-center gap-2 border border-paper/30 px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-paper/70 transition-colors hover:border-paper hover:text-paper"
+              className="inline-flex items-center gap-2 border border-[var(--ui-line)] px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--ui-text-muted)] transition-colors hover:border-[var(--ui-accent)] hover:text-[var(--ui-text)]"
             >
               <Icon name="arrow-left" size={13} />
               Volver al estudio
@@ -618,7 +619,7 @@ function PartyColumn({
         <SectionTitle title="La party" count={session.players.length} />
         <div className="space-y-2">
           {session.players.length === 0 ? (
-            <p className="text-sm text-ink-soft">Todavía no hay jugadores.</p>
+            <p className="text-sm text-ui-muted">Todavía no hay jugadores.</p>
           ) : (
             session.players.map((entry) => (
               <PartyCard
@@ -637,7 +638,7 @@ function PartyColumn({
         <SectionTitle title="Estado de la mesa" />
         <div className="space-y-2 text-xs">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
               Fase
             </span>
             <span className="chip chip-accent">
@@ -645,29 +646,29 @@ function PartyColumn({
             </span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
               DM
             </span>
-            <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-soft">
+            <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ui-muted">
               <span
                 className={cx(
                   "inline-block h-1.5 w-1.5 rounded-full",
-                  session.dmConnected ? "bg-moss" : "bg-ink-faint",
+                  session.dmConnected ? "bg-ui-ok" : "bg-ui-faint",
                 )}
               />
               {session.dmConnected ? "En la mesa" : "Desconectado"}
             </span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
               Sala
             </span>
-            <span className="font-mono text-[10px] font-bold tracking-[0.14em] text-ink">
+            <span className="font-mono text-[10px] font-bold tracking-[0.14em] text-ui">
               {session.code}
             </span>
           </div>
         </div>
-        <p className="mt-3 border-t border-ink/15 pt-2 text-[10px] leading-snug text-ink-faint">
+        <p className="mt-3 border-t border-ui-line pt-2 text-[10px] leading-snug text-ui-faint">
           Solo ves la party y tu ficha. Los enemigos y las notas del DM quedan en su
           pantalla.
         </p>
@@ -695,12 +696,12 @@ function PartyCard({
   return (
     <div
       className={cx(
-        "border-2 p-2.5",
-        isSelf ? "border-ink bg-amber/15" : "border-ink/25 bg-paper/50",
+        "border p-2.5",
+        isSelf ? "border-ui-line-strong bg-amber/15" : "border-ui-line bg-ui-surface-2",
       )}
     >
       <div className="flex items-center gap-2">
-        <div className="relative h-11 w-10 shrink-0 overflow-hidden border-2 border-ink bg-paper-light">
+        <div className="relative h-11 w-10 shrink-0 overflow-hidden border border-ui-line-strong bg-ui-surface-2">
           {character?.portrait ? (
             <img
               src={character.portrait}
@@ -708,7 +709,7 @@ function PartyCard({
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center font-display text-base text-ink-faint">
+            <span className="flex h-full w-full items-center justify-center font-display text-base text-ui-faint">
               {(character?.name ?? player.name).slice(0, 1).toUpperCase()}
             </span>
           )}
@@ -720,11 +721,11 @@ function PartyCard({
             </span>
             {isSelf ? <span className="chip shrink-0">Tú</span> : null}
           </div>
-          <div className="flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-ink-faint">
+          <div className="flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-ui-faint">
             <span
               className={cx(
                 "inline-block h-1.5 w-1.5 rounded-full",
-                player.connected ? "bg-moss" : "bg-ink-faint",
+                player.connected ? "bg-ui-ok" : "bg-ui-faint",
               )}
             />
             {player.connected ? "En línea" : "Desconectado"}
@@ -734,15 +735,15 @@ function PartyCard({
       </div>
 
       {derived ? (
-        <div className="mt-2 grid grid-cols-4 gap-px border border-ink/25 bg-ink/20">
+        <div className="mt-2 grid grid-cols-4 gap-px border border-ui-line bg-ui-surface-1">
           {[
             ["HP", derived.stats.hpMax],
             ["DEF", derived.stats.def],
             ["ATK", derived.stats.atk],
             ["Slots", derived.stats.skillSlots],
           ].map(([label, value]) => (
-            <div key={label} className="bg-paper-light px-1 py-1.5 text-center">
-              <div className="font-mono text-[7px] uppercase tracking-[0.12em] text-ink-faint">
+            <div key={label} className="bg-ui-surface-2 px-1 py-1.5 text-center">
+              <div className="font-mono text-[7px] uppercase tracking-[0.12em] text-ui-faint">
                 {label}
               </div>
               <div className="font-display text-sm leading-tight">{value}</div>
@@ -750,7 +751,7 @@ function PartyCard({
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-[10px] text-ink-faint">Ficha no disponible.</p>
+        <p className="mt-2 text-[10px] text-ui-faint">Ficha no disponible.</p>
       )}
     </div>
   );

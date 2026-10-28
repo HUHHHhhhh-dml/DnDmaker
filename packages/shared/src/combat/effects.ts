@@ -153,6 +153,11 @@ export function effectiveStats(
     stats[stat] = value;
   }
 
+  // Excepción 3F.5: la tirada de SPD del combate se suma una sola vez, después
+  // de derivar equipo/efectos. Sin esto se perdería al refrescar stats en cada
+  // ronda y dejaría de ordenar turnos/redirecciones. Old states: 0/undefined.
+  if (unit.spdRoll) stats.spd += unit.spdRoll;
+
   return stats;
 }
 

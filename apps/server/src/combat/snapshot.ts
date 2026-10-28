@@ -24,6 +24,11 @@ export interface SnapshotOptions {
   /** Campaña completa (contenido + reglas) para derivar stats. */
   campaign: Campaign;
   team: Team;
+  /**
+   * Tirada de SPD de este combate (1..4), inyectada desde `startEncounter`.
+   * El snapshot es puro: no genera PRNG. Si falta no se aplica roll.
+   */
+  speedRoll?: number;
 }
 
 /**
@@ -112,10 +117,16 @@ export function snapshotUnit(
   character: Character,
   options: SnapshotOptions,
 ): CombatUnit {
-  const { campaign, team } = options;
+  const { campaign, team, speedRoll } = options;
   const derived = calculateStats(character, campaign.content, campaign.rules);
   const hpMax = derived.stats.hpMax;
   const hp = currentHp(character, hpMax);
+  // La SPD total incluye la tirada del combate; `baseStats` no cambia. El
+  // motor preserva el roll al refrescar stats entre rondas.
+  const spdRoll =
+    speedRoll === undefined ? undefined : clamp(Math.trunc(speedRoll), 1, 4);
+  const stats = { ...derived.stats };
+  if (spdRoll !== undefined) stats.spd += spdRoll;
 
   return {
     id: newId("unt"),
@@ -128,7 +139,8 @@ export function snapshotUnit(
     visualMode: character.visualMode,
     battleSprite: character.battleSprite,
     bodyImage: character.bodyImage,
-    stats: { ...derived.stats },
+    stats,
+    ...(spdRoll === undefined ? {} : { spdRoll }),
     baseStats: { ...character.baseStats },
     hpCurrent: hp,
     equipment: { ...character.equipment },

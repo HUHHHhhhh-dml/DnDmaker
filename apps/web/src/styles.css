@@ -1,31 +1,199 @@
 @import "tailwindcss";
 
-@theme {
-  --color-paper: #f2ede0;
-  --color-paper-light: #f8f4e9;
-  --color-paper-deep: #e5ddc9;
-  --color-ink: #17150f;
-  --color-ink-soft: #4b4639;
-  --color-ink-faint: #7d7665;
-  --color-rust: #a1261e;
-  --color-rust-deep: #7c1a15;
-  --color-amber: #d98b2b;
-  --color-gold: #d4a72c;
-  --color-steel: #33566b;
-  --color-moss: #4d5f3c;
-  --color-blood: #8b1d1d;
+/* Fuentes locales del rediseño (OFL, ver /fonts/OFL-*.txt). */
+@font-face {
+  font-family: "Darker Grotesque";
+  src: url("/fonts/darker-grotesque-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
-  --font-display: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-sans: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/space-grotesk-latin.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* ══════════════════════════════════════════════════════════════════════
+     F1 · paleta reencuadrada al tema noche.
+     ──────────────────────────────────────────────────────────────────────
+     Las pantallas que todavía no migran (F4–F7) siguen usando bg-paper*,
+     text-ink*, border-ink… Estas clases ya no pintan el tema claro: paper
+     pasa a ser «superficie» e ink «texto/línea», de modo que lo residual
+     queda legible sobre el fondo oscuro sin tocar esas pantallas. Los
+     tokens --ui-* siguen siendo la fuente semántica; estos alias apuntan a
+     ellos para que solo haya un sitio que ajustar.
+     ══════════════════════════════════════════════════════════════════════ */
+  --color-paper: var(--ui-surface-1);
+  --color-paper-light: var(--ui-surface-2);
+  --color-paper-deep: var(--ui-surface-3);
+  --color-ink: var(--ui-text);
+  --color-ink-soft: var(--ui-text-muted);
+  --color-ink-faint: var(--ui-text-faint);
+  --color-rust: var(--ui-danger);
+  --color-rust-deep: #d0665a;
+  --color-amber: var(--ui-accent);
+  --color-gold: var(--ui-gold);
+  --color-steel: var(--ui-info);
+  --color-moss: var(--ui-ok);
+  --color-blood: var(--ui-danger);
+
+  /* F1 · tipografía conectada (mapa §3.2). Las cuatro familias ya están
+     cargadas arriba; --font-ui existe desde F0 y ahora se usa en labels,
+     tabs y cabeceras de sección. JetBrains Mono ya era --font-mono. */
+  --font-ui: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Darker Grotesque", "Arial Black", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
+  --font-sans: "Inter", "Segoe UI", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
   --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular,
     Menlo, monospace;
 
-  --shadow-stamp: 4px 4px 0 0 #17150f;
-  --shadow-stamp-sm: 2px 2px 0 0 #17150f;
-  --shadow-stamp-lg: 6px 6px 0 0 #17150f;
+  /* Alias de compatibilidad del «stamp»: las primitivas ya no lo usan, pero
+     algunas pantallas pendientes de F4–F7 (Join, EquipmentDoll) todavía
+     referencian shadow-stamp. En oscuro la sombra dura se hunde. */
+  --stamp-ink: #17150f;
+  --shadow-stamp: 4px 4px 0 0 var(--stamp-ink);
+  --shadow-stamp-sm: 2px 2px 0 0 var(--stamp-ink);
+  --shadow-stamp-lg: 6px 6px 0 0 var(--stamp-ink);
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   F0 · CAPA DE TOKENS SEMÁNTICOS DEL TEMA OSCURO (fase 3F.5)
+   ────────────────────────────────────────────────────────────────────────
+   F1 conecta esta capa: body, primitivas (panel/btn/field/chip/modal),
+   shell (Layout) y 404. Las pantallas de contenido NO se migran aquí: sus
+   clases de paleta quedan reinterpretadas por los alias de @theme y se
+   sustituirán por tokens semánticos en F4–F7.
+
+   Nomenclatura (mapa §3.4):
+   · --ui-*    → tema de UI global (superficies, texto, líneas, estados).
+   · --scene-* → tema de la escena de combate, que el DM cambia en vivo.
+     Van separados a propósito: reutilizar --ui-bg en la escena rompería
+     el selector de tema `paper`/`night` del stage.
+
+   Regla de adopción desde F1: ninguna pantalla nueva usa bg-paper*,
+   text-ink*, border-ink ni shadow-stamp directamente; solo las primitivas.
+   ════════════════════════════════════════════════════════════════════════ */
 @layer base {
+  :root {
+    /* ── Superficies (mapa §3.1) ─────────────────────────────────────
+       Noche cálida, nunca #000 puro. --ui-bg es el fondo de app;
+       surface-1 panel base, surface-2 panel elevado, surface-3 hundido. */
+    --ui-bg: #0a0907;
+    --ui-surface-1: #12100c;
+    --ui-surface-2: #181510;
+    --ui-surface-3: #211c15;
+
+    /* ── Texto ───────────────────────────────────────────────────────
+       Contraste medido contra --ui-surface-1 (peor caso de superficie
+       elevada) en el mapa §3.1. Sustituyen a ink-soft / ink-faint. */
+    --ui-text: #f2ede0; /* 16,26:1 */
+    --ui-text-muted: #b9b1a1; /* 8,93:1 — secundario */
+    --ui-text-faint: #8d8473; /* 5,14:1 — auxiliar mínimo */
+
+    /* ── Líneas ──────────────────────────────────────────────────────
+       line: decorativa (separadores, bordes de panel). line-strong:
+       límite de control, ≥3:1 (mapa §3.3/D3). */
+    --ui-line: rgb(242 237 224 / 18%);
+    --ui-line-strong: rgb(242 237 224 / 40%);
+
+    /* ── Estados ─────────────────────────────────────────────────────
+       Versiones aclaradas para texto sobre oscuro; los tonos de paleta
+       (moss, rust, steel, rust-deep, blood) fallan AA ahí y se reservan
+       para relleno/ilustración. */
+    --ui-ok: #9fbc8c; /* 9,09:1 */
+    --ui-danger: #e2796c; /* 6,50:1 */
+    --ui-info: #8fb6cf; /* 8,83:1 */
+    --ui-warn: #e09a3f; /* 8,02:1 */
+    --ui-accent: #d98b2b; /* 6,95:1 — acción/énfasis */
+    --ui-gold: #d4a72c; /* 8,47:1 — recompensa/dato */
+
+    /* ── Tema de escena ──────────────────────────────────────────────
+       Valores del prototipo (--sv-*), extraídos aquí como lenguaje
+       compartido. F3 es quien los conecta (stage, viñeta, capas); no
+       los usa el chrome de la app. */
+    --scene-bg: #0a0907; /* fondo del stage */
+    --scene-surface: #12100c; /* panel/hud sobre escena */
+    --scene-surface-2: #181510;
+    --scene-surface-3: #211c15;
+    --scene-text: #f2ede0;
+    --scene-text-soft: #cec5b3;
+    --scene-text-muted: #8d8473;
+    --scene-line: rgb(242 237 224 / 15%); /* líneas SVG de escena */
+    --scene-line-strong: rgb(242 237 224 / 28%);
+    --scene-vignette: rgb(6 5 3 / 66%); /* borde de la viñeta `paper` */
+
+    /* ── Tipografía (mapa §3.2) ──────────────────────────────────────
+       Las cuatro familias están cargadas con @font-face (arriba). Los
+       alias --ui-font-* apuntan a @theme; F1 ya los aplica vía las
+       utilidades font-display / font-sans / font-mono. */
+    --ui-font-display: var(--font-display);
+    --ui-font-ui: var(--font-ui);
+    --ui-font-sans: var(--font-sans);
+    --ui-font-mono: var(--font-mono);
+
+    /* ── Piezas de primitivas ────────────────────────────────────────
+       Nombran lo que .panel, .field, .chip, el scrim y el anillo de foco
+       consumen, para que migrar clases no obligue a inventar tokens por
+       pantalla. Apuntan a los tokens de arriba: no aportan valores
+       nuevos salvo la elevación y el scrim, que son del tema oscuro. */
+    --ui-panel-bg: var(--ui-surface-1);
+    --ui-panel-bg-raised: var(--ui-surface-2);
+    --ui-panel-bg-inset: var(--ui-surface-3);
+    --ui-panel-line: var(--ui-line);
+    --ui-panel-line-strong: var(--ui-line-strong);
+    --ui-field-bg: var(--ui-surface-2);
+    --ui-chip-bg: var(--ui-surface-2);
+    --ui-text-on-accent: var(--ui-bg); /* #0a0907 sobre --ui-accent ≈7,3:1 */
+    --ui-scrim: rgb(0 0 0 / 72%); /* modales; bg-ink/60 no separa */
+    --ui-focus-ring: var(--ui-accent);
+    --ui-focus-ring-offset: 2px;
+
+    /* Elevación del tema noche: sombras negras suaves + línea interior
+       clara. Sustituyen al «stamp» duro de 4 px en las primitivas. */
+    --ui-shadow-panel:
+      0 18px 44px rgb(0 0 0 / 42%), inset 0 1px 0 rgb(242 237 224 / 5%);
+    --ui-shadow-panel-lg:
+      0 30px 80px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(242 237 224 / 6%);
+    --ui-shadow-pop:
+      0 14px 34px rgb(0 0 0 / 50%), inset 0 1px 0 rgb(242 237 224 / 6%);
+  }
+
+  /* color-scheme nativo (selects, scrollbars, autofill, date pickers).
+     F1 lo activa poniendo data-ui-theme="night" en <html>. */
+  [data-ui-theme="night"] {
+    color-scheme: dark;
+  }
+
+  [data-ui-theme="paper"] {
+    color-scheme: light;
+  }
+
+  html {
+    background-color: var(--ui-bg);
+  }
+
   html,
   body,
   #root {
@@ -33,11 +201,17 @@
   }
 
   body {
-    @apply bg-paper font-sans text-ink antialiased;
+    background-color: var(--ui-bg);
+    color: var(--ui-text);
+    @apply font-sans antialiased;
     background-image:
-      radial-gradient(circle at 20% 15%, rgb(23 21 15 / 4%) 0 1px, transparent 1px),
-      linear-gradient(to right, rgb(23 21 15 / 4%) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(23 21 15 / 4%) 1px, transparent 1px);
+      radial-gradient(
+        circle at 20% 15%,
+        rgb(242 237 224 / 3%) 0 1px,
+        transparent 1px
+      ),
+      linear-gradient(to right, rgb(242 237 224 / 3%) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(242 237 224 / 3%) 1px, transparent 1px);
     background-size:
       7px 7px,
       28px 28px,
@@ -45,13 +219,40 @@
   }
 
   ::selection {
-    background-color: var(--color-amber);
-    color: var(--color-ink);
+    background-color: var(--ui-accent);
+    color: var(--ui-text-on-accent);
   }
 
   * {
-    scrollbar-color: var(--color-ink-faint) transparent;
+    scrollbar-color: var(--ui-line-strong) transparent;
     scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--ui-bg);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid var(--ui-bg);
+    background: rgb(242 237 224 / 24%);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(242 237 224 / 36%);
+  }
+
+  /* F1 · anillo de foco global (mapa §3.3/§6.2): 2 px --ui-accent con
+     offset 2 px para enlaces, botones, inputs, selects, pills y tabs.
+     Los elementos recortados con clip-path (.btn) lo sustituyen por un
+     anillo interior para que no desaparezca. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ui-focus-ring);
+    outline-offset: var(--ui-focus-ring-offset);
   }
 
   h1,
@@ -62,23 +263,45 @@
 }
 
 @layer components {
+  /* ── Superficies ──────────────────────────────────────────────────── */
   .panel {
-    @apply border-2 border-ink bg-paper-light;
-    box-shadow: var(--shadow-stamp);
+    border: 1px solid var(--ui-line);
+    background: linear-gradient(
+      180deg,
+      var(--ui-surface-2),
+      var(--ui-surface-1) 68%
+    );
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-panel);
   }
 
   .panel-lg {
-    @apply border-2 border-ink bg-paper-light;
-    box-shadow: var(--shadow-stamp-lg);
+    border: 1px solid var(--ui-line-strong);
+    background: linear-gradient(
+      180deg,
+      var(--ui-surface-2),
+      var(--ui-surface-1) 62%
+    );
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-panel-lg);
   }
 
+  /* Panel hundido: separa bloques «en vivo» del panel base sin volver al
+     contraste papel/tinta. Se usa donde antes había bg-ink. */
   .panel-dark {
-    @apply border-2 border-ink bg-ink text-paper;
-    box-shadow: var(--shadow-stamp);
+    border: 1px solid var(--ui-line-strong);
+    background: var(--ui-surface-3);
+    color: var(--ui-text);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 38%),
+      inset 0 1px 0 rgb(242 237 224 / 4%);
   }
 
+  /* ── Botones ──────────────────────────────────────────────────────── */
   .btn {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 border-2 border-ink px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-all duration-100 select-none;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 border px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] select-none;
+    border-color: var(--ui-line-strong);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
     clip-path: polygon(
       0 0,
       calc(100% - 10px) 0,
@@ -87,101 +310,234 @@
       10px 100%,
       0 calc(100% - 10px)
     );
-    box-shadow: 3px 3px 0 0 var(--color-ink);
+    box-shadow:
+      0 10px 24px rgb(0 0 0 / 35%),
+      inset 0 1px 0 rgb(242 237 224 / 6%);
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease,
+      transform 120ms ease,
+      box-shadow 120ms ease;
   }
 
-  .btn:hover {
-    transform: translate(1px, 1px);
-    box-shadow: 2px 2px 0 0 var(--color-ink);
+  .btn:hover:not(:disabled) {
+    border-color: rgb(242 237 224 / 58%);
+    background: var(--ui-surface-3);
   }
 
-  .btn:active {
-    transform: translate(3px, 3px);
-    box-shadow: 0 0 0 0 var(--color-ink);
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 42%);
   }
 
   .btn:disabled {
-    @apply cursor-not-allowed opacity-40;
-    transform: none;
-    box-shadow: 3px 3px 0 0 var(--color-ink);
+    @apply cursor-not-allowed;
+    border-color: var(--ui-line);
+    background: var(--ui-surface-1);
+    color: var(--ui-text-faint);
+    box-shadow: none;
+  }
+
+  /* El clip-path recorta el outline: el anillo se dibuja por dentro. */
+  .btn:focus-visible {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 2px var(--ui-focus-ring),
+      0 10px 24px rgb(0 0 0 / 35%);
   }
 
   .btn-primary {
-    @apply bg-ink text-paper;
+    border-color: var(--ui-accent);
+    background: var(--ui-accent);
+    color: var(--ui-text-on-accent);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    border-color: #e7a146;
+    background: #e7a146;
+    color: var(--ui-text-on-accent);
   }
 
   .btn-accent {
-    @apply bg-rust text-paper;
+    border-color: var(--ui-danger);
+    background: var(--ui-danger);
+    color: var(--ui-text-on-accent);
+  }
+
+  .btn-accent:hover:not(:disabled) {
+    border-color: #ea8c80;
+    background: #ea8c80;
+    color: var(--ui-text-on-accent);
   }
 
   .btn-ghost {
-    @apply bg-paper-light text-ink;
+    border-color: var(--ui-line-strong);
+    background: transparent;
+    color: var(--ui-text);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    border-color: rgb(242 237 224 / 58%);
+    background: rgb(242 237 224 / 6%);
   }
 
   .btn-dark-ghost {
-    @apply border-paper/70 bg-transparent text-paper;
-    box-shadow: 3px 3px 0 0 rgb(242 237 224 / 35%);
+    border-color: var(--ui-line);
+    background: rgb(242 237 224 / 3%);
+    color: var(--ui-text-muted);
   }
 
-  .btn-dark-ghost:hover {
-    box-shadow: 2px 2px 0 0 rgb(242 237 224 / 35%);
+  .btn-dark-ghost:hover:not(:disabled) {
+    border-color: var(--ui-line-strong);
+    background: rgb(242 237 224 / 8%);
+    color: var(--ui-text);
   }
 
   .btn-sm {
-    @apply px-2.5 py-1.5 text-[10px] tracking-[0.12em];
-    box-shadow: 2px 2px 0 0 var(--color-ink);
+    @apply gap-1.5 px-2.5 py-1.5 text-[10px] tracking-[0.1em];
+    box-shadow:
+      0 6px 16px rgb(0 0 0 / 30%),
+      inset 0 1px 0 rgb(242 237 224 / 6%);
   }
 
-  .btn-sm:hover {
-    box-shadow: 1px 1px 0 0 var(--color-ink);
+  .btn-sm:focus-visible {
+    box-shadow:
+      inset 0 0 0 2px var(--ui-focus-ring),
+      0 6px 16px rgb(0 0 0 / 30%);
   }
 
+  /* Botón-icono cuadrado para cabeceras de modal, drawer y selectores. */
+  .icon-btn {
+    @apply inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center border transition-colors;
+    border-color: var(--ui-line-strong);
+    background: transparent;
+    color: var(--ui-text-muted);
+  }
+
+  .icon-btn:hover {
+    border-color: rgb(242 237 224 / 58%);
+    background: var(--ui-surface-3);
+    color: var(--ui-text);
+  }
+
+  /* ── Formularios ──────────────────────────────────────────────────── */
   .field {
-    @apply w-full border-2 border-ink bg-white/65 px-3 py-2 text-sm text-ink outline-none transition-colors;
+    @apply w-full px-3 py-2 text-sm transition-colors;
+    border: 1px solid var(--ui-line-strong);
+    background-color: var(--ui-field-bg);
+    color: var(--ui-text);
+  }
+
+  .field::placeholder {
+    color: var(--ui-text-faint);
+  }
+
+  .field:hover:not(:disabled) {
+    border-color: rgb(242 237 224 / 58%);
   }
 
   .field:focus {
-    @apply bg-white;
-    box-shadow: inset 0 0 0 2px rgb(217 139 43 / 55%);
+    border-color: var(--ui-accent);
+    background-color: var(--ui-surface-3);
+  }
+
+  .field:focus-visible {
+    outline: 2px solid var(--ui-focus-ring);
+    outline-offset: var(--ui-focus-ring-offset);
   }
 
   .field:disabled {
-    @apply cursor-not-allowed bg-paper-deep/60 text-ink-faint;
+    @apply cursor-not-allowed;
+    border-color: var(--ui-line);
+    background-color: var(--ui-surface-1);
+    color: var(--ui-text-faint);
   }
 
   .field-label {
-    @apply mb-1.5 block text-[10px] font-bold uppercase tracking-[0.18em] text-ink-soft;
+    @apply mb-1.5 block font-ui text-[10px] font-bold uppercase tracking-[0.16em];
+    color: var(--ui-text-muted);
   }
 
   .field-hint {
-    @apply mt-1 block text-[11px] leading-snug text-ink-faint;
+    @apply mt-1 block text-[11px] leading-snug;
+    color: var(--ui-text-faint);
   }
 
+  /* ── Chips ────────────────────────────────────────────────────────── */
   .chip {
-    @apply inline-flex items-center gap-1 border border-ink/60 bg-paper px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft;
+    @apply inline-flex items-center gap-1 border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em];
+    border-color: var(--ui-line);
+    background: var(--ui-chip-bg);
+    color: var(--ui-text-muted);
   }
 
   .chip-accent {
-    @apply border-ink bg-amber/25 text-ink;
+    border-color: rgb(217 139 43 / 55%);
+    background: rgb(217 139 43 / 14%);
+    color: var(--ui-accent);
   }
 
   .chip-rust {
-    @apply border-rust/60 bg-rust/10 text-rust-deep;
+    border-color: rgb(226 121 108 / 55%);
+    background: rgb(226 121 108 / 12%);
+    color: var(--ui-danger);
   }
 
+  /* ── Datos ────────────────────────────────────────────────────────── */
   .stat-tile {
-    @apply border-2 border-ink bg-paper-light px-3 py-2;
+    @apply border px-3 py-2;
+    border-color: var(--ui-line);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
   }
 
   .display {
     font-family: var(--font-display);
-    @apply uppercase leading-[0.9] tracking-[-0.02em];
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    @apply uppercase leading-[0.9];
+  }
+
+  /* Darker Grotesque es variable: los usos sueltos de font-display (marcas,
+     cifras pequeñas) necesitan el peso alto que antes daba Arial Black. */
+  .font-display {
+    font-weight: 700;
   }
 
   .mono-label {
-    @apply font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint;
+    @apply font-mono text-[10px] uppercase tracking-[0.18em];
+    color: var(--ui-text-faint);
   }
 
+  /* ── Modales ──────────────────────────────────────────────────────── */
+  .modal-scrim {
+    background: var(--ui-scrim);
+    backdrop-filter: blur(3px);
+  }
+
+  .modal-panel {
+    border: 1px solid var(--ui-line-strong);
+    background: linear-gradient(
+      180deg,
+      var(--ui-surface-2),
+      var(--ui-surface-1) 70%
+    );
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-panel-lg);
+  }
+
+  .modal-head {
+    border-bottom: 1px solid var(--ui-line);
+    background: var(--ui-surface-2);
+  }
+
+  .modal-foot {
+    border-top: 1px solid var(--ui-line);
+    background: var(--ui-surface-1);
+  }
+
+  /* ── Formas y enlaces ─────────────────────────────────────────────── */
   .cut-corner {
     clip-path: polygon(
       0 0,
@@ -202,42 +558,122 @@
   }
 
   .nav-link {
-    @apply flex items-center gap-3 border-l-4 border-transparent px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-paper/65 transition-colors;
+    @apply flex items-center gap-3 border-l-2 border-transparent px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] transition-colors;
+    color: var(--ui-text-muted);
   }
 
   .nav-link:hover {
-    @apply bg-paper/5 text-paper;
+    background: rgb(242 237 224 / 6%);
+    color: var(--ui-text);
   }
 
   .nav-link-active {
-    @apply border-amber bg-paper/10 text-paper;
+    border-left-color: var(--ui-accent);
+    background: rgb(217 139 43 / 10%);
+    color: var(--ui-text);
   }
 
   .table-line {
-    @apply border-b border-ink/15;
+    border-bottom: 1px solid var(--ui-line);
   }
 
   .link-quiet {
-    @apply underline decoration-ink/30 decoration-1 underline-offset-4 hover:decoration-rust;
+    @apply underline decoration-1 underline-offset-4;
+    text-decoration-color: var(--ui-line-strong);
+  }
+
+  .link-quiet:hover {
+    text-decoration-color: var(--ui-accent);
   }
 }
 
 @layer utilities {
+  /* F0 · cifras tabulares (mapa §3.2). Utilidad opt-in, NO global. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* F1 · vocabulario semántico reutilizable por primitivas y, cuando
+     toque, por F2–F7. Evita repetir text-[var(--ui-*)] por componente. */
+  .text-ui {
+    color: var(--ui-text);
+  }
+  .text-ui-muted {
+    color: var(--ui-text-muted);
+  }
+  .text-ui-faint {
+    color: var(--ui-text-faint);
+  }
+  .text-ui-accent {
+    color: var(--ui-accent);
+  }
+  .text-ui-ok {
+    color: var(--ui-ok);
+  }
+  .text-ui-danger {
+    color: var(--ui-danger);
+  }
+  .text-ui-info {
+    color: var(--ui-info);
+  }
+  .text-ui-warn {
+    color: var(--ui-warn);
+  }
+  .text-ui-gold {
+    color: var(--ui-gold);
+  }
+  .text-ui-on-accent {
+    color: var(--ui-text-on-accent);
+  }
+  .bg-ui {
+    background-color: var(--ui-bg);
+  }
+  .bg-ui-surface-1 {
+    background-color: var(--ui-surface-1);
+  }
+  .bg-ui-surface-2 {
+    background-color: var(--ui-surface-2);
+  }
+  .bg-ui-surface-3 {
+    background-color: var(--ui-surface-3);
+  }
+  .bg-ui-accent {
+    background-color: var(--ui-accent);
+  }
+  .bg-ui-ok {
+    background-color: var(--ui-ok);
+  }
+  .bg-ui-danger {
+    background-color: var(--ui-danger);
+  }
+  .bg-ui-faint {
+    background-color: var(--ui-text-faint);
+  }
+  .bg-ui-muted {
+    background-color: var(--ui-text-muted);
+  }
+  .border-ui-line {
+    border-color: var(--ui-line);
+  }
+  .border-ui-line-strong {
+    border-color: var(--ui-line-strong);
+  }
+
   .text-shadow-paper {
-    text-shadow: 1px 1px 0 rgb(242 237 224 / 35%);
+    text-shadow: 1px 1px 0 rgb(0 0 0 / 55%);
   }
 
   .bg-grid {
     background-image:
-      linear-gradient(to right, rgb(23 21 15 / 7%) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(23 21 15 / 7%) 1px, transparent 1px);
+      linear-gradient(to right, rgb(242 237 224 / 6%) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(242 237 224 / 6%) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
   .bg-hatch {
     background-image: repeating-linear-gradient(
       45deg,
-      rgb(23 21 15 / 7%) 0 1px,
+      rgb(242 237 224 / 6%) 0 1px,
       transparent 1px 7px
     );
   }
@@ -278,14 +714,45 @@
   }
 }
 
-/* Indicador de desplegable para los <select> del sistema de formularios. */
+/* Indicador de desplegable para los <select> del sistema de formularios.
+   Con color-scheme: dark el control nativo ya es oscuro; la flecha se
+   dibuja en el color de texto del tema. */
 select.field {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2317150f' stroke-width='2'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23f2ede0' stroke-width='2'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.6rem center;
   background-size: 0.65rem;
 }
 
 select.field:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   F1 · Puente para pantallas que aún no migran (se retira en F4–F7)
+   ────────────────────────────────────────────────────────────────────────
+   .panel-dark es una superficie oscura del tema noche, pero Dashboard y
+   TablePage (F4) escriben su contenido con text-paper* / border-paper*, que
+   en el tema claro significaban «texto y línea claros sobre bloque oscuro».
+   Tras el reencuadre de la paleta, `paper` es una superficie y esos textos
+   quedarían oscuros sobre oscuro. Dentro de .panel-dark recuperan su
+   significado original.
+   Van sin @layer a propósito: así ganan a las utilidades de Tailwind, que
+   se emiten en la capa utilities.
+   ════════════════════════════════════════════════════════════════════════ */
+[data-ui-theme="night"] .panel-dark [class*="text-paper"] {
+  color: var(--ui-text);
+}
+
+[data-ui-theme="night"] .panel-dark [class*="text-paper/6"],
+[data-ui-theme="night"] .panel-dark [class*="text-paper/5"] {
+  color: var(--ui-text-muted);
+}
+
+[data-ui-theme="night"] .panel-dark [class*="text-paper/4"] {
+  color: var(--ui-text-faint);
+}
+
+[data-ui-theme="night"] .panel-dark [class*="border-paper"] {
+  border-color: var(--ui-line);
 }

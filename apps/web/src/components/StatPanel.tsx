@@ -18,7 +18,7 @@ const STAT_ACCENT: Record<StatKey, string> = {
   atk: "bg-amber/20",
   spd: "bg-moss/15",
   luck: "bg-gold/20",
-  skillSlots: "bg-paper-deep",
+  skillSlots: "bg-ui-surface-2",
 };
 
 export function StatPanel({
@@ -69,18 +69,18 @@ export function StatPanel({
           return (
             <div
               key={stat}
-              className={cx("relative border-2 border-ink px-3 py-2", STAT_ACCENT[stat])}
+              className={cx("relative border border-ui-line-strong px-3 py-2", STAT_ACCENT[stat])}
               title={STAT_HINTS[stat]}
             >
               <div className="flex items-start justify-between gap-1">
-                <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ink-soft">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ui-muted">
                   {STAT_LABELS[stat]}
                 </span>
                 {delta !== 0 ? (
                   <span
                     className={cx(
                       "font-mono text-[9px] font-bold",
-                      delta > 0 ? "text-moss" : "text-rust",
+                      delta > 0 ? "text-ui-ok" : "text-ui-danger",
                     )}
                   >
                     {signed(delta)}
@@ -90,21 +90,21 @@ export function StatPanel({
               <div className="mt-0.5 flex items-baseline gap-1.5">
                 <span className="font-display text-2xl leading-none">{value}</span>
                 {delta !== 0 ? (
-                  <span className="font-mono text-[9px] text-ink-faint">base {base}</span>
+                  <span className="font-mono text-[9px] text-ui-faint">base {base}</span>
                 ) : null}
               </div>
               {!compact && stat === "def" ? (
-                <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ink-faint">
+                <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ui-faint">
                   mitiga {Math.round(mitigation(value, rules) * 100)}%
                 </div>
               ) : null}
               {!compact && stat === "luck" ? (
-                <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ink-faint">
+                <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ui-faint">
                   cara {Math.round(coinChance(value, rules) * 100)}%
                 </div>
               ) : null}
               {!compact && stat === "skillSlots" ? (
-                <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ink-faint">
+                <div className="mt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ui-faint">
                   tope {rules.maxSkillSlots}
                 </div>
               ) : null}
@@ -129,7 +129,7 @@ export function StatPanel({
       ) : null}
 
       {grouped.size > 0 ? (
-        <div className="border-t-2 border-ink/15 pt-3">
+        <div className="border-t border-ui-line pt-3">
           <div className="mono-label mb-1.5">Desglose de modificadores</div>
           <div className="space-y-1.5">
             {[...grouped.values()].map((group) => (
@@ -141,11 +141,11 @@ export function StatPanel({
                   )}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="font-semibold text-ink">{group.name}</span>
-                  <span className="ml-1 font-mono text-[9px] uppercase text-ink-faint">
+                  <span className="font-semibold text-ui">{group.name}</span>
+                  <span className="ml-1 font-mono text-[9px] uppercase text-ui-faint">
                     {group.kind === "item" ? "objeto" : "efecto"}
                   </span>
-                  <span className="mt-0.5 block font-mono text-[10px] text-ink-soft">
+                  <span className="mt-0.5 block font-mono text-[10px] text-ui-muted">
                     {group.entries
                       .map(
                         (entry) =>
@@ -165,14 +165,14 @@ export function StatPanel({
       ) : null}
 
       {derived.warnings.length > 0 ? (
-        <div className="border-2 border-rust/50 bg-rust/5 p-2.5">
-          <div className="mb-1 flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-rust-deep">
+        <div className="border border-rust/50 bg-rust/5 p-2.5">
+          <div className="mb-1 flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ui-danger">
             <Icon name="alert" size={12} /> Avisos de la ficha
           </div>
-          <ul className="space-y-1 text-[11px] leading-snug text-ink-soft">
+          <ul className="space-y-1 text-[11px] leading-snug text-ui-muted">
             {derived.warnings.map((warning, index) => (
               <li key={index} className="flex gap-1.5">
-                <span className="text-rust">·</span>
+                <span className="text-ui-danger">·</span>
                 {warning}
               </li>
             ))}

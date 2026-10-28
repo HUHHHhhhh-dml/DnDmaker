@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import type { IconName } from "../components/Icons";
 import { Icon } from "../components/Icons";
 import { EditCampaignModal, NewCampaignModal } from "../components/CampaignModals";
-import { Button, LoadingBlock, NoticeBar, cx } from "../components/ui";
+import { Button, LoadingBlock, NoticeBar, Select, cx } from "../components/ui";
 import { useAppStore } from "../store/useAppStore";
 import { useLiveStore } from "../store/useLiveStore";
 
@@ -112,32 +112,34 @@ export function Layout() {
   );
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
+    <div className="min-h-screen text-ui lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
       {(busy || campaignLoading) && (
-        <div className="fixed inset-x-0 top-0 z-[70] h-1 overflow-hidden bg-amber/30">
-          <div className="h-full w-1/3 animate-pulse bg-rust" />
+        <div className="fixed inset-x-0 top-0 z-[70] h-1 overflow-hidden bg-[rgba(217,139,43,0.18)]">
+          <div className="h-full w-1/3 animate-pulse bg-ui-accent" />
         </div>
       )}
 
-      <aside className="hidden border-r-2 border-ink bg-ink lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
+      {/* Sidebar de escritorio: superficie-1 sobre el fondo de app, separado
+          por línea, no por el contraste papel/tinta de antes. */}
+      <aside className="hidden border-r border-ui-line bg-ui-surface-1 lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
         {sidebar}
       </aside>
 
       <header
         className={cx(
-          "sticky top-0 z-30 flex items-center justify-between border-b-2 border-ink bg-ink px-4 py-3 text-paper lg:hidden",
+          "sticky top-0 z-30 flex items-center justify-between border-b border-ui-line bg-ui-surface-1 px-4 py-3 text-ui lg:hidden",
           mobileOpen && "invisible",
         )}
       >
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center border border-paper/60 bg-paper text-ink pentagon">
-            <span className="font-display text-[11px]">P</span>
+          <div className="pentagon flex h-8 w-8 items-center justify-center border border-ui-line-strong bg-ui-surface-3">
+            <span className="display text-[11px] text-ui-accent">P</span>
           </div>
-          <span className="font-display text-sm uppercase tracking-wide">Protocol Life</span>
+          <span className="display text-sm uppercase tracking-wide text-ui">Protocol Life</span>
         </div>
         <button
           type="button"
-          className="flex h-9 w-9 items-center justify-center border-2 border-paper/60"
+          className="icon-btn h-9 w-9"
           onClick={() => setMobileOpen(true)}
           aria-label="Abrir menú"
         >
@@ -150,14 +152,14 @@ export function Layout() {
           <button
             type="button"
             aria-label="Cerrar menú"
-            className="absolute inset-0 bg-ink/80"
+            className="absolute inset-0 bg-[rgba(0,0,0,0.72)] backdrop-blur-[2px]"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-[290px] animate-rise overflow-y-auto border-r-2 border-ink bg-ink">
+          <div className="absolute inset-y-0 left-0 w-[290px] animate-rise overflow-y-auto border-r border-ui-line bg-ui-surface-1">
             <div className="flex justify-end p-2">
               <button
                 type="button"
-                className="flex h-8 w-8 items-center justify-center border border-paper/50 text-paper"
+                className="icon-btn"
                 onClick={() => setMobileOpen(false)}
                 aria-label="Cerrar menú"
               >
@@ -177,7 +179,7 @@ export function Layout() {
             <Outlet context={{ onEditCampaign: () => setEditCampaignOpen(true) }} />
           )}
         </div>
-        <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 border-t border-ink/15 px-4 py-5 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint sm:px-8">
+        <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 border-t border-ui-line px-4 py-5 font-mono text-[10px] uppercase tracking-[0.14em] text-ui-faint sm:px-8">
           <span>PROTOCOL LIFE · Fase 2 — mesa en vivo</span>
           <span>SQLite local · LAN misma WiFi · sin cuentas</span>
         </footer>
@@ -219,43 +221,44 @@ function SidebarContent({
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="border-b border-paper/15 px-5 pb-5 pt-6">
+      <div className="border-b border-ui-line px-5 pb-5 pt-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center border border-paper/60 bg-paper pentagon">
-            <span className="font-display text-sm text-rust">PL</span>
+          <div className="pentagon flex h-10 w-10 items-center justify-center border border-ui-line-strong bg-ui-surface-3">
+            <span className="display text-sm text-ui-accent">PL</span>
           </div>
           <div>
-            <div className="font-display text-lg leading-none tracking-wide text-paper">
+            <div className="display text-lg leading-none tracking-[0.04em] text-ui">
               PROTOCOL
               <br />
               LIFE
             </div>
-            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-paper/50">
+            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-ui-faint">
               DM Studio · v0.2
             </div>
           </div>
         </div>
 
         <div className="mt-6">
-          <label className="mb-1.5 block font-mono text-[9px] uppercase tracking-[0.2em] text-paper/45">
+          <label className="mb-1.5 block font-ui text-[9px] font-bold uppercase tracking-[0.18em] text-ui-faint">
             Campaña activa
           </label>
           <div className="flex gap-1.5">
-            <select
+            <Select
               value={activeCampaignId ?? ""}
-              onChange={(event) => void selectCampaign(event.target.value)}
-              className="min-w-0 flex-1 cursor-pointer border-2 border-paper/30 bg-ink px-2 py-2 text-xs font-semibold text-paper outline-none focus:border-amber"
+              onValueChange={(value) => void selectCampaign(value)}
+              aria-label="Campaña activa"
+              className="min-w-0 flex-1 px-2 py-2 text-xs font-semibold"
             >
               {campaigns.map((entry) => (
-                <option key={entry.id} value={entry.id} className="bg-ink text-paper">
+                <option key={entry.id} value={entry.id} className="bg-ui-surface-2 text-ui">
                   {entry.name}
                 </option>
               ))}
-            </select>
+            </Select>
             <button
               type="button"
               onClick={onEditCampaign}
-              className="flex h-9 w-9 shrink-0 items-center justify-center border-2 border-paper/30 text-paper/80 transition-colors hover:border-amber hover:text-amber"
+              className="icon-btn h-9 w-9 shrink-0 hover:border-amber hover:text-amber"
               title="Ajustes de campaña"
               aria-label="Ajustes de campaña"
             >
@@ -263,7 +266,7 @@ function SidebarContent({
             </button>
           </div>
           {campaign?.description ? (
-            <p className="mt-2 line-clamp-2 text-[11px] leading-snug text-paper/45">
+            <p className="mt-2 line-clamp-2 text-[11px] leading-snug text-ui-faint">
               {campaign.description}
             </p>
           ) : null}
@@ -271,7 +274,7 @@ function SidebarContent({
       </div>
 
       <nav className="flex-1 py-3">
-        <div className="px-5 pb-2 font-mono text-[9px] uppercase tracking-[0.24em] text-paper/35">
+        <div className="px-5 pb-2 font-mono text-[9px] uppercase tracking-[0.22em] text-ui-faint">
           Estudio
         </div>
         {NAV_ITEMS.map((item) => (
@@ -286,7 +289,7 @@ function SidebarContent({
             <Icon name={item.icon} size={16} />
             <span className="flex-1">{item.label}</span>
             {item.countKey ? (
-              <span className="font-mono text-[10px] text-paper/40">
+              <span className="tnum font-mono text-[10px] text-ui-faint">
                 {String(counts[item.countKey] ?? 0).padStart(2, "0")}
               </span>
             ) : null}
@@ -297,19 +300,18 @@ function SidebarContent({
           <div className="mt-5 px-5">
             <Link
               to="/table"
-              className="block border border-amber/60 bg-amber/10 px-3 py-2 transition-colors hover:bg-amber/20"
+              className="block border border-[rgba(217,139,43,0.45)] bg-[rgba(217,139,43,0.08)] px-3 py-2 transition-colors hover:bg-[rgba(217,139,43,0.14)]"
             >
-              <div className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-amber">
+              <div className="flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ui-accent">
                 <span
-                  className={
-                    liveConnected
-                      ? "h-1.5 w-1.5 rounded-full bg-emerald-400"
-                      : "h-1.5 w-1.5 rounded-full bg-amber"
-                  }
+                  className={cx(
+                    "h-1.5 w-1.5 rounded-full",
+                    liveConnected ? "bg-ui-ok" : "bg-ui-accent",
+                  )}
                 />
                 Sala en vivo · {liveSession.code}
               </div>
-              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-paper/45">
+              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
                 {liveSession.players.length} jugador
                 {liveSession.players.length === 1 ? "" : "es"} · abrir mesa
               </div>
@@ -317,11 +319,11 @@ function SidebarContent({
           </div>
         ) : null}
 
-        <div className="mt-6 px-5 pb-2 font-mono text-[9px] uppercase tracking-[0.24em] text-paper/35">
+        <div className="mt-6 px-5 pb-2 font-mono text-[9px] uppercase tracking-[0.22em] text-ui-faint">
           En marcha
         </div>
         <div className="space-y-1 px-5">
-          <p className="text-[10px] leading-relaxed text-paper/40">
+          <p className="text-[10px] leading-relaxed text-ui-faint">
             Fase 2: mesa LAN con link + PIN.
             <br />
             Fase 3: encuentros y combate.
@@ -329,9 +331,9 @@ function SidebarContent({
         </div>
       </nav>
 
-      <div className="border-t border-paper/15 p-4">
-        <div className="mb-2 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-paper/40">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      <div className="border-t border-ui-line p-4">
+        <div className="mb-2 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-ui-faint">
+          <span className="h-1.5 w-1.5 rounded-full bg-ui-ok" />
           SQLite local · guardado automático
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -350,7 +352,7 @@ function SidebarContent({
         <button
           type="button"
           onClick={onNewCampaign}
-          className="mt-2 flex w-full items-center justify-center gap-2 border border-dashed border-paper/25 py-2 font-mono text-[9px] uppercase tracking-[0.18em] text-paper/50 transition-colors hover:border-amber hover:text-amber"
+          className="mt-2 flex w-full items-center justify-center gap-2 border border-dashed border-ui-line-strong py-2 font-mono text-[9px] uppercase tracking-[0.16em] text-ui-muted transition-colors hover:border-amber hover:text-amber"
         >
           <Icon name="plus" size={12} /> Nueva campaña
         </button>
@@ -361,12 +363,12 @@ function SidebarContent({
 
 function Splash() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-ink text-paper">
-      <div className="flex h-20 w-20 animate-pulse items-center justify-center border-2 border-paper/60 bg-paper pentagon">
-        <span className="font-display text-xl text-rust">PL</span>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-ui text-ui">
+      <div className="pentagon flex h-20 w-20 animate-pulse items-center justify-center border border-ui-line-strong bg-ui-surface-3">
+        <span className="display text-xl text-ui-accent">PL</span>
       </div>
-      <div className="font-display text-2xl uppercase tracking-[0.08em]">Protocol Life</div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-paper/50">
+      <div className="display text-2xl uppercase tracking-[0.06em] text-ui">Protocol Life</div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ui-faint">
         Abriendo el estudio del DM…
       </div>
     </div>
@@ -385,24 +387,29 @@ function Welcome({
   const loadAll = useAppStore((state) => state.loadAll);
 
   return (
-    <div className="grid min-h-screen bg-paper lg:grid-cols-[1.15fr_1fr]">
-      <section className="relative flex flex-col justify-between overflow-hidden border-b-2 border-ink bg-ink p-8 text-paper sm:p-12 lg:border-b-0 lg:border-r-2">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rotate-12 border-2 border-paper/10 bg-hatch opacity-40" />
+    <div className="grid min-h-screen bg-ui text-ui lg:grid-cols-[1.15fr_1fr]">
+      {/* Hero: superficie-1 con retícula y resplandores cálidos del prototipo. */}
+      <section className="relative flex flex-col justify-between overflow-hidden border-b border-ui-line bg-ui-surface-1 p-8 sm:p-12 lg:border-b-0 lg:border-r">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-20 -top-20 h-72 w-72 rotate-12 border border-ui-line bg-hatch opacity-40" />
+          <div className="absolute -bottom-32 left-1/3 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(217,139,43,0.16),transparent_65%)] blur-2xl" />
+          <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(161,38,30,0.18),transparent_65%)] blur-2xl" />
+        </div>
         <div className="relative">
           <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center border-2 border-paper/70 bg-paper pentagon">
-              <span className="font-display text-sm text-rust">PL</span>
+            <div className="pentagon flex h-11 w-11 items-center justify-center border border-ui-line-strong bg-ui-surface-3">
+              <span className="display text-sm text-ui-accent">PL</span>
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-paper/60">
+            <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ui-faint">
               Protocol Life · DM Studio
             </div>
           </div>
           <h1 className="display text-6xl leading-[0.85] sm:text-8xl">
             PROTOCOL
             <br />
-            <span className="text-amber">LIFE</span>
+            <span className="text-ui-accent">LIFE</span>
           </h1>
-          <p className="mt-6 max-w-md text-sm leading-relaxed text-paper/70">
+          <p className="mt-6 max-w-md text-sm leading-relaxed text-ui-muted">
             El estudio del DM: crea tu campaña, tu arsenal de objetos, tus skills,
             tus efectos y las fichas de tu mesa. Todo local, todo editable, sin
             tocar código.
@@ -415,12 +422,12 @@ function Welcome({
             ["02", "Fichas", "Equipo, slots y stats derivados."],
             ["03", "Persistencia", "SQLite local + export/import."],
           ].map(([index, title, text]) => (
-            <div key={index} className="border border-paper/20 p-3">
-              <div className="font-mono text-[10px] text-amber">{index}</div>
-              <div className="mt-2 font-mono text-[9px] font-bold uppercase tracking-[0.16em]">
+            <div key={index} className="border border-ui-line bg-ui-surface-2 p-3">
+              <div className="font-mono text-[10px] text-ui-accent">{index}</div>
+              <div className="mt-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ui">
                 {title}
               </div>
-              <div className="mt-1 text-[10px] leading-snug text-paper/45">{text}</div>
+              <div className="mt-1 text-[10px] leading-snug text-ui-faint">{text}</div>
             </div>
           ))}
         </div>
@@ -429,25 +436,25 @@ function Welcome({
       <section className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
           <div className="mono-label mb-2 flex items-center gap-2">
-            <span className="h-2 w-2 bg-rust" />
+            <span className="h-2 w-2 bg-ui-accent" />
             Primera vez
           </div>
-          <h2 className="display text-3xl">Abre tu mesa</h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+          <h2 className="display text-3xl text-ui">Abre tu mesa</h2>
+          <p className="mt-3 text-sm leading-relaxed text-ui-muted">
             Crea una campaña nueva con contenido de ejemplo o importa una que
             exportaste antes. Los datos se guardan en el SQLite de tu máquina.
           </p>
 
           {error ? (
-            <div className="mt-5 border-2 border-rust bg-rust/10 p-3 text-sm text-rust-deep">
-              <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em]">
+            <div className="mt-5 border border-[rgba(226,121,108,0.55)] bg-[rgba(226,121,108,0.08)] p-3 text-sm text-ui-danger">
+              <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
                 <Icon name="alert" size={14} /> No hay conexión con el servidor
               </div>
               {error}
               <button
                 type="button"
                 onClick={() => void loadAll()}
-                className="mt-2 block font-mono text-[10px] font-bold uppercase tracking-[0.16em] underline"
+                className="mt-2 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] underline"
               >
                 Reintentar
               </button>
@@ -462,7 +469,7 @@ function Welcome({
               Importar campaña (.json)
             </Button>
           </div>
-          <div className="mt-6 border-t-2 border-ink/15 pt-4 font-mono text-[10px] uppercase leading-relaxed tracking-[0.14em] text-ink-faint">
+          <div className="mt-6 border-t border-ui-line pt-4 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-ui-faint">
             Fase 1 · sin red, sin cuentas
             <br />
             UI en español · contenido editable

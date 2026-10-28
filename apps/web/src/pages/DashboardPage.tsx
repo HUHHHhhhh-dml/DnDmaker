@@ -93,9 +93,9 @@ export function DashboardPage() {
               <Link
                 key={entry.key}
                 to={entry.to}
-                className="group border-2 border-ink bg-paper-light p-3 transition-colors hover:bg-paper-deep"
+                className="group border border-ui-line-strong bg-ui-surface-2 p-3 transition-colors hover:bg-paper-deep"
               >
-                <div className="flex items-center justify-between text-ink-faint">
+                <div className="flex items-center justify-between text-ui-faint">
                   <Icon name={entry.icon} size={15} />
                   <span className="font-mono text-[9px] opacity-0 transition-opacity group-hover:opacity-100">
                     →
@@ -104,7 +104,7 @@ export function DashboardPage() {
                 <div className="mt-2 font-display text-3xl leading-none">
                   {String(entry.value).padStart(2, "0")}
                 </div>
-                <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-soft">
+                <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.16em] text-ui-muted">
                   {entry.label}
                 </div>
               </Link>
@@ -136,7 +136,7 @@ export function DashboardPage() {
               action={
                 <Link
                   to="/characters"
-                  className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rust hover:underline"
+                  className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ui-accent hover:underline"
                 >
                   Ver todas →
                 </Link>
@@ -175,7 +175,7 @@ export function DashboardPage() {
                 action={
                   <Link
                     to="/items"
-                    className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rust hover:underline"
+                    className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ui-accent hover:underline"
                   >
                     Biblioteca →
                   </Link>
@@ -197,7 +197,7 @@ export function DashboardPage() {
                 action={
                   <Link
                     to="/encounters"
-                    className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rust hover:underline"
+                    className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ui-accent hover:underline"
                   >
                     Ver todos →
                   </Link>
@@ -225,7 +225,7 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => context?.onEditCampaign?.()}
-                className="text-ink-faint transition-colors hover:text-rust"
+                className="text-ui-faint transition-colors hover:text-amber"
                 aria-label="Editar reglas"
               >
                 <Icon name="edit" size={14} />
@@ -242,9 +242,9 @@ export function DashboardPage() {
                 ["HP entre combates", HP_PERSISTENCE_LABELS[campaign.rules.hpPersistence]],
                 ["Jugadores", `máx. ${campaign.settings.maxPlayers}`],
               ].map(([label, value]) => (
-                <div key={label} className="flex items-start justify-between gap-3 border-b border-ink/10 pb-1.5">
-                  <dt className="text-ink-soft">{label}</dt>
-                  <dd className="text-right font-mono text-[10px] font-semibold text-ink">{value}</dd>
+                <div key={label} className="flex items-start justify-between gap-3 border-b border-ui-line pb-1.5">
+                  <dt className="text-ui-muted">{label}</dt>
+                  <dd className="text-right font-mono text-[10px] font-semibold text-ui">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -257,22 +257,22 @@ export function DashboardPage() {
                 Estado del estudio
               </h2>
             </div>
-            <p className="text-[11px] leading-relaxed text-paper/60">
+            <p className="text-[11px] leading-relaxed text-ui-muted">
               {plural(campaign.content.characters.length, "ficha", "fichas")} ·{" "}
               {players.length} jugador{players.length === 1 ? "" : "es"} · {enemies.length}{" "}
               enemigo{enemies.length === 1 ? "" : "s"}
             </p>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               {(["player", "npc", "enemy"] as CharacterKind[]).map((kind) => (
-                <div key={kind} className="border border-paper/20 px-1 py-2">
+                <div key={kind} className="border border-ui-line px-1 py-2">
                   <div className="font-display text-xl">{kindCounts[kind]}</div>
-                  <div className="font-mono text-[8px] uppercase tracking-[0.12em] text-paper/45">
+                  <div className="font-mono text-[8px] uppercase tracking-[0.12em] text-ui-faint">
                     {CHARACTER_KIND_LABELS[kind]}
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-3 border-t border-paper/15 pt-2 font-mono text-[9px] uppercase tracking-[0.14em] text-paper/40">
+            <div className="mt-3 border-t border-ui-line pt-2 font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
               Actualizada {formatDateTime(campaign.updatedAt)}
             </div>
           </div>
@@ -291,7 +291,7 @@ export function DashboardPage() {
                 return (
                   <span key={slot} className="chip">
                     {label}
-                    <span className="font-bold text-ink">{equipped}</span>
+                    <span className="font-bold text-ui">{equipped}</span>
                   </span>
                 );
               })}
@@ -306,9 +306,9 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="border-2 border-dashed border-ink/30 p-4">
+          <div className="border border-dashed border-ui-line p-4">
             <div className="mono-label mb-2">Fase 2 · mesa en vivo</div>
-            <ul className="space-y-1.5 text-[11px] leading-snug text-ink-soft">
+            <ul className="space-y-1.5 text-[11px] leading-snug text-ui-muted">
               {[
                 "Sala LAN con link + PIN",
                 "Fichas compartidas en vivo",
@@ -317,17 +317,17 @@ export function DashboardPage() {
                 "Party y presencia en tiempo real",
               ].map((entry) => (
                 <li key={entry} className="flex items-start gap-1.5">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-moss" />
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-ui-ok" />
                   {entry}
                 </li>
               ))}
             </ul>
-            <p className="mt-3 border-t border-ink/15 pt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+            <p className="mt-3 border-t border-ui-line pt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
               Combate y encuentros: Fase 3
             </p>
             <Link
               to="/table"
-              className="mt-3 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-rust hover:underline"
+              className="mt-3 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ui-accent hover:underline"
             >
               Abrir la mesa →
             </Link>

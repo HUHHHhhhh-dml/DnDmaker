@@ -190,8 +190,8 @@ export function TablePage() {
             <>
               <span
                 className={cx(
-                  "inline-flex items-center gap-2 border border-ink px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em]",
-                  connected ? "bg-moss/15 text-moss" : "bg-amber/20 text-ink",
+                  "inline-flex items-center gap-2 border border-ui-line-strong px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em]",
+                  connected ? "bg-moss/15 text-ui-ok" : "bg-amber/20 text-ui",
                 )}
               >
                 <span
@@ -220,7 +220,7 @@ export function TablePage() {
       />
 
       {liveError ? (
-        <div className="mb-4 border-2 border-rust bg-rust/10 p-3 text-sm text-rust-deep">
+        <div className="mb-4 border-2 border-rust bg-rust/10 p-3 text-sm text-ui-danger">
           <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em]">
             <Icon name="alert" size={14} /> Aviso de la mesa
           </div>
@@ -229,7 +229,7 @@ export function TablePage() {
       ) : null}
 
       {combatError && !combat ? (
-        <div className="mb-4 flex items-start gap-2 border-2 border-rust bg-rust/10 p-3 text-rust-deep">
+        <div className="mb-4 flex items-start gap-2 border-2 border-rust bg-rust/10 p-3 text-ui-danger">
           <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
           <p className="min-w-0 flex-1 text-xs font-semibold leading-relaxed">
             {combatError}
@@ -252,13 +252,13 @@ export function TablePage() {
               Abrir sala
             </div>
             <h2 className="display text-3xl">Conecta a tu mesa</h2>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-ui-muted">
               Al abrir la sala, el servidor local crea un código de 6 caracteres. Los
               jugadores entran desde el navegador con el link y, si lo activas, el PIN.
               Sin cuentas, sin instalar nada, sin internet.
             </p>
 
-            <div className="mt-5 space-y-4 border-t-2 border-ink/15 pt-4">
+            <div className="mt-5 space-y-4 border-t border-ui-line pt-4">
               <Toggle
                 checked={requirePin}
                 onCheckedChange={(value) => {
@@ -303,7 +303,7 @@ export function TablePage() {
               >
                 Abrir sala
               </Button>
-              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
                 El servidor escucha en tu LAN
               </span>
             </div>
@@ -317,14 +317,14 @@ export function TablePage() {
                   Cómo funciona
                 </h2>
               </div>
-              <ol className="space-y-2 text-[11px] leading-relaxed text-paper/60">
+              <ol className="space-y-2 text-[11px] leading-relaxed text-ui-muted">
                 <li>1. Abres la sala y compartes el link/QR.</li>
                 <li>2. Los jugadores ponen su nombre y el PIN.</li>
                 <li>3. Eligen o crean su personaje.</li>
                 <li>4. Editan su ficha; tú lo ves en vivo.</li>
               </ol>
             </div>
-            <div className="border-2 border-dashed border-ink/30 p-3 text-[11px] leading-relaxed text-ink-soft">
+            <div className="border border-dashed border-ui-line p-3 text-[11px] leading-relaxed text-ui-muted">
               <strong className="font-mono text-[9px] uppercase tracking-[0.14em]">
                 Red local
               </strong>
@@ -336,15 +336,21 @@ export function TablePage() {
           </aside>
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div
+          className={cx(
+            "gap-5",
+            combat ? "block" : "grid lg:grid-cols-[minmax(0,1fr)_340px]",
+          )}
+        >
           <div className="space-y-5">
+            {combat ? null : (
             <section className="panel overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink bg-paper-deep px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ui-line-strong bg-ui-surface-3 px-4 py-3">
                 <div>
                   <div className="mono-label">Sala abierta</div>
                   <div className="mt-0.5 flex items-baseline gap-2">
                     <span className="display text-3xl tracking-[0.1em]">{code}</span>
-                    <span className="border border-ink bg-paper-light px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
+                    <span className="border border-ui-line-strong bg-ui-surface-2 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
                       {SESSION_STATUS_LABELS[session.status]}
                     </span>
                   </div>
@@ -372,11 +378,11 @@ export function TablePage() {
               <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_190px]">
                 <div className="min-w-0">
                   <div className="mono-label mb-1">Link para jugadores</div>
-                  <div className="break-all border-2 border-ink bg-paper px-3 py-2 font-mono text-xs">
+                  <div className="break-all border border-ui-line-strong bg-ui-surface-2 px-3 py-2 font-mono text-xs">
                     {joinUrl || "Calculando link…"}
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="border border-ink/30 bg-paper/60 p-2">
+                    <div className="border border-ui-line bg-ui-surface-2 p-2">
                       <div className="mono-label">PIN</div>
                       <div className="mt-1 font-display text-xl">
                         {campaign.settings.requirePin
@@ -384,7 +390,7 @@ export function TablePage() {
                           : "Sin PIN"}
                       </div>
                     </div>
-                    <div className="border border-ink/30 bg-paper/60 p-2">
+                    <div className="border border-ui-line bg-ui-surface-2 p-2">
                       <div className="mono-label">Jugadores</div>
                       <div className="mt-1 font-display text-xl">
                         {players.length}/{campaign.settings.maxPlayers}
@@ -392,17 +398,17 @@ export function TablePage() {
                     </div>
                   </div>
                   {lanIps.length === 0 ? (
-                    <p className="mt-2 text-[10px] leading-relaxed text-rust">
+                    <p className="mt-2 text-[10px] leading-relaxed text-ui-danger">
                       No detecté una IP LAN. Comparte la URL actual o revisa la red.
                     </p>
                   ) : (
-                    <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                    <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
                       LAN: {lanIps.join(" · ")} · puerto{" "}
                       {new URL(joinUrl || window.location.origin).port || "80"}
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-center justify-center border-2 border-ink bg-paper-light p-2">
+                <div className="flex flex-col items-center justify-center border border-ui-line-strong bg-ui-surface-2 p-2">
                   {joinUrl ? (
                     <QRCodeSVG
                       value={joinUrl}
@@ -410,19 +416,20 @@ export function TablePage() {
                       bgColor="#f8f4e9"
                       fgColor="#17150f"
                       level="M"
-                      marginSize={0}
+                      marginSize={4}
                     />
                   ) : (
-                    <div className="flex h-[168px] items-center justify-center text-ink-faint">
+                    <div className="flex h-[168px] items-center justify-center text-ui-faint">
                       QR
                     </div>
                   )}
-                  <span className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] text-ink-faint">
+                  <span className="mt-2 font-mono text-[8px] uppercase tracking-[0.14em] text-ui-faint">
                     Escanea para entrar
                   </span>
                 </div>
               </div>
             </section>
+            )}
 
             {combat ? (
               <DmCombatConsole campaign={activeCampaign} />
@@ -440,8 +447,8 @@ export function TablePage() {
                 {session.status === "combat" ? (
                   <section className="panel p-4">
                     <div className="flex items-center gap-2">
-                      <Icon name="broadcast" size={16} className="text-rust" />
-                      <p className="text-xs font-semibold text-ink-soft">
+                      <Icon name="broadcast" size={16} className="text-ui-accent" />
+                      <p className="text-xs font-semibold text-ui-muted">
                         La sala está en combate. Esperando el snapshot del servidor…
                       </p>
                     </div>
@@ -452,14 +459,14 @@ export function TablePage() {
                       title="Iniciar encuentro"
                       count={activeCampaign.content.encounters.length}
                       action={
-                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
                           snapshot de la party
                         </span>
                       }
                     />
                     {activeCampaign.content.encounters.length === 0 ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-2 border-dashed border-ink/25 p-3">
-                        <p className="text-xs text-ink-soft">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border border-dashed border-ui-line p-3">
+                        <p className="text-xs text-ui-muted">
                           Todavía no hay encuentros. Crea uno con enemigos para
                           empezar un combate.
                         </p>
@@ -474,7 +481,7 @@ export function TablePage() {
                       </div>
                     ) : (
                       <>
-                        <p className="mb-3 text-[11px] leading-relaxed text-ink-soft">
+                        <p className="mb-3 text-[11px] leading-relaxed text-ui-muted">
                           Al iniciar se congela el estado de la party (stats,
                           equipo, skills y HP) y los enemigos se instancian con
                           sus overrides. Después se declara ronda a ronda.
@@ -523,7 +530,7 @@ export function TablePage() {
                     count={players.length}
                     action={
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
+                        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
                           {session.dmConnected ? "DM presente" : "DM ausente"}
                         </span>
                         <Button
@@ -556,8 +563,8 @@ export function TablePage() {
                         key={player.id}
                         className="panel flex flex-col overflow-hidden"
                       >
-                        <div className="flex items-center gap-3 border-b-2 border-ink bg-paper-deep p-3">
-                          <div className="relative h-14 w-12 shrink-0 overflow-hidden border-2 border-ink bg-paper-light">
+                        <div className="flex items-center gap-3 border-b border-ui-line-strong bg-ui-surface-3 p-3">
+                          <div className="relative h-14 w-12 shrink-0 overflow-hidden border border-ui-line-strong bg-ui-surface-2">
                             {info?.character.portrait ? (
                               <img
                                 src={info.character.portrait}
@@ -566,7 +573,7 @@ export function TablePage() {
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center">
-                                <span className="font-display text-lg text-ink-faint">
+                                <span className="font-display text-lg text-ui-faint">
                                   {(info?.character.name ?? player.name)
                                     .slice(0, 1)
                                     .toUpperCase()}
@@ -575,8 +582,8 @@ export function TablePage() {
                             )}
                             <span
                               className={cx(
-                                "absolute bottom-0 right-0 h-2.5 w-2.5 border border-ink",
-                                player.connected ? "bg-emerald-500" : "bg-ink-faint",
+                                "absolute bottom-0 right-0 h-2.5 w-2.5 border border-ui-line-strong",
+                                player.connected ? "bg-ui-ok" : "bg-ui-faint",
                               )}
                               title={player.connected ? "Conectado" : "Desconectado"}
                             />
@@ -586,26 +593,26 @@ export function TablePage() {
                               <span
                                 className={cx(
                                   "h-1.5 w-1.5 rounded-full",
-                                  player.connected ? "bg-emerald-600" : "bg-ink-faint",
+                                  player.connected ? "bg-ui-ok" : "bg-ui-faint",
                                 )}
                               />
                               {player.connected ? "En línea" : "Desconectado"}
                             </div>
                             <div className="truncate text-sm font-bold">{player.name}</div>
-                            <div className="truncate font-mono text-[9px] text-ink-faint">
+                            <div className="truncate font-mono text-[9px] text-ui-faint">
                               {info?.character.name ?? "Sin ficha"}
                             </div>
                           </div>
                         </div>
-                        <div className="grid flex-1 grid-cols-4 gap-px bg-ink/15">
+                        <div className="grid flex-1 grid-cols-4 gap-px bg-ui-surface-1">
                           {[
                             ["HP", info?.stats.hpMax ?? "—"],
                             ["DEF", info?.stats.def ?? "—"],
                             ["ATK", info?.stats.atk ?? "—"],
                             ["SLOTS", info?.stats.skillSlots ?? "—"],
                           ].map(([label, value]) => (
-                            <div key={label} className="bg-paper-light px-1 py-2 text-center">
-                              <div className="font-mono text-[8px] uppercase tracking-[0.1em] text-ink-faint">
+                            <div key={label} className="bg-ui-surface-2 px-1 py-2 text-center">
+                              <div className="font-mono text-[8px] uppercase tracking-[0.1em] text-ui-faint">
                                 {label}
                               </div>
                               <div className="font-display text-sm">{value}</div>
@@ -615,7 +622,7 @@ export function TablePage() {
                         {info?.character.id ? (
                           <Link
                             to={`/characters/${info.character.id}`}
-                            className="border-t-2 border-ink px-3 py-2 text-center font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-rust transition-colors hover:bg-amber/15"
+                            className="border-t border-ui-line-strong px-3 py-2 text-center font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ui-accent transition-colors hover:bg-amber/15"
                           >
                             Abrir ficha del jugador →
                           </Link>
@@ -630,30 +637,31 @@ export function TablePage() {
             )}
           </div>
 
-          <aside className="space-y-4">
+          {combat ? null : (
+            <aside className="space-y-4">
             <div className="panel p-4">
               <h2 className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
                 Estado de la sala
               </h2>
               <dl className="space-y-2 text-xs">
-                <div className="flex justify-between border-b border-ink/10 pb-1.5">
-                  <dt className="text-ink-soft">Código</dt>
+                <div className="flex justify-between border-b border-ui-line pb-1.5">
+                  <dt className="text-ui-muted">Código</dt>
                   <dd className="font-mono font-bold">{code}</dd>
                 </div>
-                <div className="flex justify-between border-b border-ink/10 pb-1.5">
-                  <dt className="text-ink-soft">Jugadores</dt>
+                <div className="flex justify-between border-b border-ui-line pb-1.5">
+                  <dt className="text-ui-muted">Jugadores</dt>
                   <dd className="font-mono font-bold">
                     {players.length}/{campaign.settings.maxPlayers}
                   </dd>
                 </div>
-                <div className="flex justify-between border-b border-ink/10 pb-1.5">
-                  <dt className="text-ink-soft">PIN</dt>
+                <div className="flex justify-between border-b border-ui-line pb-1.5">
+                  <dt className="text-ui-muted">PIN</dt>
                   <dd className="font-mono font-bold">
                     {campaign.settings.requirePin ? campaign.settings.pin : "No"}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-ink-soft">Conexión</dt>
+                  <dt className="text-ui-muted">Conexión</dt>
                   <dd className="font-mono font-bold">
                     {connected ? "Socket OK" : "Reconectando"}
                   </dd>
@@ -661,15 +669,15 @@ export function TablePage() {
               </dl>
             </div>
 
-            <div className="border-2 border-ink/20 p-3">
+            <div className="border border-ui-line p-3">
               <div className="mono-label mb-1">PIN y permisos</div>
-              <p className="text-[11px] leading-relaxed text-ink-soft">
+              <p className="text-[11px] leading-relaxed text-ui-muted">
                 Puedes cambiar el PIN y los permisos de edición desde los ajustes de
                 campaña. El PIN de la sala usa los ajustes actuales.
               </p>
             </div>
 
-            <div className="border-2 border-dashed border-ink/30 p-3 text-[11px] leading-relaxed text-ink-soft">
+            <div className="border border-dashed border-ui-line p-3 text-[11px] leading-relaxed text-ui-muted">
               <strong className="font-mono text-[9px] uppercase tracking-[0.14em]">
                 Wi-Fi local
               </strong>
@@ -678,7 +686,8 @@ export function TablePage() {
                 otro dispositivo, abre este mismo link de la sala desde la IP LAN del DM.
               </p>
             </div>
-          </aside>
+            </aside>
+          )}
         </div>
       )}
 

@@ -297,6 +297,10 @@ async function setupScenario(
     name: "Beto",
     characterId: playerTwo.id,
   });
+  // Sin sockets en estos tests: simulamos presencia para que la party entre.
+  for (const player of built.sessions.getById(hosted.session.id)?.players ?? []) {
+    built.sessions.markPlayerConnected(hosted.session.code, player.id, true);
+  }
   const sessionRow = built.sessions.getById(hosted.session.id);
   if (!sessionRow) throw new Error("La sesión de prueba no se creó.");
 
@@ -536,7 +540,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "round-main" },
+      { seed: "round-main", speedRoll: false },
     );
     expect(started.phase).toBe("declaring");
     expect(started.round).toBe(1);
@@ -639,7 +643,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "lock-empty" },
+      { seed: "lock-empty", speedRoll: false },
     );
     // El escenario tiene 3 unidades; seleccionamos explícitamente.
     const playerOne = unitOf(started, scenario.playerOne.id);
@@ -681,7 +685,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "lock-dead" },
+      { seed: "lock-dead", speedRoll: false },
     );
     const { p1, p2, e1, e2 } = mainRoundUnits(started);
 
@@ -726,7 +730,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "end-round" },
+      { seed: "end-round", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
     const e1 = unitOf(started, scenario.enemyOne.id);
@@ -772,7 +776,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "idempotent" },
+      { seed: "idempotent", speedRoll: false },
     );
     declareMainRound(scenario, started);
     lockAllLiving(scenario, started);
@@ -807,7 +811,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "domain" },
+      { seed: "domain", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
     const e1 = unitOf(started, scenario.enemyOne.id);
@@ -858,7 +862,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "utility" },
+      { seed: "utility", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
 
@@ -896,7 +900,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "validation-targets" },
+      { seed: "validation-targets", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
     const p2 = unitOf(started, scenario.playerTwo.id);
@@ -964,7 +968,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "validation-slots" },
+      { seed: "validation-slots", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
     const e1 = unitOf(started, scenario.enemyOne.id);
@@ -1022,7 +1026,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "validation-equipment" },
+      { seed: "validation-equipment", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
     const p2 = unitOf(started, scenario.playerTwo.id);
@@ -1111,7 +1115,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "validation-redirect" },
+      { seed: "validation-redirect", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
     const p2 = unitOf(started, scenario.playerTwo.id);
@@ -1192,7 +1196,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "phase" },
+      { seed: "phase", speedRoll: false },
     );
     const p1 = unitOf(started, scenario.playerOne.id);
     const e1 = unitOf(started, scenario.enemyOne.id);
@@ -1219,13 +1223,13 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       first.campaignId,
       first.encounterId,
       first.sessionId,
-      { seed: "determinism" },
+      { seed: "determinism", speedRoll: false },
     );
     const secondState = built.combat.startEncounter(
       second.campaignId,
       second.encounterId,
       second.sessionId,
-      { seed: "determinism" },
+      { seed: "determinism", speedRoll: false },
     );
 
     declareMainRound(first, firstState);
@@ -1258,7 +1262,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "recovery" },
+      { seed: "recovery", speedRoll: false },
     );
     const e1 = unitOf(started, scenario.enemyOne.id);
     const broken = structuredClone(started);
@@ -1297,7 +1301,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
         scenario.campaignId,
         scenario.encounterId,
         scenario.sessionId,
-        { seed: "socket" },
+        { seed: "socket", speedRoll: false },
       );
       const startedPayload = await startedPromise;
       expect(startedPayload.combat).not.toHaveProperty("seed");
@@ -1388,7 +1392,7 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
         scenario.campaignId,
         scenario.encounterId,
         scenario.sessionId,
-        { seed: "socket-ended" },
+        { seed: "socket-ended", speedRoll: false },
       );
       await startedPromise;
 
@@ -1413,6 +1417,207 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
       expect(ended.log.at(-1)?.data).toMatchObject({ winner: "players" });
     } finally {
       socket.disconnect();
+    }
+  });
+});
+
+describe("Fase 3F.5 — targetSlot visual", () => {
+  it("guarda targetSlot y mantiene el clash por unidad sin importar slot", async () => {
+    const scenario = await setupScenario({ enemyCount: 1 });
+    const started = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "target-slot", speedRoll: false },
+    );
+    const p1 = unitOf(started, scenario.playerOne.id);
+    const e1 = unitOf(started, scenario.enemyOne.id);
+
+    // P1 apunta al slot visual 1 de E1; E1 responde apuntando al slot 2 de P1.
+    // Los slots visuales son distintos, así que el clash DEBE ocurrir igual.
+    const declared = built.combat.declareActions(
+      playerActorFor(scenario, p1.characterId),
+      started.id,
+      [
+        {
+          slot: 1,
+          skillId: scenario.skillId,
+          targetId: e1.id,
+          targetSlot: 1,
+        },
+      ],
+    );
+    expect(declared.actions[p1.id]).toEqual([
+      {
+        unitId: p1.id,
+        slot: 1,
+        skillId: scenario.skillId,
+        targetId: e1.id,
+        targetSlot: 1,
+        locked: false,
+      },
+    ]);
+
+    built.combat.declareActions(dmActor(e1.id), started.id, [
+      {
+        slot: 1,
+        skillId: scenario.skillId,
+        targetId: p1.id,
+        targetSlot: 2,
+      },
+    ]);
+
+    lockAllLiving(scenario, started);
+    const resolved = built.combat.resolveCombatRound(started.id);
+
+    const clash = resolved.log.find(
+      (event) =>
+        event.type === "clash" &&
+        event.data?.attackerId === p1.id &&
+        event.data?.defenderId === e1.id,
+    );
+    expect(clash).toBeDefined();
+    // No se convirtió en ataque sin respuesta por culpa del targetSlot.
+    expect(
+      resolved.log.some(
+        (event) =>
+          event.type === "clash" &&
+          event.data?.oneSided === true &&
+          (event.actorId === p1.id || event.actorId === e1.id),
+      ),
+    ).toBe(false);
+  });
+
+  it("rechaza un targetSlot fuera de los slots reales del objetivo", async () => {
+    const scenario = await setupScenario({ enemyCount: 1, enemySkills: false });
+    const started = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "target-slot-validation", speedRoll: false },
+    );
+    const p1 = unitOf(started, scenario.playerOne.id);
+    const e1 = unitOf(started, scenario.enemyOne.id);
+    const actor = playerActorFor(scenario, p1.characterId);
+
+    // E1 tiene 2 skillSlots: el slot visual 3 está fuera de rango.
+    expectHttpError(
+      () =>
+        built.combat.declareActions(actor, started.id, [
+          {
+            slot: 1,
+            skillId: scenario.skillId,
+            targetId: e1.id,
+            targetSlot: 3,
+          },
+        ]),
+      "target_slot_out_of_range",
+    );
+    expectHttpError(
+      () =>
+        built.combat.declareActions(actor, started.id, [
+          {
+            slot: 1,
+            skillId: scenario.skillId,
+            targetId: e1.id,
+            targetSlot: 0,
+          },
+        ]),
+      "target_slot_out_of_range",
+    );
+
+    // Dentro de rango: se acepta y se conserva como dato visual.
+    const ok = built.combat.declareActions(actor, started.id, [
+      {
+        slot: 1,
+        skillId: scenario.skillId,
+        targetId: e1.id,
+        targetSlot: 2,
+      },
+    ]);
+    expect(ok.actions[p1.id]?.[0]?.targetSlot).toBe(2);
+  });
+
+  it("flujo completo 3G: dos rondas, efecto, victoria, HP persistente y Rest party", async () => {
+    const scenario = await setupScenario({
+      enemyCount: 1,
+      enemyHp: 50,
+      playerHp: 60,
+      playerTwoHp: 60,
+      enemySkills: false,
+    });
+
+    const started = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "fase3-e2e", speedRoll: false },
+    );
+    expect(started.round).toBe(1);
+
+    const p1 = unitOf(started, scenario.playerOne.id);
+    const p2 = unitOf(started, scenario.playerTwo.id);
+    const e1 = unitOf(started, scenario.enemyOne.id);
+
+    const declareAndResolve = (state: CombatState): CombatState => {
+      built.combat.declareActions(
+        playerActorFor(scenario, p1.characterId),
+        state.id,
+        [{ slot: 1, skillId: scenario.skillId, targetId: e1.id }],
+      );
+      built.combat.declareActions(
+        playerActorFor(scenario, p2.characterId),
+        state.id,
+        [{ slot: 1, skillId: scenario.skillId, targetId: e1.id }],
+      );
+      const ready = lockAllLiving(scenario, state);
+      expect(ready.phase).toBe("resolving");
+      return built.combat.resolveCombatRound(state.id);
+    };
+
+    // Ronda 1: la party ataca sin respuesta; el efecto de la skill queda en el log.
+    const roundTwo = declareAndResolve(started);
+    expect(roundTwo.round).toBe(2);
+    expect(roundTwo.phase).toBe("declaring");
+    expect(roundTwo.units.some((unit) => unit.id === e1.id)).toBe(true);
+    expect(
+      roundTwo.log.some((event) => event.type === "effectApplied"),
+    ).toBe(true);
+
+    // Ronda 2: el enemigo cae y el combate termina con victoria de la party.
+    const ended = declareAndResolve(roundTwo);
+    expect(ended.phase).toBe("ended");
+    expect(ended.winner).toBe("players");
+    expect(built.combat.getLiveCombat(scenario.campaignId)).toBeNull();
+    expect(built.sessions.getById(scenario.sessionId)?.status).toBe("playing");
+
+    // HP persistente en las fichas y Rest party fuera de combate.
+    const afterCombat = built.repository.getCampaign(scenario.campaignId);
+    const persistedOne = afterCombat.content.characters.find(
+      (character) => character.id === scenario.playerOne.id,
+    );
+    const persistedTwo = afterCombat.content.characters.find(
+      (character) => character.id === scenario.playerTwo.id,
+    );
+    expect(persistedOne?.hpCurrent).toBe(60);
+    expect(persistedTwo?.hpCurrent).toBe(60);
+
+    const rest = await app.inject({
+      method: "POST",
+      url: `/api/campaigns/${scenario.campaignId}/rest-party`,
+      headers: { "x-session-token": scenario.dmToken },
+    });
+    expect(rest.statusCode, rest.body).toBe(200);
+    const healed = rest.json() as Campaign;
+    for (const characterId of [
+      scenario.playerOne.id,
+      scenario.playerTwo.id,
+    ]) {
+      const character = healed.content.characters.find(
+        (entry) => entry.id === characterId,
+      );
+      expect(character?.hpCurrent).toBe(character?.baseStats.hpMax);
+      expect(character?.hpCurrent).toBe(200);
     }
   });
 });

@@ -49,8 +49,8 @@ const EVENT_ICON: Record<CombatEventType, IconName> = {
 };
 
 const EVENT_TONE: Record<CombatEventType, string> = {
-  roundStart: "border-ink/40 bg-paper-deep",
-  actionDeclared: "border-ink/30 bg-paper",
+  roundStart: "border-ui-line bg-ui-surface-3",
+  actionDeclared: "border-ui-line bg-ui-surface-2",
   clash: "border-amber bg-amber/15",
   redirect: "border-steel bg-steel/10",
   special: "border-rust bg-rust/10",
@@ -58,9 +58,9 @@ const EVENT_TONE: Record<CombatEventType, string> = {
   heal: "border-moss bg-moss/10",
   effectApplied: "border-amber bg-amber/10",
   effectTick: "border-amber/70 bg-amber/5",
-  cooldown: "border-ink/30 bg-paper",
-  defeated: "border-ink bg-ink text-paper",
-  roundEnd: "border-ink/40 bg-paper-deep",
+  cooldown: "border-ui-line bg-ui-surface-2",
+  defeated: "border-ui-line-strong bg-ui-surface-3 text-ui",
+  roundEnd: "border-ui-line bg-ui-surface-3",
   combatEnd: "border-rust bg-rust/15",
 };
 
@@ -93,7 +93,11 @@ function rollText(label: string, roll: RollLike): string {
   return parts.join(" · ");
 }
 
-function eventDetails(event: CombatEvent): string[] {
+function eventDetails(
+  event: CombatEvent,
+  units: CombatUnit[],
+  hideEnemyHp: boolean,
+): string[] {
   const data = event.data ?? {};
   const details: string[] = [];
 
@@ -115,7 +119,16 @@ function eventDetails(event: CombatEvent): string[] {
     details.push(`${data.remaining} ronda${data.remaining === 1 ? "" : "s"}`);
   }
   if (typeof data.hpBefore === "number" && typeof data.hpAfter === "number") {
-    details.push(`HP ${data.hpBefore} → ${data.hpAfter}`);
+    const target = units.find((unit) => unit.id === event.targetId);
+    if (hideEnemyHp && target?.team === "enemies") {
+      const percent = (hp: number) =>
+        target.stats.hpMax > 0
+          ? Math.round((hp / target.stats.hpMax) * 100)
+          : 0;
+      details.push(`HP ${percent(data.hpBefore)}% → ${percent(data.hpAfter)}%`);
+    } else {
+      details.push(`HP ${data.hpBefore} → ${data.hpAfter}`);
+    }
   }
   if (data.oneSided === true) details.push("sin respuesta");
 
@@ -127,6 +140,8 @@ export interface CombatLogProps {
   units: CombatUnit[];
   content: Pick<CampaignContent, "skills" | "effects" | "specials">;
   emptyLabel?: string;
+  /** Regla 3F.5: los jugadores ven el HP enemigo en porcentaje. */
+  hideEnemyHp?: boolean;
 }
 
 export function CombatLog({
@@ -134,6 +149,7 @@ export function CombatLog({
   units,
   content,
   emptyLabel = "Todavía no hay eventos en el log.",
+  hideEnemyHp = false,
 }: CombatLogProps) {
   const [revealed, setRevealed] = useState(events.length);
   const [playing, setPlaying] = useState(false);
@@ -215,12 +231,12 @@ export function CombatLog({
         aria-label="Eventos del combate"
       >
         {visible.length === 0 ? (
-          <p className="py-6 text-center text-xs text-ink-faint">
+          <p className="py-6 text-center text-xs text-ui-faint">
             {playing ? "Preparando la timeline…" : emptyLabel}
           </p>
         ) : (
           visible.map((event) => {
-            const details = eventDetails(event);
+            const details = eventDetails(event, units, hideEnemyHp);
             return (
               <article
                 key={event.id}
@@ -280,7 +296,7 @@ export function CombatLog({
           })
         )}
       </div>
-      <p className="mt-2 border-t border-ink/15 pt-2 font-mono text-[8px] uppercase tracking-[0.12em] text-ink-faint">
+      <p className="mt-2 border-t border-ui-line pt-2 font-mono text-[8px] uppercase tracking-[0.12em] text-ui-faint">
         {content.effects.length + content.specials.length} definiciones de efecto ·
         el servidor ya calculó todos los resultados
       </p>

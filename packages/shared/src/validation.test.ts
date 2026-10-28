@@ -4,6 +4,9 @@ import { sampleCampaign, sampleContent } from "./fixtures";
 import {
   campaignSchema,
   characterInputSchema,
+  combatScenePatchSchema,
+  combatStateSchema,
+  encounterInputSchema,
   itemInputSchema,
   skillInputSchema,
 } from "./schemas";
@@ -190,5 +193,114 @@ describe("tipos de personaje", () => {
       inventory: [],
     };
     expect(characterInputSchema.safeParse(character).success).toBe(true);
+  });
+});
+
+describe("escena de combate y compatibilidad (3F.5)", () => {
+  const legacyState = {
+    id: "cmb_1",
+    encounterId: "enc_1",
+    round: 1,
+    phase: "declaring" as const,
+    seed: "seed",
+    units: [
+      {
+        id: "unt_1",
+        characterId: "chr_1",
+        team: "players" as const,
+        kind: "player" as const,
+        name: "Antigua",
+        stats: { hpMax: 10, def: 0, atk: 0, spd: 10, luck: 0, skillSlots: 2 },
+        hpCurrent: 10,
+        equipment: {
+          horns: null,
+          hand: null,
+          armor: null,
+          leg: null,
+          utility: null,
+        },
+        skills: [null, null, null],
+        effects: [],
+        utilityUses: 0,
+        defeated: false,
+      },
+    ],
+    actions: {},
+    specialCooldowns: {},
+    log: [],
+  };
+
+  it("parsea estados antiguos sin scene/spdRoll y estados nuevos con escena", () => {
+    const legacyUnit = legacyState.units[0]!;
+    expect(combatStateSchema.safeParse(legacyState).success).toBe(true);
+    // 0 es el valor de compatibilidad para estados antiguos con roll ausente.
+    expect(
+      combatStateSchema.safeParse({
+        ...legacyState,
+        units: [{ ...legacyUnit, spdRoll: 0 }],
+      }).success,
+    ).toBe(true);
+
+    const modern = {
+      ...legacyState,
+      scene: {
+        floor: "/assets/scenes/floor.png",
+        wall: "/assets/scenes/wall.png",
+        theme: "night",
+      },
+      units: [
+        {
+          ...legacyUnit,
+          spdRoll: 4,
+          stats: { ...legacyUnit.stats, spd: 14 },
+        },
+      ],
+    };
+    const parsed = combatStateSchema.parse(modern);
+    expect(parsed.scene).toEqual(modern.scene);
+    expect(parsed.units[0]?.spdRoll).toBe(4);
+
+    // Roll fuera de 1..4 rechazado.
+    expect(
+      combatStateSchema.safeParse({
+        ...legacyState,
+        units: [{ ...legacyUnit, spdRoll: 5 }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("valida el patch de escena y las capas del encuentro", () => {
+    // Al menos un campo y siempre con el validador de imágenes.
+    expect(combatScenePatchSchema.safeParse({}).success).toBe(false);
+    expect(combatScenePatchSchema.safeParse({ theme: "night" }).success).toBe(
+      true,
+    );
+    expect(combatScenePatchSchema.safeParse({ theme: "neon" }).success).toBe(
+      false,
+    );
+    expect(
+      combatScenePatchSchema.safeParse({
+        floor: "/assets/scenes/floor.png",
+        wall: "/assets/scenes/wall.png",
+        theme: "paper",
+      }).success,
+    ).toBe(true);
+    expect(
+      combatScenePatchSchema.safeParse({ wall: "javascript:alert(1)" }).success,
+    ).toBe(false);
+
+    const encounter = {
+      name: "Escena",
+      background: "/assets/scenes/floor.png",
+      backgroundWall: "/assets/scenes/wall.png",
+      sceneTheme: "night",
+      enemies: [],
+    };
+    const parsed = encounterInputSchema.safeParse(encounter);
+    expect(parsed.success).toBe(true);
+    expect(
+      encounterInputSchema.safeParse({ ...encounter, sceneTheme: "neon" })
+        .success,
+    ).toBe(false);
   });
 });

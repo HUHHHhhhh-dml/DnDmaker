@@ -114,7 +114,7 @@ export function SkillEditorPage() {
       <div className="animate-rise">
         <PageHeader eyebrow="Skills" title="Skill no encontrada" back={{ to: "/skills", label: "Volver a skills" }} />
         <div className="panel p-8 text-center">
-          <p className="text-sm text-ink-soft">Esa skill no existe en esta campaña.</p>
+          <p className="text-sm text-ui-muted">Esa skill no existe en esta campaña.</p>
           <div className="mt-4">
             <LinkButton to="/skills" size="sm">Volver</LinkButton>
           </div>
@@ -226,11 +226,11 @@ export function SkillEditorPage() {
       />
 
       {errors.length > 0 ? (
-        <div className="mb-4 border-2 border-rust bg-rust/10 p-3">
-          <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rust-deep">
+        <div className="mb-4 border border-rust bg-rust/10 p-3">
+          <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-ui-danger">
             <Icon name="alert" size={14} /> Revisa el formulario
           </div>
-          <ul className="list-inside list-disc text-xs text-rust-deep">
+          <ul className="list-inside list-disc text-xs text-ui-danger">
             {errors.map((error) => (
               <li key={error}>{error}</li>
             ))}
@@ -241,7 +241,7 @@ export function SkillEditorPage() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
           <section className="panel p-4">
-            <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-4 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               01 · Identidad
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -277,7 +277,7 @@ export function SkillEditorPage() {
                   placeholder="Cómo se siente usar esta skill…"
                 />
               </Field>
-              <div className="sm:col-span-2 border-2 border-ink bg-paper/60 p-3">
+              <div className="sm:col-span-2 border border-ui-line bg-ui-surface-2 p-3">
                 <Toggle
                   checked={draft.unlocked}
                   onCheckedChange={(value) => patch({ unlocked: value })}
@@ -289,14 +289,14 @@ export function SkillEditorPage() {
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-4 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               02 · Imagen
             </h2>
             <ImageField value={draft.image} onChange={(value) => patch({ image: value })} />
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-4 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               03 · Monedas y poder
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -350,21 +350,21 @@ export function SkillEditorPage() {
                 />
               </Field>
             </div>
-            <div className="mt-4 border-t border-ink/15 pt-3">
+            <div className="mt-4 border-t border-ui-line pt-3">
               <div className="mono-label mb-1.5">Monedas</div>
               <CoinRow coins={draft.coins} />
             </div>
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-1 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               04 · Efectos al impactar
             </h2>
-            <p className="mb-3 mt-2 text-[11px] text-ink-faint">
+            <p className="mb-3 mt-2 text-[11px] text-ui-faint">
               Se aplican si la skill impacta. La probabilidad es 0–100%.
             </p>
             {campaign.content.effects.length === 0 ? (
-              <p className="border border-dashed border-ink/30 p-3 text-xs text-ink-soft">
+              <p className="border border-dashed border-ui-line p-3 text-xs text-ui-muted">
                 No hay efectos en la campaña.{" "}
                 <LinkButton to="/effects/new" variant="ghost" size="sm" className="ml-1">
                   Crear uno
@@ -378,8 +378,8 @@ export function SkillEditorPage() {
                     <div
                       key={effect.id}
                       className={cx(
-                        "border-2 px-3 py-2",
-                        ref ? "border-ink bg-amber/10" : "border-ink/20 bg-paper/40",
+                        "border px-3 py-2",
+                        ref ? "border-ui-line-strong bg-amber/10" : "border-ui-line bg-ui-surface-2",
                       )}
                     >
                       <div className="flex flex-wrap items-center gap-3">
@@ -392,7 +392,7 @@ export function SkillEditorPage() {
                           />
                           <span className="min-w-0">
                             <span className="block text-sm font-semibold">{effect.name}</span>
-                            <span className="block truncate text-[10px] text-ink-faint">
+                            <span className="block truncate text-[10px] text-ui-faint">
                               {effect.description || "Sin descripción."}
                             </span>
                           </span>
@@ -400,7 +400,7 @@ export function SkillEditorPage() {
                         {ref ? (
                           <div className="flex items-center gap-2">
                             <label className="flex items-center gap-1">
-                              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-faint">
+                              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
                                 Prob.
                               </span>
                               <NumberInput
@@ -412,12 +412,12 @@ export function SkillEditorPage() {
                                 }
                                 min={0}
                                 max={100}
-                                className="w-16 border-0 bg-white/60 px-1 py-0.5 text-center text-xs"
+                                className="w-16 px-1 py-0.5 text-center text-xs"
                               />
                               <span className="font-mono text-[9px]">%</span>
                             </label>
                             <label className="flex items-center gap-1">
-                              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-faint">
+                              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
                                 Stacks
                               </span>
                               <NumberInput
@@ -427,7 +427,7 @@ export function SkillEditorPage() {
                                 }
                                 min={1}
                                 max={99}
-                                className="w-14 border-0 bg-white/60 px-1 py-0.5 text-center text-xs"
+                                className="w-14 px-1 py-0.5 text-center text-xs"
                               />
                             </label>
                           </div>
@@ -444,19 +444,19 @@ export function SkillEditorPage() {
         <aside className="space-y-4">
           <div className="sticky top-6 space-y-4">
             <div className="panel p-4">
-              <div className="mb-3 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
+              <div className="mb-3 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
                 Vista previa
               </div>
               {draft.image ? (
                 <img
                   src={draft.image}
                   alt=""
-                  className="mb-3 aspect-video w-full border-2 border-ink object-cover"
+                  className="mb-3 aspect-video w-full border border-ui-line-strong object-cover"
                 />
               ) : null}
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="display text-xl">{draft.name || "Sin nombre"}</h3>
-                <span className="font-mono text-[9px] text-ink-faint">
+                <span className="font-mono text-[9px] text-ui-faint">
                   {draft.code || "SIN-CÓDIGO"}
                 </span>
               </div>
@@ -466,7 +466,7 @@ export function SkillEditorPage() {
                     "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
                     draft.unlocked
                       ? "border-moss/50 bg-moss/10 text-moss"
-                      : "border-rust/50 bg-rust/10 text-rust-deep",
+                      : "border-rust/50 bg-rust/10 text-ui-danger",
                   )}
                 >
                   <Icon name={draft.unlocked ? "unlock" : "lock"} size={10} />
@@ -476,23 +476,23 @@ export function SkillEditorPage() {
               </div>
               <div className="mt-3 space-y-1.5 font-mono text-[10px]">
                 <div className="flex justify-between">
-                  <span className="text-ink-faint">Clash máx.</span>
+                  <span className="text-ui-faint">Clash máx.</span>
                   <span className="font-bold">{maxClash}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-ink-faint">Daño máx. (sin ATK)</span>
+                  <span className="text-ui-faint">Daño máx. (sin ATK)</span>
                   <span className="font-bold">{maxDamage}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-ink-faint">Full heads (×{multiplier})</span>
-                  <span className="font-bold text-rust">{fullHeadsDamage}</span>
+                  <span className="text-ui-faint">Full heads (×{multiplier})</span>
+                  <span className="font-bold text-ui-danger">{fullHeadsDamage}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-ink-faint">Daño por cara</span>
+                  <span className="text-ui-faint">Daño por cara</span>
                   <span className="font-bold">{signed(draft.coinDamage)}</span>
                 </div>
               </div>
-              <div className="mt-3 border-t border-ink/15 pt-2 text-[10px] leading-relaxed text-ink-faint">
+              <div className="mt-3 border-t border-ui-line pt-2 text-[10px] leading-relaxed text-ui-faint">
                 El daño final en combate añade el ATK del personaje y aplica la mitigación
                 de DEF del objetivo.
               </div>
@@ -501,7 +501,7 @@ export function SkillEditorPage() {
             <div className="panel p-4">
               <div className="mono-label mb-2">Efectos elegidos</div>
               {draft.effects.length === 0 ? (
-                <p className="text-[11px] text-ink-faint">Ninguno.</p>
+                <p className="text-[11px] text-ui-faint">Ninguno.</p>
               ) : (
                 <div className="space-y-1.5">
                   {draft.effects.map((ref) => {
@@ -512,10 +512,10 @@ export function SkillEditorPage() {
                     return (
                       <div key={ref.effectId} className="flex items-center justify-between gap-2 text-xs">
                         <span className="flex items-center gap-1.5">
-                          <Icon name="flame" size={11} className="text-rust" />
+                          <Icon name="flame" size={11} className="text-ui-danger" />
                           {effect.name}
                         </span>
-                        <span className="font-mono text-[9px] text-ink-faint">
+                        <span className="font-mono text-[9px] text-ui-faint">
                           {Math.round(ref.chance * 100)}% · {ref.stacks} stacks
                         </span>
                       </div>
@@ -525,15 +525,15 @@ export function SkillEditorPage() {
               )}
             </div>
 
-            <div className="border-2 border-ink/20 p-3">
+            <div className="border border-ui-line p-3">
               <div className="mono-label mb-1">ID interno</div>
-              <code className="block break-all font-mono text-[10px] text-ink-soft">
+              <code className="block break-all font-mono text-[10px] text-ui-muted">
                 {existing?.id ?? "Se genera al guardar"}
               </code>
               {existing ? (
                 <>
                   <div className="mono-label mt-3 mb-1">Código normalizado</div>
-                  <code className="font-mono text-[10px] text-ink-soft">
+                  <code className="font-mono text-[10px] text-ui-muted">
                     {normalizedCode(existing.code, existing.id)}
                   </code>
                 </>

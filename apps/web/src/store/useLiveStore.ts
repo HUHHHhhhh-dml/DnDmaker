@@ -2,6 +2,7 @@ import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import type {
   CombatEvent,
+  CombatScenePatchInput,
   PublicCombatState,
   PublicSession,
   PublicSessionPlayer,
@@ -51,6 +52,8 @@ interface LiveState {
   declareCombat: (unitId: string, actions: CombatDeclaration[]) => void;
   lockCombat: (unitId?: string, actions?: CombatDeclaration[]) => void;
   endCombat: () => void;
+  /** Fase 3F.5: solo DM; el servidor difunde combat:state a la sala. */
+  setCombatScene: (patch: CombatScenePatchInput) => void;
   dismissCombat: () => void;
   dismissRecentCombat: () => void;
   clearCombatError: () => void;
@@ -257,6 +260,15 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       return;
     }
     socket.emit("combat:end", {});
+    set({ combatError: null });
+  },
+
+  setCombatScene(patch) {
+    if (!socket) {
+      set({ combatError: "No estás conectado a la mesa." });
+      return;
+    }
+    socket.emit("combat:scene", patch);
     set({ combatError: null });
   },
 

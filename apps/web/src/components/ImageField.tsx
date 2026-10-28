@@ -44,7 +44,7 @@ export function ImageField({
       <div className="flex items-start gap-3">
         <div
           className={cx(
-            "relative flex shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-paper-deep",
+            "relative flex shrink-0 items-center justify-center overflow-hidden border border-ui-line-strong bg-ui-surface-3",
             shape === "portrait" ? "h-24 w-20" : "h-24 w-24",
           )}
         >
@@ -56,7 +56,7 @@ export function ImageField({
               onError={() => setBroken(true)}
             />
           ) : (
-            <Icon name="image" size={26} className="text-ink-faint" />
+            <Icon name="image" size={26} className="text-ui-faint" />
           )}
           {shape === "portrait" ? (
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2 bg-rust" />
@@ -98,7 +98,7 @@ export function ImageField({
             ) : null}
             {uploading ? <Spinner size={14} /> : null}
             {broken ? (
-              <span className="text-[11px] font-semibold text-rust">
+              <span className="text-[11px] font-semibold text-ui-danger">
                 La imagen no carga.
               </span>
             ) : null}

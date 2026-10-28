@@ -17,7 +17,9 @@ export type IconName =
   | "close"
   | "image"
   | "search"
+  | "crosshair"
   | "chevron-down"
+  | "chevron-up"
   | "spark"
   | "book"
   | "shield"
@@ -172,10 +174,23 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
           <path d="m20 20-4-4" />
         </svg>
       );
+    case "crosshair":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="7" />
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+        </svg>
+      );
     case "chevron-down":
       return (
         <svg {...common}>
           <path d="m6 9 6 6 6-6" />
+        </svg>
+      );
+    case "chevron-up":
+      return (
+        <svg {...common}>
+          <path d="m6 15 6-6 6 6" />
         </svg>
       );
     case "spark":

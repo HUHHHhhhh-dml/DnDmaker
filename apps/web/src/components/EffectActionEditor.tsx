@@ -73,16 +73,16 @@ export function EffectActionEditor({
   return (
     <div className="space-y-2">
       {actions.map((action, index) => (
-        <div key={index} className="border-2 border-ink/70 bg-paper/50">
-          <div className="flex items-center gap-2 border-b border-ink/20 bg-paper-deep/60 px-2 py-1.5">
-            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">
+        <div key={index} className="border border-ui-line bg-ui-surface-2">
+          <div className="flex items-center gap-2 border-b border-ui-line bg-ui-surface-3 px-2 py-1.5">
+            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ui-faint">
               {String(index + 1).padStart(2, "0")}
             </span>
             <div className="min-w-0 flex-1">
               <Select
                 value={action.type}
                 onValueChange={(value) => changeType(index, value as EffectAction["type"])}
-                className="border-0 bg-transparent px-0 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] focus:shadow-none"
+                className="px-0 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em]"
               >
                 {Object.entries(ACTION_LABELS).map(([key, label]) => (
                   <option key={key} value={key}>
@@ -94,7 +94,7 @@ export function EffectActionEditor({
             <button
               type="button"
               onClick={() => onChange(actions.filter((_, actionIndex) => actionIndex !== index))}
-              className="flex h-6 w-6 items-center justify-center text-ink-faint transition-colors hover:bg-rust/10 hover:text-rust"
+              className="flex h-6 w-6 items-center justify-center text-ui-faint transition-colors hover:bg-rust/10 hover:text-rust"
               aria-label="Quitar acción"
             >
               <Icon name="trash" size={13} />
@@ -244,7 +244,7 @@ export function EffectActionEditor({
             ) : null}
 
             {!compact ? (
-              <p className="mt-1.5 font-mono text-[9px] leading-snug text-ink-faint">
+              <p className="mt-1.5 font-mono text-[9px] leading-snug text-ui-faint">
                 {ACTION_HINTS[action.type]}
               </p>
             ) : null}
@@ -252,7 +252,7 @@ export function EffectActionEditor({
         </div>
       ))}
 
-      <div className="flex flex-wrap items-end gap-2 border-t border-dashed border-ink/30 pt-2">
+      <div className="flex flex-wrap items-end gap-2 border-t border-dashed border-ui-line pt-2">
         <Field label="Añadir acción" className="min-w-[150px] flex-1">
           <Select value={addType} onValueChange={(value) => setAddType(value as EffectAction["type"])}>
             {Object.entries(ACTION_LABELS).map(([key, label]) => (

@@ -87,14 +87,16 @@ export function ItemsPage() {
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 border-2 border-ink bg-paper-deep p-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex border-2 border-ink bg-paper-light">
+      <div className="mb-4 flex flex-col gap-3 border border-ui-line-strong bg-ui-surface-3 p-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex border border-ui-line-strong bg-ui-surface-1">
           <button
             type="button"
             onClick={() => setView("dm")}
             className={cx(
               "px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] transition-colors",
-              view === "dm" ? "bg-ink text-paper" : "text-ink-soft hover:bg-paper",
+              view === "dm"
+                ? "bg-amber/20 text-ui"
+                : "text-ui-muted hover:bg-paper-light hover:text-[color:var(--ui-text)]",
             )}
           >
             <Icon name="lock" size={11} className="mr-1 inline" />
@@ -105,8 +107,10 @@ export function ItemsPage() {
             type="button"
             onClick={() => setView("players")}
             className={cx(
-              "border-l-2 border-ink px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] transition-colors",
-              view === "players" ? "bg-moss text-paper" : "text-ink-soft hover:bg-paper",
+              "border-l border-ui-line-strong px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] transition-colors",
+              view === "players"
+                ? "bg-moss/20 text-ui-ok"
+                : "text-ui-muted hover:bg-paper-light hover:text-[color:var(--ui-text)]",
             )}
           >
             <Icon name="unlock" size={11} className="mr-1 inline" />
@@ -117,9 +121,7 @@ export function ItemsPage() {
 
         {view === "dm" ? (
           <div className="flex flex-wrap items-center gap-1">
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint">
-              Visibilidad
-            </span>
+            <span className="mono-label">Visibilidad</span>
             {(
               [
                 ["all", "Todos", campaign.content.items.length],
@@ -132,10 +134,10 @@ export function ItemsPage() {
                 type="button"
                 onClick={() => setLockFilter(value)}
                 className={cx(
-                  "border border-ink px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-colors",
+                  "border px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] transition-colors",
                   lockFilter === value
-                    ? "bg-ink text-paper"
-                    : "bg-paper text-ink-soft hover:bg-paper-light",
+                    ? "border-ui-accent bg-amber/20 text-ui"
+                    : "border-ui-line bg-ui-surface-2 text-ui-muted hover:bg-paper-deep hover:text-[color:var(--ui-text)]",
                 )}
               >
                 {label}
@@ -144,19 +146,19 @@ export function ItemsPage() {
             ))}
           </div>
         ) : (
-          <p className="max-w-md px-1 text-[10px] leading-snug text-ink-soft">
+          <p className="max-w-md px-1 text-[10px] leading-snug text-ui-muted">
             Solo aparecen los objetos desbloqueados. Si un personaje ya lleva uno
             bloqueado, su ficha lo conserva.
           </p>
         )}
       </div>
 
-      <div className="mb-5 flex flex-col gap-3 border-2 border-ink bg-paper-light p-3 sm:flex-row sm:items-center">
+      <div className="mb-5 flex flex-col gap-3 border border-ui-line-strong bg-ui-surface-2 p-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Icon
             name="search"
             size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ui-faint"
           />
           <TextInput
             value={search}
@@ -172,10 +174,10 @@ export function ItemsPage() {
               type="button"
               onClick={() => setSlot(filter.value)}
               className={cx(
-                "border border-ink px-2 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors",
+                "border px-2 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors",
                 slot === filter.value
-                  ? "bg-ink text-paper"
-                  : "bg-paper text-ink-soft hover:bg-paper-deep",
+                  ? "border-ui-accent bg-amber/20 text-ui"
+                  : "border-ui-line bg-ui-surface-2 text-ui-muted hover:bg-paper-deep hover:text-[color:var(--ui-text)]",
               )}
             >
               {filter.label}
@@ -189,12 +191,12 @@ export function ItemsPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+      <div className="mono-label tnum mb-4 flex items-center justify-between">
         <span>
           {items.length} de {viewItems.length} objetos ·{" "}
           {view === "dm" ? "biblioteca del DM" : "visibles para jugadores"}
         </span>
-        <button type="button" onClick={resetFilters} className="hover:text-rust">
+        <button type="button" onClick={resetFilters} className="hover:text-amber">
           Limpiar filtros
         </button>
       </div>

@@ -202,12 +202,12 @@ export function PlayerSheetEditor({
     <div className="space-y-4">
       <div className="panel flex flex-wrap items-center justify-between gap-3 border-rust bg-rust/5 p-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center border-2 border-ink bg-rust/15 hexagon">
+          <div className="flex h-9 w-9 items-center justify-center border border-ui-line-strong bg-rust/15 hexagon">
             <Icon name="edit" size={16} />
           </div>
           <div>
             <div className="mono-label">Editando tu ficha</div>
-            <p className="text-xs text-ink-soft">
+            <p className="text-xs text-ui-muted">
               Los stats derivados se recalculan mientras cambias el borrador.
             </p>
           </div>
@@ -237,10 +237,10 @@ export function PlayerSheetEditor({
 
       {errors.length > 0 ? (
         <div className="border-2 border-rust bg-rust/10 p-3">
-          <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rust-deep">
+          <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-ui-danger">
             <Icon name="alert" size={14} /> Revisa tu ficha
           </div>
-          <ul className="list-inside list-disc text-xs leading-relaxed text-rust-deep">
+          <ul className="list-inside list-disc text-xs leading-relaxed text-ui-danger">
             {errors.map((error) => (
               <li key={error}>{error}</li>
             ))}
@@ -249,7 +249,7 @@ export function PlayerSheetEditor({
       ) : null}
 
       <section className="panel p-4">
-        <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+        <h2 className="mb-4 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
           01 · Identidad
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -283,15 +283,15 @@ export function PlayerSheetEditor({
       </section>
 
       <section className="panel p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2 border-b-2 border-ink pb-2">
+        <div className="mb-1 flex items-baseline justify-between gap-2 border-b border-ui-line-strong pb-2">
           <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
             02 · Stats base
           </h2>
-          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
             Vista previa en vivo
           </span>
         </div>
-        <p className="mb-4 mt-2 text-[11px] text-ink-faint">
+        <p className="mb-4 mt-2 text-[11px] text-ui-faint">
           Valor sin equipo ni efectos. El total derivado aparece justo debajo y se
           actualiza al instante.
         </p>
@@ -311,16 +311,16 @@ export function PlayerSheetEditor({
             </Field>
           ))}
         </div>
-        <div className="mt-4 border-t-2 border-ink/15 pt-4">
+        <div className="mt-4 border-t border-ui-line pt-4">
           <StatPanel derived={derived} rules={campaign.rules} />
         </div>
       </section>
 
       <section className="panel p-4">
-        <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+        <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
           03 · Equipo y skills
         </h2>
-        <p className="mb-4 mt-2 text-[11px] text-ink-faint">
+        <p className="mb-4 mt-2 text-[11px] text-ui-faint">
           Pulsa un cuadrado para abrir el objeto, o un pentágono para elegir skill.
           Solo aparecen los objetos y skills desbloqueados por el DM (y los que ya
           lleve tu ficha).
@@ -339,10 +339,10 @@ export function PlayerSheetEditor({
       </section>
 
       <section className="panel p-4">
-        <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+        <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
           04 · Especiales
         </h2>
-        <p className="mb-4 mt-2 text-[11px] text-ink-faint">
+        <p className="mb-4 mt-2 text-[11px] text-ui-faint">
           Dominio y hábitat son habilidades especiales de equipo. Tus skills
           equipadas se eligen desde los pentágonos del muñeco.
         </p>
@@ -377,15 +377,15 @@ export function PlayerSheetEditor({
       </section>
 
       <section className="panel p-4">
-        <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+        <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
           05 · Inventario
         </h2>
-        <p className="mb-4 mt-2 text-[11px] text-ink-faint">
+        <p className="mb-4 mt-2 text-[11px] text-ui-faint">
           Objetos que llevas contigo, además del equipo puesto.
         </p>
         <div className="space-y-2">
           {selectableItems.length === 0 ? (
-            <p className="text-xs text-ink-soft">
+            <p className="text-xs text-ui-muted">
               La campaña todavía no tiene objetos desbloqueados.
             </p>
           ) : (
@@ -407,7 +407,7 @@ export function PlayerSheetEditor({
                     ))}
                   </Select>
                   {item ? (
-                    <span className="font-mono text-[9px] text-ink-faint">
+                    <span className="font-mono text-[9px] text-ui-faint">
                       {item.code}
                     </span>
                   ) : null}
@@ -423,7 +423,7 @@ export function PlayerSheetEditor({
                   <button
                     type="button"
                     onClick={() => removeInventoryEntry(index)}
-                    className="flex h-8 w-8 items-center justify-center border border-ink/30 text-ink-faint hover:bg-rust/10 hover:text-rust"
+                    className="flex h-8 w-8 items-center justify-center border border-ui-line text-ui-faint hover:bg-rust/10 hover:text-rust"
                     aria-label="Quitar del inventario"
                   >
                     <Icon name="trash" size={13} />
@@ -445,7 +445,7 @@ export function PlayerSheetEditor({
         </div>
       </section>
 
-      <div className="flex flex-wrap justify-end gap-2 border-t-2 border-ink/15 pt-4">
+      <div className="flex flex-wrap justify-end gap-2 border-t border-ui-line pt-4">
         <Button
           type="button"
           variant="ghost"

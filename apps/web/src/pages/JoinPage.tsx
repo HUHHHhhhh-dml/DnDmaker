@@ -150,11 +150,11 @@ export function JoinPage() {
           <LoadingBlock label="Buscando la mesa…" />
         ) : loadError ? (
           <div className="panel mx-auto max-w-xl p-6 sm:p-8">
-            <div className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-rust-deep">
+            <div className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ui-danger">
               <Icon name="alert" size={16} /> No se pudo abrir la sala
             </div>
             <h1 className="display text-3xl">La mesa no responde</h1>
-            <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+            <p className="mt-3 text-sm leading-relaxed text-ui-muted">
               {loadError}
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
@@ -178,10 +178,10 @@ export function JoinPage() {
                 <span className="inline-block h-2 w-2 bg-rust" />
                 Mesa en vivo · Fase 2
               </div>
-              <h1 className="display text-5xl text-ink sm:text-6xl">
+              <h1 className="display text-5xl text-ui sm:text-6xl">
                 {info.campaignName}
               </h1>
-              <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-soft">
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-ui-muted">
                 {info.campaignDescription ||
                   "El DM ha abierto la mesa. Elige tu nombre, tu ficha y entra cuando estés listo."}
               </p>
@@ -202,11 +202,11 @@ export function JoinPage() {
               </div>
 
               <div className="panel mt-6 overflow-hidden">
-                <div className="flex items-center justify-between border-b-2 border-ink bg-paper-deep px-4 py-2.5">
-                  <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-ink-soft">
+                <div className="flex items-center justify-between border-b border-ui-line-strong bg-ui-surface-3 px-4 py-2.5">
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-ui-muted">
                     Código de sala
                   </span>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ui-faint">
                     Compártelo con tu mesa
                   </span>
                 </div>
@@ -214,7 +214,7 @@ export function JoinPage() {
                   <span className="font-display text-4xl tracking-[0.18em] sm:text-5xl">
                     {info.session.code}
                   </span>
-                  <div className="flex h-12 w-12 items-center justify-center border-2 border-ink bg-amber/25 pentagon">
+                  <div className="flex h-12 w-12 items-center justify-center border border-ui-line-strong bg-amber/25 pentagon">
                     <Icon name="users" size={22} />
                   </div>
                 </div>
@@ -228,13 +228,13 @@ export function JoinPage() {
                 ].map(([index, title, text]) => (
                   <div
                     key={index}
-                    className="border-2 border-ink/20 bg-paper-light/60 p-3"
+                    className="border border-ui-line bg-ui-surface-2 p-3"
                   >
-                    <div className="font-mono text-[10px] text-rust">{index}</div>
-                    <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink">
+                    <div className="font-mono text-[10px] text-ui-danger">{index}</div>
+                    <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ui">
                       {title}
                     </div>
-                    <div className="mt-1 text-[11px] leading-snug text-ink-faint">
+                    <div className="mt-1 text-[11px] leading-snug text-ui-muted">
                       {text}
                     </div>
                   </div>
@@ -256,7 +256,7 @@ export function JoinPage() {
                         <span
                           className={cx(
                             "inline-block h-1.5 w-1.5 rounded-full",
-                            player.connected ? "bg-moss" : "bg-ink-faint",
+                            player.connected ? "bg-ui-ok" : "bg-ui-faint",
                           )}
                         />
                         {player.name}
@@ -271,12 +271,12 @@ export function JoinPage() {
               {saved ? (
                 <div className="panel border-steel bg-steel/10 p-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink bg-paper-light hexagon">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-ui-line-strong bg-ui-surface-2 hexagon">
                       <Icon name="shield" size={18} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="mono-label">Sesión guardada</div>
-                      <p className="mt-1 text-sm font-semibold text-ink">
+                      <p className="mt-1 text-sm font-semibold text-ui">
                         Ya entraste como {saved.name}.
                       </p>
                       <Button
@@ -297,18 +297,18 @@ export function JoinPage() {
 
               {!saved ? (
               <form className="panel p-5 sm:p-6" onSubmit={(event) => void handleSubmit(event)}>
-                <div className="mb-4 flex items-start justify-between gap-3 border-b-2 border-ink pb-3">
+                <div className="mb-4 flex items-start justify-between gap-3 border-b border-ui-line-strong pb-3">
                   <div>
                     <div className="mono-label">Nuevo jugador</div>
                     <h2 className="display mt-1 text-2xl">Siéntate a la mesa</h2>
                   </div>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink bg-amber/30 pentagon">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-ui-line-strong bg-amber/30 pentagon">
                     <Icon name="users" size={18} />
                   </div>
                 </div>
 
                 {full ? (
-                  <div className="mb-4 flex items-start gap-2 border-2 border-rust bg-rust/10 p-3 text-rust-deep">
+                  <div className="mb-4 flex items-start gap-2 border-2 border-rust bg-rust/10 p-3 text-ui-danger">
                     <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
                     <div className="text-xs leading-relaxed">
                       <strong className="block font-mono text-[10px] uppercase tracking-[0.14em]">
@@ -319,7 +319,7 @@ export function JoinPage() {
                     </div>
                   </div>
                 ) : inCombat ? (
-                  <div className="mb-4 flex items-start gap-2 border-2 border-amber bg-amber/15 p-3 text-ink">
+                  <div className="mb-4 flex items-start gap-2 border-2 border-amber bg-amber/15 p-3 text-ui">
                     <Icon name="flame" size={15} className="mt-0.5 shrink-0" />
                     <div className="text-xs leading-relaxed">
                       La mesa está en combate. Podrás unirte cuando termine la
@@ -329,7 +329,7 @@ export function JoinPage() {
                 ) : null}
 
                 {formError ? (
-                  <div className="mb-4 border-2 border-rust bg-rust/10 p-3 text-xs font-semibold leading-relaxed text-rust-deep">
+                  <div className="mb-4 border-2 border-rust bg-rust/10 p-3 text-xs font-semibold leading-relaxed text-ui-danger">
                     <span className="flex items-center gap-1.5">
                       <Icon name="alert" size={14} /> {formError}
                     </span>
@@ -372,26 +372,26 @@ export function JoinPage() {
                         aria-pressed={characterId === null}
                         onClick={() => setCharacterId(null)}
                         className={cx(
-                          "flex w-full items-center gap-3 border-2 p-2.5 text-left transition-colors",
+                          "flex w-full items-center gap-3 border p-2.5 text-left transition-colors",
                           characterId === null
-                            ? "border-ink bg-amber/20 shadow-stamp-sm"
-                            : "border-ink/20 bg-paper hover:border-ink/50",
+                            ? "border-ui-accent bg-amber/20 "
+                            : "border-ui-line bg-ui-surface-2 hover:border-[var(--ui-line-strong)]",
                         )}
                       >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink bg-paper-light pentagon">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon">
                           <Icon name="plus" size={17} />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-ink">
+                          <span className="block text-sm font-semibold text-ui">
                             Crear personaje nuevo
                           </span>
-                          <span className="block text-[11px] leading-snug text-ink-faint">
+                          <span className="block text-[11px] leading-snug text-ui-faint">
                             Se crea una ficha base con stats por defecto. Podrás
                             editarla después.
                           </span>
                         </span>
                         {characterId === null ? (
-                          <Icon name="shield" size={16} className="shrink-0 text-rust" />
+                          <Icon name="shield" size={16} className="shrink-0 text-ui-danger" />
                         ) : null}
                       </button>
 
@@ -404,13 +404,13 @@ export function JoinPage() {
                             aria-pressed={selected}
                             onClick={() => setCharacterId(character.id)}
                             className={cx(
-                              "flex w-full items-center gap-3 border-2 p-2.5 text-left transition-colors",
+                              "flex w-full items-center gap-3 border p-2.5 text-left transition-colors",
                               selected
-                                ? "border-ink bg-amber/20 shadow-stamp-sm"
-                                : "border-ink/20 bg-paper hover:border-ink/50",
+                                ? "border-ui-accent bg-amber/20 "
+                                : "border-ui-line bg-ui-surface-2 hover:border-[var(--ui-line-strong)]",
                             )}
                           >
-                            <span className="relative h-10 w-9 shrink-0 overflow-hidden border-2 border-ink bg-paper-light">
+                            <span className="relative h-10 w-9 shrink-0 overflow-hidden border border-ui-line-strong bg-ui-surface-2">
                               {character.portrait ? (
                                 <img
                                   src={character.portrait}
@@ -418,16 +418,16 @@ export function JoinPage() {
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <span className="flex h-full w-full items-center justify-center font-display text-sm text-ink-faint">
+                                <span className="flex h-full w-full items-center justify-center font-display text-sm text-ui-faint">
                                   {character.name.slice(0, 1).toUpperCase()}
                                 </span>
                               )}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-semibold text-ink">
+                              <span className="block truncate text-sm font-semibold text-ui">
                                 {character.name}
                               </span>
-                              <span className="block font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                              <span className="block font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
                                 Ficha libre
                               </span>
                             </span>
@@ -435,7 +435,7 @@ export function JoinPage() {
                               <Icon
                                 name="shield"
                                 size={16}
-                                className="shrink-0 text-rust"
+                                className="shrink-0 text-ui-danger"
                               />
                             ) : null}
                           </button>
@@ -455,7 +455,7 @@ export function JoinPage() {
                 >
                   Entrar a la mesa
                 </Button>
-                <p className="mt-3 text-center font-mono text-[9px] uppercase leading-relaxed tracking-[0.12em] text-ink-faint">
+                <p className="mt-3 text-center font-mono text-[9px] uppercase leading-relaxed tracking-[0.12em] text-ui-faint">
                   Sin cuenta · tu sesión queda guardada en este navegador
                 </p>
               </form>
@@ -470,24 +470,24 @@ export function JoinPage() {
 
 function PlayerBrandHeader() {
   return (
-    <header className="border-b-2 border-ink bg-ink px-4 py-4 text-paper sm:px-8">
+    <header className="border-b border-[var(--ui-line)] bg-[var(--ui-surface-1)] px-4 py-4 text-[var(--ui-text)] sm:px-8">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center border border-paper/60 bg-paper pentagon">
-            <span className="font-display text-sm text-rust">PL</span>
+          <div className="flex h-10 w-10 items-center justify-center border border-[var(--ui-line-strong)] bg-[var(--ui-surface-2)] pentagon">
+            <span className="font-display text-sm text-[var(--ui-accent)]">PL</span>
           </div>
           <div>
             <div className="font-display text-lg leading-none tracking-wide">
               PROTOCOL LIFE
             </div>
-            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-paper/50">
+            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-[var(--ui-text-muted)]">
               Mesa de jugador · LAN
             </div>
           </div>
         </div>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 border border-paper/30 px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-paper/70 transition-colors hover:border-paper hover:text-paper"
+          className="inline-flex items-center gap-2 border border-[var(--ui-line)] px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--ui-text-muted)] transition-colors hover:border-[var(--ui-accent)] hover:text-[var(--ui-text)]"
         >
           <Icon name="arrow-left" size={13} />
           Volver al estudio

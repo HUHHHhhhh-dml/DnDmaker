@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-ui-theme="night">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#17150f" />
+    <!--
+      F1 · 3F.5: el tema de UI arranca en noche. data-ui-theme activa
+      `color-scheme: dark` (selects, scrollbars, autofill, date pickers) y
+      los tokens --ui-*; color-scheme refuerza lo mismo para el primer
+      pintado. theme-color apunta a --ui-bg (#0a0907) para que la barra del
+      navegador y el fondo de overscroll no destellen en blanco.
+    -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0907" />
     <meta
       name="description"
       content="PROTOCOL LIFE — estudio del DM: campaña, objetos, skills, efectos y fichas."

@@ -18,6 +18,8 @@ export interface CombatResultPanelProps {
   onDismiss: () => void;
   dismissLabel?: string;
   eyebrow?: string;
+  /** Si es true, el log oculta el HP exacto de los enemigos. */
+  hideEnemyHp?: boolean;
 }
 
 export function CombatResultPanel({
@@ -26,6 +28,7 @@ export function CombatResultPanel({
   onDismiss,
   dismissLabel = "Descartar resultado",
   eyebrow = "Último combate",
+  hideEnemyHp = false,
 }: CombatResultPanelProps) {
   const party = combat.units.filter((unit) => unit.team === "players");
   const enemies = combat.units.filter((unit) => unit.team === "enemies");
@@ -51,12 +54,12 @@ export function CombatResultPanel({
             ? "border-moss bg-moss/10"
             : combat.winner === "enemies"
               ? "border-rust bg-rust/10"
-              : "border-ink bg-paper-deep",
+              : "border-ui-line-strong bg-ui-surface-3",
         )}
       >
         <div
           className={cx(
-            "flex h-14 w-14 shrink-0 items-center justify-center border-2 border-ink",
+            "flex h-14 w-14 shrink-0 items-center justify-center border border-ui-line-strong",
             combat.winner === "players"
               ? "bg-moss/20 hexagon"
               : "bg-rust/15 pentagon",
@@ -94,6 +97,7 @@ export function CombatResultPanel({
         units={combat.units}
         content={campaign.content}
         emptyLabel="Ese combate no dejó eventos."
+        hideEnemyHp={hideEnemyHp}
       />
     </section>
   );

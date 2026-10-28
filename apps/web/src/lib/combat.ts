@@ -28,6 +28,8 @@ export interface CombatDraftAction {
   skillId?: string;
   utilityId?: string;
   targetId?: string;
+  /** Slot visual del objetivo (1..skillSlots). No cambia el clash. */
+  targetSlot?: number;
   redirectFor?: string;
 }
 
@@ -229,6 +231,7 @@ export function payloadToDraft(actions: DeclaredAction[]): CombatDraftAction[] {
       skillId: action.skillId,
       utilityId: action.utilityId,
       targetId: action.targetId,
+      targetSlot: action.targetSlot,
       redirectFor: action.redirectFor,
     }));
 }
@@ -241,6 +244,7 @@ export function draftToPayload(draft: CombatDraftAction[]): CombatDeclaration[] 
         slot,
         skillId: action.skillId,
         targetId: action.targetId,
+        ...(action.targetSlot ? { targetSlot: action.targetSlot } : {}),
         ...(action.redirectFor ? { redirectFor: action.redirectFor } : {}),
       };
     }
@@ -249,6 +253,7 @@ export function draftToPayload(draft: CombatDraftAction[]): CombatDeclaration[] 
         slot,
         utilityId: action.utilityId,
         targetId: action.targetId,
+        ...(action.targetSlot ? { targetSlot: action.targetSlot } : {}),
       };
     }
     return { slot, special: action.kind };
@@ -262,6 +267,7 @@ function canonicalAction(action: CombatDeclaration): Record<string, unknown> {
     utilityId: action.utilityId ?? null,
     special: action.special ?? null,
     targetId: action.targetId ?? null,
+    targetSlot: action.targetSlot ?? null,
     redirectFor: action.redirectFor ?? null,
   };
 }
@@ -281,6 +287,7 @@ export function serverActionsSignature(actions: DeclaredAction[]): string {
           utilityId: action.utilityId,
           special: action.special,
           targetId: action.targetId,
+          targetSlot: action.targetSlot,
           redirectFor: action.redirectFor,
         }),
       ),
@@ -319,6 +326,12 @@ export function validateDraft(
       if (!target || !living.has(target.id)) {
         return `${label}: elige un objetivo vivo.`;
       }
+      if (
+        action.targetSlot !== undefined &&
+        (action.targetSlot < 1 || action.targetSlot > target.stats.skillSlots)
+      ) {
+        return `${label}: el slot ${action.targetSlot} no existe en ${target.name}.`;
+      }
       if (action.redirectFor) {
         const protectedUnit = unitById(combat, action.redirectFor);
         if (!protectedUnit || !living.has(protectedUnit.id)) {
@@ -349,6 +362,12 @@ export function validateDraft(
       const target = unitById(combat, action.targetId);
       if (!target || !living.has(target.id)) {
         return `${label}: elige un objetivo vivo.`;
+      }
+      if (
+        action.targetSlot !== undefined &&
+        (action.targetSlot < 1 || action.targetSlot > target.stats.skillSlots)
+      ) {
+        return `${label}: el slot ${action.targetSlot} no existe en ${target.name}.`;
       }
       continue;
     }

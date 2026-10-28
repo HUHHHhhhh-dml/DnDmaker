@@ -278,11 +278,21 @@ export interface EncounterRewards {
   notes?: string;
 }
 
+export type SceneTheme = "paper" | "night";
+
 export interface Encounter {
   id: Id;
   name: string;
   description?: string;
+  /**
+   * Capa de piso de la escena de combate (Fase 3F.5). Es el `background`
+   * histórico: al iniciar el combate se copia a `CombatState.scene.floor`.
+   */
   background?: string;
+  /** Capa de pared de la escena; se copia a `CombatState.scene.wall`. */
+  backgroundWall?: string;
+  /** Tema visual de la escena; ausente = `"paper"`. */
+  sceneTheme?: SceneTheme;
   enemies: EncounterEnemy[];
   rewards?: EncounterRewards;
   victory?: string;
@@ -414,6 +424,12 @@ export interface CombatUnit {
   /** Stats derivados al iniciar; no cambian si la ficha se edita después. */
   stats: Stats;
   /**
+   * Tirada de SPD de este combate (1..4), aplicada una sola vez al iniciar.
+   * `stats.spd` ya la incluye (SPD derivada + roll) y se conserva al refrescar
+   * stats entre rondas. Ausente/0 en estados antiguos o con speedRoll:false.
+   */
+  spdRoll?: number;
+  /**
    * Stats base de la ficha antes de equipo/efectos. El motor los usa para
    * recalcular `stats` cuando entran o salen efectos. Ausente en estados
    * antiguos: en ese caso se usa `stats` como base.
@@ -444,6 +460,12 @@ export interface DeclaredAction {
   utilityId?: Id;
   special?: "domain" | "habitat";
   targetId?: Id;
+  /**
+   * Slot (1..6) de la ficha objetivo elegido solo para presentación. No
+   * participa en el emparejamiento de clash: este sigue siendo por unidad y
+   * sin importar slot.
+   */
+  targetSlot?: number;
   redirectFor?: Id;
   locked: boolean;
 }
@@ -473,6 +495,22 @@ export interface CombatEvent {
   data?: Record<string, unknown>;
 }
 
+/**
+ * Escena visual del combate (Fase 3F.5). Es solo presentación: el DM puede
+ * cambiarla en vivo y el motor nunca la lee.
+ */
+export interface CombatScene {
+  /** URL/ruta de la capa de piso. */
+  floor?: string;
+  /** URL/ruta de la capa de pared. */
+  wall?: string;
+  /** Tema visual; ausente = `"paper"`. */
+  theme?: SceneTheme;
+}
+
+/** Patch parcial de escena; al menos un campo. `""` limpia una capa. */
+export type CombatScenePatch = Partial<CombatScene>;
+
 export interface CombatState {
   id: Id;
   encounterId: Id;
@@ -489,6 +527,11 @@ export interface CombatState {
    */
   lockedUnits?: Record<Id, boolean>;
   specialCooldowns: Record<Id, Record<Id, number>>;
+  /**
+   * Escena visual del combate. Copiada del encuentro al iniciar y editable
+   * por el DM en vivo. Ausente en estados antiguos: el cliente usa fallback.
+   */
+  scene?: CombatScene;
   log: CombatEvent[];
   winner?: Team;
 }

@@ -89,12 +89,12 @@ export function CharactersPage() {
         }
       />
 
-      <div className="mb-5 flex flex-col gap-3 border-2 border-ink bg-paper-light p-3 sm:flex-row sm:items-center">
+      <div className="mb-5 flex flex-col gap-3 border border-ui-line-strong bg-ui-surface-2 p-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Icon
             name="search"
             size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ui-faint"
           />
           <TextInput
             value={search}
@@ -110,10 +110,10 @@ export function CharactersPage() {
               type="button"
               onClick={() => setKind(filter.value)}
               className={cx(
-                "border border-ink px-2 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors",
+                "border px-2 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors",
                 kind === filter.value
-                  ? "bg-ink text-paper"
-                  : "bg-paper text-ink-soft hover:bg-paper-deep",
+                  ? "border-ui-accent bg-amber/20 text-ui"
+                  : "border-ui-line bg-ui-surface-2 text-ui-muted hover:bg-paper-deep hover:text-[color:var(--ui-text)]",
               )}
             >
               {filter.label}
@@ -170,11 +170,11 @@ export function CharactersPage() {
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-2 border-t border-ink/15 pt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+      <div className="mono-label mt-6 flex flex-wrap gap-2 border-t border-ui-line pt-4">
         {(["player", "npc", "enemy"] as CharacterKind[]).map((value) => (
           <span key={value} className="chip">
             {CHARACTER_KIND_LABELS[value]}
-            <span className="font-bold text-ink">{counts[value] ?? 0}</span>
+            <span className="font-bold text-ui">{counts[value] ?? 0}</span>
           </span>
         ))}
       </div>

@@ -45,12 +45,12 @@ export function EffectsPage() {
         }
       />
 
-      <div className="mb-5 flex flex-col gap-3 border-2 border-ink bg-paper-light p-3 sm:flex-row sm:items-center">
+      <div className="mb-5 flex flex-col gap-3 border border-ui-line-strong bg-ui-surface-2 p-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Icon
             name="search"
             size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ui-faint"
           />
           <TextInput
             value={search}
@@ -59,7 +59,7 @@ export function EffectsPage() {
             className="pl-9"
           />
         </div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+        <div className="mono-label tnum">
           {campaign.content.effects.length} efectos · {triggerCount} triggers
         </div>
       </div>

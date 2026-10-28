@@ -308,12 +308,19 @@ describe("Fase 3D — Socket.IO de combate", () => {
       p1.emit("combat:declare", {
         round: 1,
         actions: [
-          { slot: 1, skillId: scenario.skillId, targetId: enemyUnit.id },
+          {
+            slot: 1,
+            skillId: scenario.skillId,
+            targetId: enemyUnit.id,
+            // targetSlot es solo presentación; debe viajar y persistir.
+            targetSlot: 1,
+          },
           { slot: 2, skillId: scenario.skillId, targetId: enemyUnit.id },
         ],
       });
       const seenP1 = await seesP1;
       expect(seenP1.actions[p1Unit.id]).toHaveLength(2);
+      expect(seenP1.actions[p1Unit.id]?.[0]?.targetSlot).toBe(1);
       expect(seenP1).not.toHaveProperty("seed");
 
       // P2 declara; P1 ve el estado actualizado.
@@ -710,8 +717,10 @@ describe("Fase 3D — Socket.IO de combate", () => {
     );
 
     const dm = await connect(scenario.sessionCode, scenario.dmToken);
+    // La party solo entra si está conectada (3F.5).
+    const p1 = await connect(scenario.sessionCode, token);
     try {
-      const combat = await startCombat(dm, scenario);
+      const combat = await startCombat(dm, scenario, [p1]);
       const inside = built.sessions.getState(scenario.sessionCode, token);
       expect(inside.campaign.content.skills.map((skill) => skill.id)).toContain(
         scenario.enemySkillId,
@@ -719,6 +728,7 @@ describe("Fase 3D — Socket.IO de combate", () => {
       built.combat.endEncounter(combat.id, "test");
     } finally {
       dm.disconnect();
+      p1.disconnect();
     }
   });
 
@@ -747,6 +757,20 @@ describe("Fase 3D — Socket.IO de combate", () => {
         ],
       });
       expectSocketError(await error, "invalid_payload");
+
+      // targetSlot fuera de los slots reales del objetivo (2): error de reglas.
+      error = once<{ code: string; message: string }>(p1, "error");
+      p1.emit("combat:declare", {
+        actions: [
+          {
+            slot: 1,
+            skillId: scenario.skillId,
+            targetId: enemyUnit.id,
+            targetSlot: 3,
+          },
+        ],
+      });
+      expectSocketError(await error, "target_slot_out_of_range");
 
       error = once<{ code: string; message: string }>(dm, "error");
       dm.emit("combat:declare", {
@@ -780,6 +804,168 @@ describe("Fase 3D — Socket.IO de combate", () => {
     } finally {
       dm.disconnect();
       p1.disconnect();
+    }
+  });
+
+  it("el DM cambia la escena en vivo, la sala recibe combat:state y un jugador no puede", async () => {
+    const scenario = await setupScenario();
+    const dm = await connect(scenario.sessionCode, scenario.dmToken);
+    const p1 = await connect(
+      scenario.sessionCode,
+      playerToken(scenario, scenario.playerOne.id),
+    );
+
+    try {
+      const combat = await startCombat(dm, scenario, [p1]);
+
+      // El cambio funciona durante el combate (no hay bloqueo de contenido).
+      const sceneState = waitForCombatState(
+        p1,
+        (state) => state.scene?.theme === "night",
+      );
+      dm.emit("combat:scene", {
+        theme: "night",
+        floor: "/assets/scenes/night-floor.png",
+        wall: "/assets/scenes/wall.png",
+      });
+      const seen = await sceneState;
+      expect(seen.scene).toEqual({
+        theme: "night",
+        floor: "/assets/scenes/night-floor.png",
+        wall: "/assets/scenes/wall.png",
+      });
+      // Persistido en el estado que sirve reconexiones/API.
+      expect(built.combat.getState(combat.id).scene).toEqual(seen.scene);
+
+      // Un jugador no puede emitir combat:scene.
+      let error = once<{ code: string; message: string }>(p1, "error");
+      p1.emit("combat:scene", { theme: "paper" });
+      expectSocketError(await error, "dm_only");
+      expect(built.combat.getState(combat.id).scene?.theme).toBe("night");
+
+      // Patch vacío: el schema de escena exige al menos un campo.
+      error = once<{ code: string; message: string }>(dm, "error");
+      dm.emit("combat:scene", {});
+      expectSocketError(await error, "invalid_payload");
+    } finally {
+      dm.disconnect();
+      p1.disconnect();
+    }
+  });
+
+  it("al iniciar excluye a los jugadores desconectados y sin party da no_players", async () => {
+    // P2 nunca abre socket: su presencia es false.
+    const scenario = await setupScenario();
+    const dm = await connect(scenario.sessionCode, scenario.dmToken);
+    const p1 = await connect(
+      scenario.sessionCode,
+      playerToken(scenario, scenario.playerOne.id),
+    );
+
+    try {
+      const combat = await startCombat(dm, scenario, [p1]);
+      expect(
+        combat.units.some(
+          (unit) => unit.characterId === scenario.playerOne.id,
+        ),
+      ).toBe(true);
+      expect(
+        combat.units.some(
+          (unit) => unit.characterId === scenario.playerTwo.id,
+        ),
+      ).toBe(false);
+      expect(
+        built.sessions
+          .getById(scenario.sessionId)
+          ?.players.find(
+            (player) => player.characterId === scenario.playerTwo.id,
+          )?.connected,
+      ).toBe(false);
+      built.combat.endEncounter(combat.id, "test");
+      p1.disconnect();
+
+      // Sin ningún jugador conectado, el DM recibe un error claro.
+      const noParty = await setupScenario();
+      const dmAlone = await connect(noParty.sessionCode, noParty.dmToken);
+      try {
+        const error = once<{ code: string; message: string }>(
+          dmAlone,
+          "error",
+        );
+        dmAlone.emit("combat:start", { encounterId: noParty.encounterId });
+        const payload = await error;
+        expectSocketError(payload, "no_players");
+        expect(payload.message).toContain("conectados");
+        expect(built.combat.getLiveCombat(noParty.campaignId)).toBeNull();
+      } finally {
+        dmAlone.disconnect();
+      }
+    } finally {
+      dm.disconnect();
+    }
+  });
+
+  it("auto-bloquea al jugador que se desconecta a mitad y la ronda se resuelve", async () => {
+    const scenario = await setupScenario();
+    const dm = await connect(scenario.sessionCode, scenario.dmToken);
+    const p1 = await connect(
+      scenario.sessionCode,
+      playerToken(scenario, scenario.playerOne.id),
+    );
+    let reconnected: Socket | null = null;
+
+    try {
+      const combat = await startCombat(dm, scenario, [p1]);
+      const p1Unit = unitOf(combat, scenario.playerOne.id);
+
+      // Sin acciones: la unidad se conserva y queda bloqueada con cero acciones.
+      const autoLocked = waitForCombatState(
+        dm,
+        (state) =>
+          state.round === 1 && state.lockedUnits?.[p1Unit.id] === true,
+      );
+      p1.disconnect();
+      const locked = await autoLocked;
+      expect(locked.units.some((unit) => unit.id === p1Unit.id)).toBe(true);
+      expect(locked.phase).toBe("declaring");
+
+      // El lock del DM completa la ronda y el servidor la resuelve.
+      const roundTwo = waitForCombatState(dm, (state) => state.round === 2);
+      dm.emit("combat:lock", { combatId: combat.id, round: 1 });
+      const next = await roundTwo;
+      expect(next.units.some((unit) => unit.id === p1Unit.id)).toBe(true);
+
+      // Al reconectar, la unidad sigue en el snapshot y la presencia vuelve.
+      reconnected = ioClient(baseUrl, {
+        auth: {
+          code: scenario.sessionCode,
+          token: playerToken(scenario, scenario.playerOne.id),
+        },
+        transports: ["websocket"],
+        forceNew: true,
+        autoConnect: false,
+      });
+      const fullPromise = once<StateFullPayload>(reconnected, "state:full");
+      reconnected.connect();
+      await once(reconnected, "connect");
+      const full = await fullPromise;
+      expect(full.combat?.round).toBe(2);
+      expect(full.combat?.units.some((unit) => unit.id === p1Unit.id)).toBe(
+        true,
+      );
+      expect(
+        built.sessions
+          .getById(scenario.sessionId)
+          ?.players.find(
+            (player) => player.characterId === scenario.playerOne.id,
+          )?.connected,
+      ).toBe(true);
+
+      built.combat.endEncounter(combat.id, "test");
+    } finally {
+      dm.disconnect();
+      p1.disconnect();
+      reconnected?.disconnect();
     }
   });
 });

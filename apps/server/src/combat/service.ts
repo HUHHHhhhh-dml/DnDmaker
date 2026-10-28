@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import {
   clamp,
+  combatScenePatchSchema,
+  createRng,
   newId,
   resolveRound,
   type Campaign,
   type CombatEvent,
+  type CombatScene,
+  type CombatScenePatch,
   type CombatState,
   type CombatUnit,
   type Encounter,
@@ -42,6 +46,12 @@ export type { DeclaredActionInput } from "./declarations";
 export interface StartEncounterOptions {
   /** Semilla fija para tests/replay; si falta se genera una aleatoria. */
   seed?: string;
+  /**
+   * Aplica la tirada de SPD (base + 1..4) a cada unidad al iniciar. Default
+   * true en producción; los tests que comparan stats exactos usan false.
+   * Es determinista con la seed del combate (corriente `${seed}:speed`).
+   */
+  speedRoll?: boolean;
 }
 
 /**
@@ -154,16 +164,27 @@ export class CombatService {
       );
     }
 
-    const players = this.buildParty(campaign, session);
-    const enemies = this.buildEnemies(campaign, encounter);
+    // La seed se decide antes de instanciar unidades: la tirada de SPD deriva
+    // de ella (`${seed}:speed`) y debe ser reproducible por combate.
+    const seed = options.seed?.trim() || randomUUID();
+    const speedRng =
+      (options.speedRoll ?? true) ? createRng(`${seed}:speed`) : null;
+    const nextSpeedRoll = (): number | undefined =>
+      speedRng ? 1 + speedRng.int(4) : undefined;
 
+    const players = this.buildParty(campaign, session, nextSpeedRoll);
+
+    // Solo entran jugadores presentes en la sala. Comprobamos antes de
+    // instanciar enemigos para fallar rápido con un error claro.
     if (players.length === 0) {
       throw new HttpError(
         422,
         "no_players",
-        "No hay jugadores con ficha en la sala para iniciar el combate.",
+        "No hay jugadores conectados con ficha en la sala para iniciar el combate.",
       );
     }
+
+    const enemies = this.buildEnemies(campaign, encounter, nextSpeedRoll);
     if (enemies.length === 0) {
       throw new HttpError(
         422,
@@ -199,7 +220,10 @@ export class CombatService {
       },
     };
 
-    const seed = options.seed?.trim() || randomUUID();
+    const scene: CombatScene = { theme: encounter.sceneTheme ?? "paper" };
+    if (encounter.background) scene.floor = encounter.background;
+    if (encounter.backgroundWall) scene.wall = encounter.backgroundWall;
+
     const state: CombatState = {
       id: newId("cmb"),
       encounterId,
@@ -209,6 +233,7 @@ export class CombatService {
       units,
       actions,
       specialCooldowns,
+      scene,
       log: [startEvent],
     };
 
@@ -266,6 +291,38 @@ export class CombatService {
   }
 
   /**
+   * Cambia la escena visual del combate (Fase 3F.5). Solo el DM.
+   *
+   * Es presentación: no toca HP, fichas ni reglas. Valida el patch con Zod,
+   * lo mezcla sobre `state.scene` y persiste/emite el estado para que toda la
+   * sala reciba `combat:state`. Funciona durante el combate (incluida la fase
+   * de resolución); solo se rechaza si el combate ya terminó.
+   */
+  setScene(
+    combatId: string,
+    actor: CombatActor,
+    patch: CombatScenePatch,
+  ): CombatState {
+    if (actor.role !== "dm") {
+      throw new HttpError(403, "dm_only", "Solo el DM puede cambiar la escena.");
+    }
+    const record = this.requireRecord(combatId);
+    const session = this.requireSession(record);
+    if (record.state.phase === "ended") {
+      throw new HttpError(409, "invalid_phase", "El combate ya terminó.");
+    }
+
+    const parsed = combatScenePatchSchema.parse(patch);
+    const state = structuredClone(record.state);
+    // Merge: un campo ausente conserva el valor actual; `""` limpia la capa.
+    state.scene = { ...(state.scene ?? {}), ...parsed };
+
+    const saved = this.store.save(state);
+    this.events.onCombatState?.(saved, session);
+    return saved;
+  }
+
+  /**
    * Bloquea la unidad del jugador o todas las unidades enemigas vivas (DM).
    * Cuando todas las unidades vivas están bloqueadas, la fase pasa a
    * `resolving`. Las derrotadas no cuentan.
@@ -299,6 +356,45 @@ export class CombatService {
     if (allAliveLocked(state)) state.phase = "resolving";
     const saved = this.store.save(state);
     this.events.onCombatState?.(saved, session);
+    return saved;
+  }
+
+  /**
+   * Auto-lock al desconectarse un jugador durante el combate (3F.5).
+   *
+   * La unidad NO se elimina: se conserva en el snapshot para que el jugador
+   * pueda reconectar. Para que la ronda no quede bloqueada, se bloquea con
+   * las acciones que tuviera (cero si no llegó a declarar). Si con eso ya
+   * están bloqueadas todas las unidades vivas, la ronda se resuelve igual
+   * que si el jugador hubiera pulsado «Listo».
+   *
+   * Es best-effort: sin combate vivo, sin unidad o con la unidad ya
+   * bloqueada no hace nada. La invoca el socket de combate en `disconnect`.
+   */
+  handlePlayerDisconnected(
+    campaignId: string,
+    characterId?: string,
+  ): CombatState | null {
+    if (!characterId) return null;
+    const record = this.store.findLiveByCampaign(campaignId);
+    if (!record || record.state.phase !== "declaring") return null;
+
+    const state = structuredClone(record.state);
+    const unit = state.units.find(
+      (entry) => entry.team === "players" && entry.characterId === characterId,
+    );
+    if (!unit || !isAlive(unit) || isUnitLocked(state, unit.id)) return null;
+
+    markUnitLocked(state, unit.id);
+    const saved = this.store.save(state);
+
+    // Misma salida que un lock normal: si era el último, se resuelve.
+    if (allAliveLocked(saved)) return this.resolveCombatRound(saved.id);
+
+    const session = record.sessionId
+      ? this.sessions.getById(record.sessionId)
+      : null;
+    if (session) this.events.onCombatState?.(saved, session);
     return saved;
   }
 
@@ -619,14 +715,19 @@ export class CombatService {
     return record.state;
   }
 
-  private buildParty(campaign: Campaign, session: SessionRow): CombatUnit[] {
+  private buildParty(
+    campaign: Campaign,
+    session: SessionRow,
+    nextSpeedRoll: () => number | undefined,
+  ): CombatUnit[] {
     const characters = new Map(
       campaign.content.characters.map((character) => [character.id, character]),
     );
     const units: CombatUnit[] = [];
 
     for (const player of session.players) {
-      if (!player.characterId) continue;
+      // Presencia real: un jugador que no está conectado no entra al combate.
+      if (!player.characterId || !player.connected) continue;
       const character = characters.get(player.characterId);
       if (!character) {
         throw new HttpError(
@@ -635,7 +736,13 @@ export class CombatService {
           `La ficha de ${player.name} ya no existe en la campaña.`,
         );
       }
-      units.push(snapshotUnit(character, { campaign, team: "players" }));
+      units.push(
+        snapshotUnit(character, {
+          campaign,
+          team: "players",
+          speedRoll: nextSpeedRoll(),
+        }),
+      );
     }
 
     return units;
@@ -644,6 +751,7 @@ export class CombatService {
   private buildEnemies(
     campaign: Campaign,
     encounter: Encounter,
+    nextSpeedRoll: () => number | undefined,
   ): CombatUnit[] {
     const characters = new Map(
       campaign.content.characters.map((character) => [character.id, character]),
@@ -667,7 +775,13 @@ export class CombatService {
         if (spawn.overrides?.hpCurrent === undefined) {
           delete merged.hpCurrent;
         }
-        units.push(snapshotUnit(merged, { campaign, team: "enemies" }));
+        units.push(
+          snapshotUnit(merged, {
+            campaign,
+            team: "enemies",
+            speedRoll: nextSpeedRoll(),
+          }),
+        );
       }
     }
 

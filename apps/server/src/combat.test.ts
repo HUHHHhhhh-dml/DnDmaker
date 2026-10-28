@@ -71,6 +71,12 @@ interface ScenarioOptions {
   emptyEncounter?: boolean;
   /** Usa overrides anidados parciales (hpMax y un slot de equipo). */
   partialOverrides?: boolean;
+  /** Capas/tema visual del encuentro (escena de combate). */
+  scene?: {
+    background?: string;
+    backgroundWall?: string;
+    sceneTheme?: "paper" | "night";
+  };
 }
 
 async function createContent<T>(
@@ -197,6 +203,7 @@ async function setupScenario(options: ScenarioOptions = {}): Promise<Scenario> {
   const encounter = await createContent<Encounter>(campaignId, "encounters", {
     name: "Protocolo de prueba",
     description: "Una copia por defecto.",
+    ...(options.scene ?? {}),
     enemies: options.emptyEncounter
       ? []
       : [
@@ -252,6 +259,11 @@ async function setupScenario(options: ScenarioOptions = {}): Promise<Scenario> {
     });
     expect(joinedTwo.statusCode, joinedTwo.body).toBe(201);
     playerToken = (joinedOne.json() as JoinSessionResponse).playerToken;
+    // Los tests HTTP no abren socket: simulamos que ambos están presentes.
+    // Los tests de desconexión vuelven a marcar a quien haga falta.
+    for (const player of built.sessions.getById(hosted.session.id)?.players ?? []) {
+      built.sessions.markPlayerConnected(hosted.session.code, player.id, true);
+    }
   }
 
   return {
@@ -311,7 +323,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "seed-3a" },
+      { seed: "seed-3a", speedRoll: false },
     );
 
     expect(state.phase).toBe("declaring");
@@ -417,7 +429,7 @@ describe("Fase 3A — snapshot y dominio", () => {
         scenario.campaignId,
         scenario.encounterId,
         scenario.sessionId,
-        { seed: "socket" },
+        { seed: "socket", speedRoll: false },
       );
       const payload = await started;
       expect(payload.combat.id).toBe(state.id);
@@ -435,7 +447,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "overrides" },
+      { seed: "overrides", speedRoll: false },
     );
 
     const enemies = state.units.filter((unit) => unit.team === "enemies");
@@ -475,7 +487,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "partial" },
+      { seed: "partial", speedRoll: false },
     );
     const enemy = state.units.find((unit) => unit.team === "enemies")!;
 
@@ -511,7 +523,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "fin" },
+      { seed: "fin", speedRoll: false },
     );
 
     const playerUnit = state.units.find(
@@ -563,7 +575,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "restore" },
+      { seed: "restore", speedRoll: false },
     );
     const playerUnit = state.units.find(
       (unit) => unit.characterId === scenario.playerOne.id,
@@ -620,7 +632,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "rest-lock" },
+      { seed: "rest-lock", speedRoll: false },
     );
     const blocked = await app.inject({
       method: "POST",
@@ -655,7 +667,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "visual-change" },
+      { seed: "visual-change", speedRoll: false },
     );
     const unit = state.units.find(
       (entry) => entry.characterId === scenario.playerOne.id,
@@ -676,6 +688,38 @@ describe("Fase 3A — snapshot y dominio", () => {
       visualMode: "portrait",
       battleSprite: "/assets/changed-battle.png",
       bodyImage: "/assets/changed-body.png",
+    });
+  });
+
+  it("export/import conserva capas y tema de escena del encuentro", async () => {
+    const scenario = await setupScenario({ enemyCount: 1 });
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/api/content/encounters/${scenario.encounterId}`,
+      headers: { "x-session-token": scenario.dmToken },
+      payload: {
+        background: "/assets/scene-floor.png",
+        backgroundWall: "/assets/scene-wall.png",
+        sceneTheme: "night",
+      },
+    });
+    expect(patched.statusCode, patched.body).toBe(200);
+    expect(patched.json()).toMatchObject({
+      background: "/assets/scene-floor.png",
+      backgroundWall: "/assets/scene-wall.png",
+      sceneTheme: "night",
+    });
+
+    const exported = built.repository.exportCampaign(scenario.campaignId);
+    const imported = built.repository.importCampaign(exported);
+    expect(
+      imported.content.encounters.find(
+        (encounter) => encounter.name === "Protocolo de prueba",
+      ),
+    ).toMatchObject({
+      background: "/assets/scene-floor.png",
+      backgroundWall: "/assets/scene-wall.png",
+      sceneTheme: "night",
     });
   });
 
@@ -741,7 +785,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "lock" },
+      { seed: "lock", speedRoll: false },
     );
 
     const dmHeaders = { "x-session-token": scenario.dmToken };
@@ -893,11 +937,14 @@ describe("Fase 3A — snapshot y dominio", () => {
         name: "Ana",
         characterId: player.id,
       });
+      for (const joined of first.sessions.getById(hosted.session.id)?.players ?? []) {
+        first.sessions.markPlayerConnected(hosted.session.code, joined.id, true);
+      }
       const state = first.combat.startEncounter(
         campaign.id,
         encounter.id,
         hosted.session.id,
-        { seed: "reload" },
+        { seed: "reload", speedRoll: false },
       );
 
       await first.app.close();
@@ -935,7 +982,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "recent" },
+      { seed: "recent", speedRoll: false },
     );
     built.combat.endEncounter(state.id, "dm");
 
@@ -999,7 +1046,7 @@ describe("Fase 3A — snapshot y dominio", () => {
       scenario.campaignId,
       scenario.encounterId,
       scenario.sessionId,
-      { seed: "doble" },
+      { seed: "doble", speedRoll: false },
     );
     expectHttpError(
       () =>
@@ -1009,6 +1056,248 @@ describe("Fase 3A — snapshot y dominio", () => {
           scenario.sessionId,
         ),
       "combat_in_progress",
+    );
+  });
+
+  it("solo incluye jugadores conectados y falla claro si no queda ninguno", async () => {
+    const scenario = await setupScenario({ enemyCount: 1 });
+    const players = built.sessions.getById(scenario.sessionId)!.players;
+    const ana = players.find(
+      (player) => player.characterId === scenario.playerOne.id,
+    )!;
+    const beto = players.find(
+      (player) => player.characterId === scenario.playerTwo.id,
+    )!;
+
+    // Uno desconectado: solo entra la unidad de Ana.
+    built.sessions.markPlayerConnected(scenario.sessionCode, beto.id, false);
+    const state = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "presencia", speedRoll: false },
+    );
+    const party = state.units.filter((unit) => unit.team === "players");
+    expect(party).toHaveLength(1);
+    expect(party[0]?.characterId).toBe(scenario.playerOne.id);
+    expect(
+      state.units.some((unit) => unit.characterId === scenario.playerTwo.id),
+    ).toBe(false);
+    built.combat.endEncounter(state.id, "test");
+
+    // Todos conectados: se mantiene el comportamiento actual.
+    built.sessions.markPlayerConnected(scenario.sessionCode, beto.id, true);
+    const both = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "presencia2", speedRoll: false },
+    );
+    expect(both.units.filter((unit) => unit.team === "players")).toHaveLength(2);
+    built.combat.endEncounter(both.id, "test");
+
+    // Todos desconectados: error claro y ningún combate nuevo.
+    built.sessions.markPlayerConnected(scenario.sessionCode, ana.id, false);
+    built.sessions.markPlayerConnected(scenario.sessionCode, beto.id, false);
+    let caught: unknown = null;
+    try {
+      built.combat.startEncounter(
+        scenario.campaignId,
+        scenario.encounterId,
+        scenario.sessionId,
+        { seed: "presencia3" },
+      );
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(HttpError);
+    expect((caught as HttpError).code).toBe("no_players");
+    expect((caught as HttpError).message).toContain("conectados");
+    expect(built.combat.getLiveCombat(scenario.campaignId)).toBeNull();
+    expect(built.sessions.getById(scenario.sessionId)?.status).toBe("playing");
+  });
+
+  it("auto-bloquea al jugador desconectado y resuelve la ronda sin quitarlo", async () => {
+    const scenario = await setupScenario({ enemyCount: 1 });
+    const state = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "auto-lock", speedRoll: false },
+    );
+    const unitOf = (characterId: string) =>
+      state.units.find((unit) => unit.characterId === characterId)!;
+
+    // El DM bloquea enemigos; aún faltan los dos jugadores.
+    expect(built.combat.lockActions(state.id, { role: "dm" }).phase).toBe(
+      "declaring",
+    );
+
+    // Sin acciones declaradas: se bloquea con cero acciones y sigue el combate.
+    const afterFirst = built.combat.handlePlayerDisconnected(
+      scenario.campaignId,
+      scenario.playerOne.id,
+    );
+    expect(afterFirst?.phase).toBe("declaring");
+    expect(afterFirst?.lockedUnits?.[unitOf(scenario.playerOne.id).id]).toBe(
+      true,
+    );
+
+    // El último jugador desconectado completa el lock: la ronda se resuelve.
+    const resolved = built.combat.handlePlayerDisconnected(
+      scenario.campaignId,
+      scenario.playerTwo.id,
+    );
+    expect(resolved?.round).toBe(2);
+    expect(resolved?.lockedUnits).toEqual({});
+    expect(
+      resolved?.units.some(
+        (unit) => unit.characterId === scenario.playerOne.id,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("Fase 3F.5 — tirada de SPD y escena de combate", () => {
+  it("tira SPD 1..4 a todas las unidades, es determinista y respeta speedRoll:false", async () => {
+    const scenario = await setupScenario({ enemyCount: 2 });
+
+    // Línea base sin roll: la SPD derivada de equipo/efectos no cambia.
+    const noRoll = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "speed", speedRoll: false },
+    );
+    expect(noRoll.units.every((unit) => unit.spdRoll === undefined)).toBe(true);
+    const baseSpd = noRoll.units.map((unit) => unit.stats.spd);
+    built.combat.endEncounter(noRoll.id, "test");
+
+    const first = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "speed" },
+    );
+    expect(first.units).toHaveLength(noRoll.units.length);
+    first.units.forEach((unit, index) => {
+      expect(unit.spdRoll).toBeGreaterThanOrEqual(1);
+      expect(unit.spdRoll).toBeLessThanOrEqual(4);
+      // stats.spd = SPD derivada + roll; baseStats no cambia.
+      expect(unit.stats.spd).toBe(baseSpd[index]! + unit.spdRoll!);
+      expect(unit.baseStats?.spd).toBe(noRoll.units[index]!.baseStats?.spd);
+    });
+    const rolls = first.units.map((unit) => unit.spdRoll);
+    built.combat.endEncounter(first.id, "test");
+
+    // Misma seed => mismos rolls, una tirada por unidad y por combate.
+    const second = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "speed" },
+    );
+    expect(second.units.map((unit) => unit.spdRoll)).toEqual(rolls);
+
+    // El roll sobrevive al refresco de stats del motor al resolver una ronda.
+    const session = built.sessions.getById(scenario.sessionId)!;
+    for (const player of session.players) {
+      built.combat.lockActions(second.id, { role: "player", player });
+    }
+    const ready = built.combat.lockActions(second.id, { role: "dm" });
+    expect(ready.phase).toBe("resolving");
+    const resolved = built.combat.resolveCombatRound(second.id);
+    resolved.units.forEach((unit, index) => {
+      expect(unit.spdRoll).toBe(rolls[index]);
+      expect(unit.stats.spd).toBe(second.units[index]!.stats.spd);
+    });
+  });
+
+  it("copia piso, pared y tema del encuentro al estado inicial", async () => {
+    const scenario = await setupScenario({
+      enemyCount: 1,
+      scene: {
+        background: "/assets/scenes/floor.png",
+        backgroundWall: "/assets/scenes/wall.png",
+        sceneTheme: "night",
+      },
+    });
+    const state = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "scene", speedRoll: false },
+    );
+
+    expect(state.scene).toEqual({
+      theme: "night",
+      floor: "/assets/scenes/floor.png",
+      wall: "/assets/scenes/wall.png",
+    });
+    expect(built.combatStore.getState(state.id)?.scene).toEqual(state.scene);
+
+    // Encuentro antiguo sin capas: fallback paper y sin floor/wall.
+    built.combat.endEncounter(state.id, "test");
+    const plain = await setupScenario({ enemyCount: 1 });
+    const plainState = built.combat.startEncounter(
+      plain.campaignId,
+      plain.encounterId,
+      plain.sessionId,
+      { seed: "scene-plain", speedRoll: false },
+    );
+    expect(plainState.scene).toEqual({ theme: "paper" });
+  });
+
+  it("setScene es solo DM, actualiza, persiste y rechaza combates terminados", async () => {
+    const scenario = await setupScenario({ enemyCount: 1 });
+    const state = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "set-scene", speedRoll: false },
+    );
+
+    const updated = built.combat.setScene(state.id, { role: "dm" }, {
+      theme: "night",
+      floor: "/assets/scenes/night-floor.png",
+    });
+    expect(updated.scene).toEqual({
+      theme: "night",
+      floor: "/assets/scenes/night-floor.png",
+    });
+    expect(built.combatStore.getState(state.id)?.scene).toEqual(updated.scene);
+
+    // Patch parcial: conserva lo que no se envía.
+    const patched = built.combat.setScene(state.id, { role: "dm" }, {
+      wall: "/assets/scenes/wall.png",
+    });
+    expect(patched.scene).toEqual({
+      theme: "night",
+      floor: "/assets/scenes/night-floor.png",
+      wall: "/assets/scenes/wall.png",
+    });
+    expect(built.combatStore.getState(state.id)?.scene).toEqual(patched.scene);
+
+    const player = built.sessions.getById(scenario.sessionId)!.players[0]!;
+    expectHttpError(
+      () =>
+        built.combat.setScene(
+          state.id,
+          { role: "player", player },
+          { theme: "paper" },
+        ),
+      "dm_only",
+    );
+    // El schema de escena exige al menos un campo.
+    expect(() =>
+      built.combat.setScene(state.id, { role: "dm" }, {}),
+    ).toThrow();
+
+    built.combat.endEncounter(state.id, "test");
+    expectHttpError(
+      () =>
+        built.combat.setScene(state.id, { role: "dm" }, { theme: "paper" }),
+      "invalid_phase",
     );
   });
 });

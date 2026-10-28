@@ -115,7 +115,7 @@ export function EffectEditorPage() {
       <div className="animate-rise">
         <PageHeader eyebrow="Efectos" title="Efecto no encontrado" back={{ to: "/effects", label: "Volver a efectos" }} />
         <div className="panel p-8 text-center">
-          <p className="text-sm text-ink-soft">Ese efecto no existe en esta campaña.</p>
+          <p className="text-sm text-ui-muted">Ese efecto no existe en esta campaña.</p>
           <div className="mt-4">
             <LinkButton to="/effects" size="sm">Volver</LinkButton>
           </div>
@@ -221,11 +221,11 @@ export function EffectEditorPage() {
       />
 
       {errors.length > 0 ? (
-        <div className="mb-4 border-2 border-rust bg-rust/10 p-3">
-          <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rust-deep">
+        <div className="mb-4 border border-rust bg-rust/10 p-3">
+          <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-ui-danger">
             <Icon name="alert" size={14} /> Revisa el formulario
           </div>
-          <ul className="list-inside list-disc text-xs text-rust-deep">
+          <ul className="list-inside list-disc text-xs text-ui-danger">
             {errors.map((error) => (
               <li key={error}>{error}</li>
             ))}
@@ -236,7 +236,7 @@ export function EffectEditorPage() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
           <section className="panel p-4">
-            <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-4 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               01 · Identidad
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -276,7 +276,7 @@ export function EffectEditorPage() {
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-4 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               02 · Icono
             </h2>
             <ImageField
@@ -288,7 +288,7 @@ export function EffectEditorPage() {
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-4 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-4 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               03 · Acumulación y duración
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -338,10 +338,10 @@ export function EffectEditorPage() {
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-1 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            <h2 className="mb-1 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
               04 · Triggers
             </h2>
-            <p className="mb-4 mt-2 text-[11px] text-ink-faint">
+            <p className="mb-4 mt-2 text-[11px] text-ui-faint">
               Cada trigger escucha un momento del combate y ejecuta sus acciones. Para la
               ficha, los <code className="font-mono">modifyStat</code> se aplican como
               pasivos mientras el efecto está activo.
@@ -349,9 +349,9 @@ export function EffectEditorPage() {
 
             <div className="space-y-3">
               {draft.triggers.map((trigger, index) => (
-                <div key={index} className="border-2 border-ink bg-paper/40">
-                  <div className="flex flex-wrap items-center gap-2 border-b-2 border-ink bg-paper-deep p-2">
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                <div key={index} className="border border-ui-line bg-ui-surface-2">
+                  <div className="flex flex-wrap items-center gap-2 border-b border-ui-line bg-ui-surface-3 p-2">
+                    <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ui-faint">
                       Trigger {String(index + 1).padStart(2, "0")}
                     </span>
                     <div className="min-w-[160px] flex-1">
@@ -360,7 +360,7 @@ export function EffectEditorPage() {
                         onValueChange={(value) =>
                           patchTrigger(index, { when: value as EffectTrigger })
                         }
-                        className="border-0 bg-transparent px-0 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em] focus:shadow-none"
+                        className="px-0 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
                       >
                         {EFFECT_TRIGGERS.map((value) => (
                           <option key={value} value={value}>
@@ -376,7 +376,7 @@ export function EffectEditorPage() {
                           triggers: draft.triggers.filter((_, triggerIndex) => triggerIndex !== index),
                         })
                       }
-                      className="flex h-7 w-7 items-center justify-center text-ink-faint transition-colors hover:bg-rust/10 hover:text-rust"
+                      className="flex h-7 w-7 items-center justify-center text-ui-faint transition-colors hover:bg-rust/10 hover:text-rust"
                       aria-label="Quitar trigger"
                     >
                       <Icon name="trash" size={14} />
@@ -397,13 +397,13 @@ export function EffectEditorPage() {
             </div>
 
             {draft.triggers.length === 0 ? (
-              <p className="border-2 border-dashed border-ink/30 p-3 text-xs text-ink-soft">
+              <p className="border border-dashed border-ui-line p-3 text-xs text-ui-muted">
                 Este efecto no tiene triggers. Puede servir solo como icono, pero no hará
                 nada en combate.
               </p>
             ) : null}
 
-            <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-dashed border-ink/30 pt-3">
+            <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-dashed border-ui-line pt-3">
               <Field label="Nuevo trigger" className="min-w-[180px] flex-1">
                 <Select
                   value={addTrigger}
@@ -426,11 +426,11 @@ export function EffectEditorPage() {
         <aside className="space-y-4">
           <div className="sticky top-6 space-y-4">
             <div className="panel p-4">
-              <div className="mb-3 border-b-2 border-ink pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
+              <div className="mb-3 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
                 Vista previa
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex h-16 w-14 items-center justify-center border-2 border-ink bg-amber/30 hexagon">
+                <div className="flex h-16 w-14 items-center justify-center border border-ui-line-strong bg-amber/30 hexagon">
                   {draft.icon ? (
                     <img src={draft.icon} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -439,12 +439,12 @@ export function EffectEditorPage() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="display truncate text-xl">{draft.name || "Sin nombre"}</h3>
-                  <span className="font-mono text-[9px] text-ink-faint">
+                  <span className="font-mono text-[9px] text-ui-faint">
                     {draft.code || "SIN-CÓDIGO"}
                   </span>
                 </div>
               </div>
-              <p className="mt-3 text-[11px] leading-snug text-ink-soft">
+              <p className="mt-3 text-[11px] leading-snug text-ui-muted">
                 {draft.description || "Sin descripción."}
               </p>
               <div className="mt-3 flex flex-wrap gap-1">
@@ -460,16 +460,16 @@ export function EffectEditorPage() {
                 )}
                 <span className="chip chip-accent">{STACK_MODE_LABELS[draft.stackMode]}</span>
               </div>
-              <div className="mt-3 border-t border-ink/15 pt-2">
+              <div className="mt-3 border-t border-ui-line pt-2">
                 <div className="mono-label mb-1">Triggers</div>
                 {draft.triggers.length === 0 ? (
-                  <p className="text-[11px] text-ink-faint">Ninguno.</p>
+                  <p className="text-[11px] text-ui-faint">Ninguno.</p>
                 ) : (
                   <ul className="space-y-1 text-[11px]">
                     {draft.triggers.map((trigger, index) => (
                       <li key={index} className="flex items-center justify-between gap-2">
                         <span>{EFFECT_TRIGGER_LABELS[trigger.when]}</span>
-                        <span className="font-mono text-[9px] text-ink-faint">
+                        <span className="font-mono text-[9px] text-ui-faint">
                           {trigger.actions.length} acc.
                         </span>
                       </li>
@@ -481,25 +481,25 @@ export function EffectEditorPage() {
 
             <div
               className={cx(
-                "border-2 border-ink/20 p-3",
+                "border border-ui-line p-3",
                 draft.triggers.length === 0 && "opacity-70",
               )}
             >
               <div className="mono-label mb-1">ID interno</div>
-              <code className="block break-all font-mono text-[10px] text-ink-soft">
+              <code className="block break-all font-mono text-[10px] text-ui-muted">
                 {existing?.id ?? "Se genera al guardar"}
               </code>
               {existing ? (
                 <>
                   <div className="mono-label mt-3 mb-1">Código normalizado</div>
-                  <code className="font-mono text-[10px] text-ink-soft">
+                  <code className="font-mono text-[10px] text-ui-muted">
                     {normalizedCode(existing.code, existing.id)}
                   </code>
                 </>
               ) : null}
             </div>
 
-            <div className="border-2 border-dashed border-ink/30 p-3 text-[11px] leading-relaxed text-ink-soft">
+            <div className="border border-dashed border-ui-line p-3 text-[11px] leading-relaxed text-ui-muted">
               <strong className="font-mono text-[9px] uppercase tracking-[0.14em]">
                 Orden de resolución
               </strong>

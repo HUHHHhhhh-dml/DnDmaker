@@ -55,6 +55,9 @@ export const characterKindSchema = z.enum(["player", "npc", "enemy"]);
 /** Modo de render del side-view híbrido. */
 export const visualModeSchema = z.enum(["portrait", "layered"]);
 
+/** Tema visual de la escena de combate (Fase 3F.5). */
+export const sceneThemeSchema = z.enum(["paper", "night"]);
+
 export const effectTriggerSchema = z.enum([
   "roundStart",
   "roundEnd",
@@ -333,7 +336,12 @@ const encounterRewardsSchema = z.object({
 const encounterFields = {
   name: nameSchema,
   description: descriptionSchema.optional(),
+  /** Capa de piso (nombre histórico `background`). */
   background: imageSchema.optional(),
+  /** Capa de pared de la escena de combate. */
+  backgroundWall: imageSchema.optional(),
+  /** Tema visual; ausente = "paper". */
+  sceneTheme: sceneThemeSchema.optional(),
   enemies: z.array(encounterEnemySchema).max(50),
   rewards: encounterRewardsSchema.optional(),
   victory: z.string().max(2000).optional(),
@@ -492,6 +500,29 @@ export const appliedEffectSchema = z.object({
 export const teamSchema = z.enum(["players", "enemies"]);
 export const combatPhaseSchema = z.enum(["declaring", "resolving", "ended"]);
 
+/**
+ * Escena visual del combate. `floor`/`wall` usan el validador de imágenes y
+ * `""` sirve para limpiar una capa. `theme` ausente = "paper".
+ */
+export const combatSceneSchema = z.object({
+  floor: imageSchema.optional(),
+  wall: imageSchema.optional(),
+  theme: sceneThemeSchema.optional(),
+});
+
+/**
+ * Patch de escena que puede emitir el DM. Reutilizable por el servicio y por
+ * el socket; exige al menos un campo para evitar diffs vacíos.
+ */
+export const combatScenePatchSchema = combatSceneSchema
+  .refine(
+    (patch) =>
+      patch.theme !== undefined ||
+      patch.floor !== undefined ||
+      patch.wall !== undefined,
+    "Indica al menos un cambio de escena (theme, floor o wall).",
+  );
+
 export const combatUnitSchema = z.object({
   id: idSchema,
   characterId: idSchema,
@@ -504,6 +535,11 @@ export const combatUnitSchema = z.object({
   battleSprite: imageSchema.optional(),
   bodyImage: imageSchema.optional(),
   stats: combatStatsSchema,
+  /**
+   * Roll de SPD de este combate (1..4). 0/ausente en estados antiguos o si
+   * el combate se inició con speedRoll:false.
+   */
+  spdRoll: integer(0, 4).optional(),
   /** Base para recalcular stats con efectos; opcional en estados antiguos. */
   baseStats: combatStatsSchema.optional(),
   hpCurrent: integer(0, 99_999),
@@ -524,6 +560,8 @@ export const declaredActionSchema = z
     utilityId: idSchema.optional(),
     special: z.enum(["domain", "habitat"]).optional(),
     targetId: idSchema.optional(),
+    /** Slot visual del objetivo (1..6); no interviene en el clash. */
+    targetSlot: integer(1, 6).optional(),
     redirectFor: idSchema.optional(),
     locked: z.boolean(),
   })
@@ -573,6 +611,8 @@ export const combatStateSchema = z.object({
     z.string(),
     z.record(z.string(), integer(0, 99_999)),
   ),
+  /** Escena visual; opcional para estados antiguos sin capas/tema. */
+  scene: combatSceneSchema.optional(),
   log: z.array(combatEventSchema).max(50_000),
   winner: teamSchema.optional(),
 });
@@ -594,6 +634,8 @@ export const combatDeclareActionSchema = z
     utilityId: idSchema.optional(),
     special: z.enum(["domain", "habitat"]).optional(),
     targetId: idSchema.optional(),
+    /** Slot visual del objetivo (1..6); el servidor valida contra la ficha. */
+    targetSlot: integer(1, 6).optional(),
     redirectFor: idSchema.optional(),
     locked: z.boolean().optional(),
   })
@@ -630,6 +672,8 @@ export type CombatUnitInput = z.infer<typeof combatUnitSchema>;
 export type DeclaredActionInput = z.infer<typeof declaredActionSchema>;
 export type CombatEventInput = z.infer<typeof combatEventSchema>;
 export type CombatStateInput = z.infer<typeof combatStateSchema>;
+export type CombatSceneInput = z.infer<typeof combatSceneSchema>;
+export type CombatScenePatchInput = z.infer<typeof combatScenePatchSchema>;
 export type CombatDeclareAction = z.infer<typeof combatDeclareActionSchema>;
 export type CombatDeclarePayload = z.infer<typeof combatDeclarePayloadSchema>;
 export type CombatLockPayload = z.infer<typeof combatLockPayloadSchema>;

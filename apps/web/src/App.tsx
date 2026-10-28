@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { CharacterSheetPage } from "./pages/CharacterSheetPage";
 import { CharactersPage } from "./pages/CharactersPage";
+import { CombatScenePrototype } from "./pages/CombatScenePrototype";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EffectEditorPage } from "./pages/EffectEditorPage";
 import { EffectsPage } from "./pages/EffectsPage";
@@ -25,8 +26,8 @@ function NotFoundPage() {
         description="Esa página no existe. Puede que el enlace esté mal o que el contenido se haya movido."
       />
       <div className="panel p-8 text-center">
-        <div className="font-display text-7xl text-ink/10">404</div>
-        <p className="mt-2 text-sm text-ink-soft">Volvamos al estudio.</p>
+        <div className="font-display text-7xl font-bold text-[rgba(141,132,115,0.35)]">404</div>
+        <p className="mt-2 text-sm text-ui-muted">Volvamos al estudio.</p>
         <div className="mt-5 flex justify-center gap-2">
           <LinkButton to="/" size="sm">Panel de campaña</LinkButton>
           <LinkButton to="/items" variant="ghost" size="sm">Objetos</LinkButton>
@@ -39,6 +40,13 @@ function NotFoundPage() {
 export function App() {
   return (
     <Routes>
+      {/* Prototipo visual aislado del rediseño de combate. */}
+      <Route path="design/combat" element={<CombatScenePrototype />} />
+      <Route
+        path="design/combat/:variant"
+        element={<CombatScenePrototype />}
+      />
+
       {/* Experiencia del jugador: fuera del Layout del DM. */}
       <Route path="join/:code" element={<JoinPage />} />
       <Route path="play/:code" element={<PlayerTablePage />} />

@@ -71,6 +71,44 @@ Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislami
 - **Reconexión**: recargar la pestaña recupera la sesión guardada; cerrar la sala libera las fichas.
 - **Recuperación del DM**: abrir una sala nueva reemplaza la anterior y permite fijar el PIN desde la propia mesa.
 
+### Fase 3 — Encuentros y combate
+
+- **Encuentros** con enemigos, recuento y overrides, dos capas de escena (piso y
+  pared) y tema `paper`/`night`; el DM puede cambiar la escena en vivo.
+- **Motor puro y determinista**: SPD base + tirada 1..4 con la seed del combate,
+  iniciativa, clash por unidad (sin importar slot), monedas, DEF/(DEF+100),
+  efectos, utilidad, dominio/hábitat, redirección y HP persistente.
+- **Side-view** con party a la derecha y enemigos a la izquierda, sprites en
+  capas o `portrait`, SkillSlots pentagonales, líneas de intención
+  (azul/amarillo/rojo/verde) y `targetSlot` visual.
+- **Declaración abierta**: el DM controla a los enemigos y cada jugador su
+  unidad. El servidor resuelve cuando todas las unidades vivas están bloqueadas.
+- **Cinemática de clash** desde los eventos ya resueltos: monedas girando,
+  totales, perdedor tachado y daño. Nunca bloquea la lógica.
+- **HP enemigo** en porcentaje para jugadores; exacto para el DM y la party. En
+  combate nadie edita fichas ni HP: el DM solo controla enemigos.
+- **Presencia**: los jugadores desconectados no entran al iniciar el combate; si
+  se desconectan a mitad, su unidad se auto-bloquea para que la ronda avance y
+  se conserva para la reconexión.
+
+#### Cómo jugar un encuentro
+
+1. El DM crea los enemigos en **Personajes** y arma el grupo en **Encuentros**
+   (enemigos, capas de piso/pared y tema de escena).
+2. En **Mesa**, abre la sala y comparte el link/QR/PIN. Los jugadores entran,
+   eligen ficha y aparecen en la party.
+3. El DM inicia el encuentro desde la mesa. La escena muestra la party a la
+   derecha y los enemigos a la izquierda.
+4. Cada jugador hace click en un SkillSlot de su personaje, elige la skill y
+   luego el objetivo; la línea muestra la intención y el slot visual elegido.
+   Después pulsa **Listo**.
+5. El DM declara las acciones de los enemigos y pulsa **Listo (todos)**.
+6. Cuando todas las unidades vivas están bloqueadas, el servidor resuelve la
+   ronda: monedas, clash, daño, efectos y cinemática. No hay cálculos en el
+   cliente.
+7. Se repiten las rondas hasta la victoria o la derrota. Al terminar, el HP de
+   la party se guarda; fuera de combate, **Rest party** cura a la party.
+
 ### Capturas
 
 | Mesa del jugador | Entrada a la sala |
@@ -212,16 +250,20 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 npm test
 ```
 
-- `packages/shared`: stats derivados, porcentajes, stacks, límites, referencias, schemas Zod y campaña.
+- `packages/shared`: stats derivados, porcentajes, stacks, límites, referencias, schemas Zod y campaña; side-view (`visual.test.ts`) y motor de combate (`combat/engine.test.ts`).
 - `apps/server/src/api.test.ts`: CRUD, ficha derivada, persistencia, export/import.
 - `apps/server/src/sessions.test.ts`: host/join, PIN, tokens, permisos, saneado, límite de jugadores, salida/cierre y liberación de fichas.
 - `apps/server/src/realtime.test.ts`: dos clientes Socket.IO reales, presencia, refresco al editar y cierre de sala.
+- `apps/server/src/combat.test.ts`: snapshot, escena, presencia/auto-lock, HP persistente, Rest party, export/import visual y bloqueo de edición en combate.
+- `apps/server/src/combat-round.test.ts`: declaraciones, slots, redirección, efectos, determinismo con seed y resolución de rondas.
+- `apps/server/src/combat-socket.test.ts`: consola DM/jugador por Socket.IO, permisos, reconexión y fin de combate.
+- `apps/web/src/lib/combat.test.ts` y `clash.test.ts`: contrato de `targetSlot` y lectura de la cinemática de clash.
 
 ## Roadmap
 
 - **Fase 1 — Estudio del DM:** completada.
 - **Fase 2 — Mesa en vivo:** completada.
-- **Fase 3 — Encuentros y combate:** `CombatState`, declaraciones, clash, monedas, DEF, efectos, utilidad, log animado, consola del DM y side-view híbrido.
+- **Fase 3 — Encuentros y combate:** completada (`CombatState`, declaraciones, clash, monedas, DEF, efectos, utilidad, log animado, consola del DM y side-view híbrido).
 - **Fase 4 — Contenido avanzado:** tiendas con Clean Shards, mazmorras, balance, animaciones, backup/restore.
 
 ## Documentos
@@ -230,6 +272,9 @@ npm test
 - [Contrato de datos v0.1](./docs/schema-v0.1.ts)
 - [Notas de implementación de Fase 1](./docs/FASE-1.md)
 - [Notas de implementación de Fase 2](./docs/FASE-2.md)
+- [Rediseño de combate y cierre de 3F.5](./docs/REDISENO-COMBATE.md)
+- [Mapa de migración al tema oscuro](./docs/UI-MIGRATION-MAP.md)
+- [Changelog de Fase 3](./CHANGELOG.md)
 - [Decisión de side-view (Fase 3)](./docs/DECISION-SIDE-VIEW.md)
 - [Handoff / plan de Fase 1](./docs/HANDOFF-FASE-1.md)
 - [Prototipo original](./reference/protocol-game-v1.1.html) (solo referencia estética/mecánica)

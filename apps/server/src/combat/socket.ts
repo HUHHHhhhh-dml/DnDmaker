@@ -4,6 +4,7 @@ import {
   combatDeclarePayloadSchema,
   combatEndPayloadSchema,
   combatLockPayloadSchema,
+  combatScenePatchSchema,
   combatStartPayloadSchema,
   type CombatDeclareAction,
   type CombatDeclarePayload,
@@ -223,6 +224,23 @@ export function registerCombatSocket(deps: CombatSocketDeps): void {
       emitError(socket, error);
     }
 
+    // Auto-lock al desconectarse un jugador (3F.5). `createRealtime` corre
+    // antes y ya actualizó la presencia; aquí solo se bloquea su unidad para
+    // que la ronda no quede atascada. Es best-effort: una desconexión nunca
+    // debe tumbar el proceso ni otros sockets.
+    if (identity.role === "player") {
+      socket.on("disconnect", () => {
+        try {
+          deps.combat.handlePlayerDisconnected(
+            identity.session.campaignId,
+            identity.player.characterId,
+          );
+        } catch {
+          // La sala ya perdió al jugador; el DM siempre puede terminar.
+        }
+      });
+    }
+
     socket.on("combat:start", (payload: unknown) => {
       try {
         if (identity.role !== "dm") {
@@ -239,6 +257,26 @@ export function registerCombatSocket(deps: CombatSocketDeps): void {
           identity.session.id,
         );
         // El sink de CombatService emite combat:started a la room.
+      } catch (error) {
+        emitError(socket, error);
+      }
+    });
+
+    // Escena visual (3F.5): SOLO DM y permitido durante el combate. El evento
+    // es de presentación; no pasa por assertNotInCombat (eso es HTTP de
+    // contenido) ni toca HP/reglas. El servicio emite combat:state a la sala.
+    socket.on("combat:scene", (payload: unknown) => {
+      try {
+        if (identity.role !== "dm") {
+          throw new HttpError(
+            403,
+            "dm_only",
+            "Solo el DM puede cambiar la escena del combate.",
+          );
+        }
+        const parsed = combatScenePatchSchema.parse(payload ?? {});
+        const live = liveCombat(deps, identity);
+        deps.combat.setScene(live.id, { role: "dm" }, parsed);
       } catch (error) {
         emitError(socket, error);
       }

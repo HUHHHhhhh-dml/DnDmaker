@@ -32,6 +32,29 @@ function fail(statusCode: number, code: string, message: string): never {
   throw new HttpError(statusCode, code, message);
 }
 
+/**
+ * `targetSlot` es SOLO presentación: el cliente puede resaltar un slot del
+ * objetivo, pero el emparejamiento de clash sigue siendo por unidad y sin
+ * importar slot. Se valida contra el cupo real del objetivo.
+ */
+function assertTargetSlot(
+  target: CombatUnit,
+  targetSlot: number | undefined,
+): void {
+  if (targetSlot === undefined) return;
+  if (
+    !Number.isInteger(targetSlot) ||
+    targetSlot < 1 ||
+    targetSlot > target.stats.skillSlots
+  ) {
+    fail(
+      422,
+      "target_slot_out_of_range",
+      `El slot visual ${String(targetSlot)} no es válido para ${target.name}; tiene ${target.stats.skillSlots}.`,
+    );
+  }
+}
+
 export function normalizeDeclarations({
   state,
   unit,
@@ -111,6 +134,7 @@ export function normalizeDeclarations({
         fail(422, "target_required", "La skill necesita un objetivo.");
       }
       const target = targetOf(raw.targetId);
+      assertTargetSlot(target, raw.targetSlot);
 
       if (raw.redirectFor) {
         if (raw.redirectFor === unit.id) {
@@ -151,6 +175,7 @@ export function normalizeDeclarations({
         slot: raw.slot,
         skillId,
         targetId: raw.targetId,
+        ...(raw.targetSlot !== undefined ? { targetSlot: raw.targetSlot } : {}),
         ...(raw.redirectFor ? { redirectFor: raw.redirectFor } : {}),
         locked: false,
       });
@@ -186,12 +211,14 @@ export function normalizeDeclarations({
         );
       }
       const targetId = raw.targetId ?? unit.id;
-      targetOf(targetId);
+      const target = targetOf(targetId);
+      assertTargetSlot(target, raw.targetSlot);
       normalized.push({
         unitId: unit.id,
         slot: raw.slot,
         utilityId,
         targetId,
+        ...(raw.targetSlot !== undefined ? { targetSlot: raw.targetSlot } : {}),
         locked: false,
       });
       continue;
@@ -240,13 +267,17 @@ export function normalizeDeclarations({
         `${special.name} ya se usó o está en cooldown.`,
       );
     }
-    if (raw.targetId) targetOf(raw.targetId);
+    if (raw.targetId) {
+      const target = targetOf(raw.targetId);
+      assertTargetSlot(target, raw.targetSlot);
+    }
 
     normalized.push({
       unitId: unit.id,
       slot: raw.slot,
       special: specialKey,
       ...(raw.targetId ? { targetId: raw.targetId } : {}),
+      ...(raw.targetSlot !== undefined ? { targetSlot: raw.targetSlot } : {}),
       locked: false,
     });
   }

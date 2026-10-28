@@ -41,11 +41,11 @@ export function CombatVisualPreview({
       data-visual-preview
       data-visual-plan={plan.kind}
       className={cx(
-        "relative flex h-56 w-full items-end justify-center overflow-hidden border-2 border-ink bg-paper/45 bg-grid",
+        "relative flex h-56 w-full items-end justify-center overflow-hidden border border-ui-line-strong bg-ui-surface-2 bg-grid",
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-x-8 bottom-3 h-3 rounded-[50%] bg-ink/15 blur-sm" />
+      <div className="pointer-events-none absolute inset-x-8 bottom-3 h-3 rounded-[50%] bg-black/35 blur-sm" />
 
       {plan.kind === "layered" ? (
         <div className="relative h-[92%] w-full">
@@ -74,14 +74,14 @@ export function CombatVisualPreview({
           className="relative h-[94%] w-full object-contain object-bottom"
         />
       ) : (
-        <div className="relative mb-6 flex h-24 w-24 items-center justify-center border-2 border-ink bg-paper-light pentagon">
-          <span className="font-display text-4xl text-ink-faint">
+        <div className="relative mb-6 flex h-24 w-24 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon">
+          <span className="font-display text-4xl text-ui-faint">
             {(character.name || "?").slice(0, 1).toUpperCase()}
           </span>
         </div>
       )}
 
-      <span className="absolute left-1.5 top-1.5 border border-ink bg-paper-light px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.12em]">
+      <span className="absolute left-1.5 top-1.5 border border-ui-line-strong bg-ui-surface-2 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.12em]">
         {plan.kind === "layered"
           ? `Capas · ${plan.layers.length}`
           : plan.kind === "single"

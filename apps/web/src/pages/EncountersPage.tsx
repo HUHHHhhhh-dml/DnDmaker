@@ -42,12 +42,12 @@ export function EncountersPage() {
         }
       />
 
-      <div className="mb-5 flex flex-col gap-3 border-2 border-ink bg-paper-light p-3 sm:flex-row sm:items-center">
+      <div className="mb-5 flex flex-col gap-3 border border-ui-line-strong bg-ui-surface-2 p-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Icon
             name="search"
             size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ui-faint"
           />
           <TextInput
             value={search}
@@ -56,15 +56,15 @@ export function EncountersPage() {
             className="pl-9"
           />
         </div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+        <div className="mono-label tnum">
           {campaign.content.encounters.length} encuentros · {enemyCount} enemigos
         </div>
       </div>
 
       {enemyCount === 0 ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-2 border-amber/60 bg-amber/10 p-3">
-          <p className="flex items-center gap-2 text-xs text-ink-soft">
-            <Icon name="alert" size={14} className="text-rust" />
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-2 border-amber bg-amber/15 p-3">
+          <p className="flex items-center gap-2 text-xs text-ui-muted">
+            <Icon name="alert" size={14} className="text-ui-warn" />
             Todavía no hay enemigos. Crea una ficha con tipo «Enemigo» para poder usarla
             en un encuentro.
           </p>

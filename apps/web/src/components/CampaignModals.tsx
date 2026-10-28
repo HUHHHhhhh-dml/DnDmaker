@@ -119,7 +119,7 @@ export function NewCampaignModal({
           hint="Se usa en el muñeco de equipo. Ideal PNG 200×300 con transparencia; puedes subir otra o quitarla."
           shape="portrait"
         />
-        <div className="border-2 border-ink bg-paper/60 p-3">
+        <div className="border border-ui-line bg-ui-surface-2 p-3">
           <Toggle
             checked={seed}
             onCheckedChange={setSeed}
@@ -269,8 +269,8 @@ export function EditCampaignModal({
       onClick={() => setTab(key)}
       className={
         tab === key
-          ? "border-b-2 border-rust px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ink"
-          : "border-b-2 border-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint hover:text-ink"
+          ? "border-b border-rust px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ui"
+          : "border-b border-transparent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ui-faint hover:text-[color:var(--ui-text)]"
       }
     >
       {label}
@@ -300,7 +300,7 @@ export function EditCampaignModal({
           </>
         }
       >
-        <div className="mb-5 flex gap-1 border-b-2 border-ink/15">
+        <div className="mb-5 flex gap-1 border-b border-ui-line">
           {tabButton("general", "General")}
           {tabButton("reglas", "Reglas")}
           {tabButton("mesa", "Mesa")}
@@ -333,7 +333,7 @@ export function EditCampaignModal({
               hint="Ideal PNG 200×300 con transparencia. Se usa en el muñeco de equipo del jugador."
               shape="portrait"
             />
-            <dl className="grid gap-3 border-t-2 border-ink/15 pt-4 text-sm sm:grid-cols-2">
+            <dl className="grid gap-3 border-t border-ui-line pt-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="mono-label">Creada</dt>
                 <dd className="mt-1 font-mono text-xs">
@@ -352,7 +352,7 @@ export function EditCampaignModal({
 
         {tab === "reglas" ? (
           <div className="space-y-5">
-            <p className="border-l-4 border-amber bg-amber/10 px-3 py-2 text-xs leading-relaxed text-ink-soft">
+            <p className="border-l-4 border-amber bg-amber/10 px-3 py-2 text-xs leading-relaxed text-ui-muted">
               Estos parámetros se aplican al motor y a la ficha. Los cambios no se
               aplican a combates en curso (Fase 3).
             </p>
@@ -424,7 +424,7 @@ export function EditCampaignModal({
                 />
               </Field>
             </div>
-            <div className="space-y-3 border-2 border-ink bg-paper/60 p-3">
+            <div className="space-y-3 border border-ui-line bg-ui-surface-2 p-3">
               <Toggle
                 checked={settings.allowPlayerEdit}
                 onCheckedChange={(value) => patchSettings({ allowPlayerEdit: value })}
@@ -448,7 +448,7 @@ export function EditCampaignModal({
               <div className="mb-1 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-rust-deep">
                 <Icon name="alert" size={14} /> Zona peligrosa
               </div>
-              <p className="text-xs leading-relaxed text-ink-soft">
+              <p className="text-xs leading-relaxed text-ui-muted">
                 Eliminar la campaña borra también sus objetos, skills, efectos,
                 personajes y encuentros de SQLite. Exporta antes si quieres conservarla.
               </p>

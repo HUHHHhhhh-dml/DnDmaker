@@ -17,9 +17,27 @@ export function cx(...values: Array<string | false | null | undefined>): string 
 /* Botones                                                                    */
 /* -------------------------------------------------------------------------- */
 
+const BUTTON_VARIANTS = {
+  primary: "btn-primary",
+  accent: "btn-accent",
+  ghost: "btn-ghost",
+  "dark-ghost": "btn-dark-ghost",
+} as const;
+
+type ButtonVariant = keyof typeof BUTTON_VARIANTS;
+type ButtonSize = "md" | "sm";
+
+function buttonClass(
+  variant: ButtonVariant = "primary",
+  size: ButtonSize = "md",
+  className?: string,
+): string {
+  return cx("btn", BUTTON_VARIANTS[variant], size === "sm" && "btn-sm", className);
+}
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "accent" | "ghost" | "dark-ghost";
-  size?: "md" | "sm";
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   icon?: IconName;
 }
@@ -38,15 +56,8 @@ export function Button({
     <button
       {...props}
       disabled={disabled || loading}
-      className={cx(
-        "btn",
-        variant === "primary" && "btn-primary",
-        variant === "accent" && "btn-accent",
-        variant === "ghost" && "btn-ghost",
-        variant === "dark-ghost" && "btn-dark-ghost",
-        size === "sm" && "btn-sm",
-        className,
-      )}
+      aria-busy={loading || undefined}
+      className={buttonClass(variant, size, className)}
     >
       {loading ? <Spinner size={14} /> : icon ? <Icon name={icon} size={size === "sm" ? 14 : 16} /> : null}
       {children}
@@ -63,25 +74,14 @@ export function LinkButton({
   className,
 }: {
   to: string;
-  variant?: "primary" | "accent" | "ghost" | "dark-ghost";
-  size?: "md" | "sm";
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   icon?: IconName;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <Link
-      to={to}
-      className={cx(
-        "btn",
-        variant === "primary" && "btn-primary",
-        variant === "accent" && "btn-accent",
-        variant === "ghost" && "btn-ghost",
-        variant === "dark-ghost" && "btn-dark-ghost",
-        size === "sm" && "btn-sm",
-        className,
-      )}
-    >
+    <Link to={to} className={buttonClass(variant, size, className)}>
       {icon ? <Icon name={icon} size={size === "sm" ? 14 : 16} /> : null}
       {children}
     </Link>
@@ -126,7 +126,7 @@ export function Field({
       ) : null}
       {children}
       {error ? (
-        <span className="mt-1 block text-[11px] font-semibold text-rust">
+        <span role="alert" className="mt-1 block text-[11px] font-semibold text-ui-danger">
           {error}
         </span>
       ) : hint ? (
@@ -218,7 +218,7 @@ export function NumberInput({
         const parsed = Number(raw);
         onValueChange(Number.isNaN(parsed) ? undefined : parsed);
       }}
-      className={cx("field font-mono", className)}
+      className={cx("field tnum font-mono", className)}
     />
   );
 }
@@ -265,19 +265,22 @@ export function Toggle({
         aria-checked={checked}
         onClick={() => onCheckedChange(!checked)}
         className={cx(
-          "mt-0.5 flex h-6 w-11 shrink-0 items-center border-2 border-ink p-0.5 transition-colors",
-          checked ? "bg-moss" : "bg-paper-deep",
+          "mt-0.5 flex h-6 w-11 shrink-0 items-center border p-0.5 transition-colors",
+          checked
+            ? "border-ui-accent bg-ui-accent"
+            : "border-ui-line-strong bg-ui-surface-3",
         )}
       >
         <span
           className={cx(
-            "block h-4 w-4 border border-ink bg-paper transition-transform",
+            "block h-4 w-4 transition-transform",
+            checked ? "bg-ui" : "bg-ui-muted",
             checked && "translate-x-5",
           )}
         />
       </button>
       <span>
-        <span className="block text-sm font-semibold text-ink">{label}</span>
+        <span className="block text-sm font-semibold text-ui">{label}</span>
         {hint ? <span className="field-hint">{hint}</span> : null}
       </span>
     </label>
@@ -306,7 +309,7 @@ export function PageHeader({
       {back ? (
         <Link
           to={back.to}
-          className="mb-4 inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-rust"
+          className="mb-4 inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-ui-muted transition-colors hover:text-amber"
         >
           <Icon name="arrow-left" size={14} />
           {back.label}
@@ -316,13 +319,13 @@ export function PageHeader({
         <div>
           {eyebrow ? (
             <div className="mono-label mb-2 flex items-center gap-2">
-              <span className="inline-block h-2 w-2 bg-rust" />
+              <span className="inline-block h-2 w-2 bg-ui-accent" />
               {eyebrow}
             </div>
           ) : null}
-          <h1 className="display text-4xl text-ink sm:text-5xl">{title}</h1>
+          <h1 className="display text-4xl text-ui sm:text-5xl">{title}</h1>
           {description ? (
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ui-muted">
               {description}
             </p>
           ) : null}
@@ -343,11 +346,11 @@ export function SectionTitle({
   count?: number;
 }) {
   return (
-    <div className="mb-4 flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2">
-      <h2 className="flex items-baseline gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-ink">
+    <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-ui-line-strong pb-2">
+      <h2 className="flex items-baseline gap-2 font-ui text-[11px] font-bold uppercase tracking-[0.16em] text-ui">
         {title}
         {typeof count === "number" ? (
-          <span className="text-ink-faint">/{String(count).padStart(2, "0")}</span>
+          <span className="tnum text-ui-faint">/{String(count).padStart(2, "0")}</span>
         ) : null}
       </h2>
       {action}
@@ -368,12 +371,12 @@ export function EmptyState({
 }) {
   return (
     <div className="panel flex flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center border-2 border-ink bg-paper-deep pentagon">
+      <div className="pentagon mb-4 flex h-16 w-16 items-center justify-center border border-ui-line-strong bg-ui-surface-3 text-ui-accent">
         <Icon name={icon} size={26} />
       </div>
-      <h3 className="display text-xl">{title}</h3>
+      <h3 className="display text-xl text-ui">{title}</h3>
       {description ? (
-        <p className="mt-2 max-w-md text-sm text-ink-soft">{description}</p>
+        <p className="mt-2 max-w-md text-sm text-ui-muted">{description}</p>
       ) : null}
       {action ? <div className="mt-6">{action}</div> : null}
     </div>
@@ -382,7 +385,7 @@ export function EmptyState({
 
 export function LoadingBlock({ label = "Cargando…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-3 border-2 border-dashed border-ink/30 px-6 py-20 text-ink-soft">
+    <div className="flex items-center justify-center gap-3 border border-dashed border-ui-line-strong px-6 py-20 text-ui-muted">
       <Spinner />
       <span className="font-mono text-[11px] uppercase tracking-[0.2em]">{label}</span>
     </div>
@@ -430,7 +433,7 @@ export function Modal({
     width === "sm" ? "max-w-md" : width === "lg" ? "max-w-3xl" : width === "xl" ? "max-w-5xl" : "max-w-xl";
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-ink/60 p-3 backdrop-blur-[2px] sm:items-center sm:p-6">
+    <div className="modal-scrim fixed inset-0 z-50 flex items-end justify-center overflow-y-auto p-3 sm:items-center sm:p-6">
       <button
         type="button"
         aria-label="Cerrar"
@@ -441,17 +444,17 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={cx("panel-lg relative z-10 w-full animate-rise", maxWidth)}
+        className={cx("modal-panel relative z-10 w-full animate-rise", maxWidth)}
       >
-        <div className="flex items-start justify-between gap-4 border-b-2 border-ink bg-paper-deep px-5 py-4">
+        <div className="modal-head flex items-start justify-between gap-4 px-5 py-4">
           <div>
             {eyebrow ? <div className="mono-label mb-1">{eyebrow}</div> : null}
-            <h2 className="display text-2xl">{title}</h2>
+            <h2 className="display text-2xl text-ui">{title}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center border-2 border-ink bg-paper-light transition-colors hover:bg-amber"
+            className="icon-btn"
             aria-label="Cerrar"
           >
             <Icon name="close" size={16} />
@@ -459,7 +462,7 @@ export function Modal({
         </div>
         <div className="max-h-[70vh] overflow-y-auto px-5 py-5">{children}</div>
         {footer ? (
-          <div className="flex flex-wrap justify-end gap-2 border-t-2 border-ink bg-paper-deep px-5 py-4">
+          <div className="modal-foot flex flex-wrap justify-end gap-2 px-5 py-4">
             {footer}
           </div>
         ) : null}
@@ -505,10 +508,10 @@ export function ConfirmDialog({
       }
     >
       <div className="flex gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink bg-amber/30">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-ui-line bg-ui-surface-3 text-ui-warn">
           <Icon name="alert" size={20} />
         </div>
-        <div className="text-sm leading-relaxed text-ink-soft">{message}</div>
+        <div className="text-sm leading-relaxed text-ui-muted">{message}</div>
       </div>
     </Modal>
   );
@@ -531,14 +534,14 @@ export function StatChip({
   const tone = Number.isNaN(numeric)
     ? ""
     : numeric > 0
-      ? "text-moss"
+      ? "text-ui-ok"
       : numeric < 0
-        ? "text-rust"
-        : "text-ink-faint";
+        ? "text-ui-danger"
+        : "text-ui-faint";
   return (
-    <span className={cx("chip", muted && "opacity-60")}>
-      <span className="text-ink-faint">{label}</span>
-      <span className={cx("font-bold", tone)}>
+    <span className={cx("chip", muted && "opacity-70")}>
+      <span className="text-ui-faint">{label}</span>
+      <span className={cx("tnum font-bold", tone)}>
         {typeof value === "number" && value > 0 ? `+${value}` : value}
       </span>
     </span>
@@ -559,6 +562,24 @@ export function TagList({ tags, max = 6 }: { tags?: string[]; max?: number }) {
   );
 }
 
+const NOTICE_TONES = {
+  error: {
+    box: "border-[rgba(226,121,108,0.6)]",
+    icon: "text-ui-danger" as const,
+    name: "alert" as const,
+  },
+  ok: {
+    box: "border-[rgba(159,188,140,0.6)]",
+    icon: "text-ui-ok" as const,
+    name: "shield" as const,
+  },
+  info: {
+    box: "border-[rgba(143,182,207,0.6)]",
+    icon: "text-ui-info" as const,
+    name: "spark" as const,
+  },
+};
+
 export function NoticeBar({
   notice,
   onClose,
@@ -567,31 +588,22 @@ export function NoticeBar({
   onClose: () => void;
 }) {
   if (!notice) return null;
-  const tone =
-    notice.kind === "error"
-      ? "border-rust bg-rust/10 text-rust-deep"
-      : notice.kind === "ok"
-        ? "border-moss bg-moss/10 text-moss"
-        : "border-steel bg-steel/10 text-steel";
+  const tone = NOTICE_TONES[notice.kind];
   return createPortal(
     <div className="fixed inset-x-3 bottom-3 z-[60] flex justify-center sm:inset-x-auto sm:right-6 sm:bottom-6">
       <div
         role="status"
         className={cx(
-          "flex w-full max-w-md items-start gap-3 border-2 border-ink bg-paper-light px-4 py-3 shadow-stamp animate-rise",
-          tone,
+          "flex w-full max-w-md items-start gap-3 border bg-ui-surface-2 px-4 py-3 text-ui shadow-[0_18px_44px_rgba(0,0,0,0.5)] animate-rise",
+          tone.box,
         )}
       >
-        <Icon
-          name={notice.kind === "error" ? "alert" : notice.kind === "ok" ? "shield" : "spark"}
-          size={18}
-          className="mt-0.5 shrink-0"
-        />
+        <Icon name={tone.name} size={18} className={cx("mt-0.5 shrink-0", tone.icon)} />
         <p className="flex-1 text-sm font-semibold leading-snug">{notice.message}</p>
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 text-ink-soft hover:text-ink"
+          className="shrink-0 text-ui-muted transition-colors hover:text-[color:var(--ui-text)]"
           aria-label="Cerrar aviso"
         >
           <Icon name="close" size={14} />

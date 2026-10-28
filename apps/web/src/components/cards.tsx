@@ -36,7 +36,7 @@ export function ItemCard({
       to={`/items/${item.id}`}
       className="panel group flex flex-col transition-transform duration-100 hover:-translate-y-0.5"
     >
-      <div className="relative aspect-[4/3] overflow-hidden border-b-2 border-ink bg-paper-deep bg-grid">
+      <div className="relative aspect-[4/3] overflow-hidden border-b border-ui-line-strong bg-ui-surface-3 bg-grid">
         {item.image ? (
           <img
             src={item.image}
@@ -46,25 +46,25 @@ export function ItemCard({
           />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <div className="flex h-20 w-20 items-center justify-center border-2 border-ink bg-paper-light pentagon transition-transform group-hover:rotate-6">
-              <span className="font-display text-lg text-ink-faint">
+            <div className="flex h-20 w-20 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon transition-transform group-hover:rotate-6">
+              <span className="font-display text-lg text-ui-faint">
                 {item.name.slice(0, 2).toUpperCase()}
               </span>
             </div>
           </div>
         )}
-        <span className="absolute left-2 top-2 border border-ink bg-paper-light px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
+        <span className="absolute left-2 top-2 border border-ui-line-strong bg-ui-surface-2 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
           {EQUIPMENT_SLOT_LABELS[item.slot]}
         </span>
         {item.rarity ? (
-          <span className="absolute right-2 top-2 border border-ink bg-amber px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
+          <span className="absolute right-2 top-2 border border-ui-line-strong bg-amber px-1.5 text-ui-on-accent py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
             {item.rarity}
           </span>
         ) : null}
         <span
           className={cx(
-            "absolute bottom-2 left-2 inline-flex items-center gap-1 border border-ink px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
-            item.unlocked ? "bg-paper-light text-moss" : "bg-rust text-paper",
+            "absolute bottom-2 left-2 inline-flex items-center gap-1 border border-ui-line-strong px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
+            item.unlocked ? "bg-ui-surface-2 text-ui-ok" : "bg-rust text-ui-on-accent",
           )}
         >
           <Icon name={item.unlocked ? "unlock" : "lock"} size={10} />
@@ -76,11 +76,11 @@ export function ItemCard({
           <h3 className="display truncate text-lg" title={item.name}>
             {item.name}
           </h3>
-          <span className="shrink-0 font-mono text-[9px] text-ink-faint">
+          <span className="shrink-0 font-mono text-[9px] text-ui-faint">
             {normalizedCode(item.code, item.id)}
           </span>
         </div>
-        <p className="mt-1 line-clamp-2 min-h-[2.5em] text-[11px] leading-snug text-ink-soft">
+        <p className="mt-1 line-clamp-2 min-h-[2.5em] text-[11px] leading-snug text-ui-muted">
           {item.description || "Sin descripción."}
         </p>
         {statEntries(item.stats).length > 0 ? (
@@ -118,10 +118,10 @@ export function CoinRow({ coins }: { coins: number }) {
       {Array.from({ length: safe }).map((_, index) => (
         <span
           key={index}
-          className="inline-block h-3 w-3 rounded-full border border-ink bg-amber"
+          className="inline-block h-3 w-3 rounded-full border border-ui-line-strong bg-amber"
         />
       ))}
-      <span className="ml-1 font-mono text-[9px] text-ink-faint">×{coins}</span>
+      <span className="ml-1 font-mono text-[9px] text-ui-faint">×{coins}</span>
     </div>
   );
 }
@@ -142,12 +142,12 @@ export function SkillCard({
       to={`/skills/${skill.id}`}
       className="panel group flex flex-col transition-transform duration-100 hover:-translate-y-0.5"
     >
-      <div className="flex items-start justify-between gap-3 border-b-2 border-ink bg-paper-deep p-3">
+      <div className="flex items-start justify-between gap-3 border-b border-ui-line-strong bg-ui-surface-3 p-3">
         <div>
           <div className="mono-label">{normalizedCode(skill.code, skill.id)}</div>
           <h3 className="display mt-0.5 text-xl group-hover:text-rust">{skill.name}</h3>
         </div>
-        <div className="mono-label border border-ink bg-paper-light px-1.5 py-0.5">
+        <div className="mono-label border border-ui-line-strong bg-ui-surface-2 px-1.5 py-0.5">
           {skill.coins} {skill.coins === 1 ? "moneda" : "monedas"}
         </div>
       </div>
@@ -158,8 +158,8 @@ export function SkillCard({
             className={cx(
               "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]",
               skill.unlocked
-                ? "border-moss/50 bg-moss/10 text-moss"
-                : "border-rust/50 bg-rust/10 text-rust-deep",
+                ? "border-moss/50 bg-moss/10 text-ui-ok"
+                : "border-rust/50 bg-rust/10 text-ui-danger",
             )}
           >
             <Icon name={skill.unlocked ? "unlock" : "lock"} size={10} />
@@ -167,22 +167,22 @@ export function SkillCard({
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 font-mono text-[10px]">
-          <div className="border border-ink/25 bg-paper px-2 py-1.5">
-            <div className="text-ink-faint">CLASH</div>
-            <div className="mt-0.5 text-sm font-bold text-ink">
+          <div className="border border-ui-line bg-ui-surface-2 px-2 py-1.5">
+            <div className="text-ui-faint">CLASH</div>
+            <div className="mt-0.5 text-sm font-bold text-ui">
               {skill.baseClash}
-              <span className="text-ink-faint"> +{skill.coinClash}/cara</span>
+              <span className="text-ui-faint"> +{skill.coinClash}/cara</span>
             </div>
           </div>
-          <div className="border border-ink/25 bg-paper px-2 py-1.5">
-            <div className="text-ink-faint">DAÑO</div>
-            <div className="mt-0.5 text-sm font-bold text-ink">
+          <div className="border border-ui-line bg-ui-surface-2 px-2 py-1.5">
+            <div className="text-ui-faint">DAÑO</div>
+            <div className="mt-0.5 text-sm font-bold text-ui">
               {skill.baseDamage}
-              <span className="text-ink-faint"> {signed(skill.coinDamage)}/cara</span>
+              <span className="text-ui-faint"> {signed(skill.coinDamage)}/cara</span>
             </div>
           </div>
         </div>
-        <p className="line-clamp-2 min-h-[2.5em] text-[11px] leading-snug text-ink-soft">
+        <p className="line-clamp-2 min-h-[2.5em] text-[11px] leading-snug text-ui-muted">
           {skill.description || "Sin descripción."}
         </p>
         {effectNames.length > 0 ? (
@@ -212,7 +212,7 @@ export function EffectCard({ effect }: { effect: EffectDefinition }) {
     >
       <div
         className={cx(
-          "flex h-14 w-12 shrink-0 items-center justify-center border-2 border-ink bg-amber/30 hexagon",
+          "flex h-14 w-12 shrink-0 items-center justify-center border border-ui-line-strong bg-amber/30 hexagon",
         )}
       >
         {effect.icon ? (
@@ -224,11 +224,11 @@ export function EffectCard({ effect }: { effect: EffectDefinition }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="display truncate text-lg group-hover:text-rust">{effect.name}</h3>
-          <span className="font-mono text-[9px] text-ink-faint">
+          <span className="font-mono text-[9px] text-ui-faint">
             {normalizedCode(effect.code, effect.id)}
           </span>
         </div>
-        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink-soft">
+        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ui-muted">
           {effect.description || "Sin descripción."}
         </p>
         <div className="mt-2 flex flex-wrap gap-1">
@@ -272,18 +272,18 @@ export function CharacterCard({
 
   const kindTone =
     character.kind === "player"
-      ? "bg-steel text-paper border-steel"
+      ? "bg-steel text-ui-on-accent border-steel"
       : character.kind === "enemy"
-        ? "bg-rust text-paper border-rust"
-        : "bg-moss text-paper border-moss";
+        ? "bg-rust text-ui-on-accent border-rust"
+        : "bg-moss text-ui-on-accent border-moss";
 
   return (
     <Link
       to={`/characters/${character.id}`}
       className="panel group flex flex-col transition-transform duration-100 hover:-translate-y-0.5"
     >
-      <div className="relative flex items-center gap-3 border-b-2 border-ink bg-paper-deep p-3">
-        <div className="relative h-16 w-14 shrink-0 overflow-hidden border-2 border-ink bg-paper-light">
+      <div className="relative flex items-center gap-3 border-b border-ui-line-strong bg-ui-surface-3 p-3">
+        <div className="relative h-16 w-14 shrink-0 overflow-hidden border border-ui-line-strong bg-ui-surface-2">
           {character.portrait ? (
             <img
               src={character.portrait}
@@ -293,7 +293,7 @@ export function CharacterCard({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <span className="font-display text-xl text-ink-faint">
+              <span className="font-display text-xl text-ui-faint">
                 {character.name.slice(0, 1).toUpperCase()}
               </span>
             </div>
@@ -311,12 +311,12 @@ export function CharacterCard({
           <h3 className="display mt-1 truncate text-xl group-hover:text-rust">
             {character.name}
           </h3>
-          <p className="truncate font-mono text-[9px] text-ink-faint">
+          <p className="truncate font-mono text-[9px] text-ui-faint">
             {equipped} objetos · {skillNames.length}/3 skills
           </p>
         </div>
       </div>
-      <div className="grid flex-1 grid-cols-3 gap-px bg-ink/20">
+      <div className="grid flex-1 grid-cols-3 gap-px bg-ui-surface-1">
         {[
           ["HP", derived.stats.hpMax],
           ["DEF", derived.stats.def],
@@ -325,8 +325,8 @@ export function CharacterCard({
           ["LUCK", derived.stats.luck],
           ["SLOTS", derived.stats.skillSlots],
         ].map(([label, value]) => (
-          <div key={label} className="bg-paper-light px-2 py-2 text-center">
-            <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-ink-faint">
+          <div key={label} className="bg-ui-surface-2 px-2 py-2 text-center">
+            <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-ui-faint">
               {label}
             </div>
             <div className="font-display text-base">{value}</div>
@@ -343,12 +343,12 @@ export function CharacterCard({
             ))}
           </div>
         ) : (
-          <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint">
+          <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ui-faint">
             Sin skills equipadas
           </span>
         )}
         {derived.warnings.length > 0 ? (
-          <p className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-rust">
+          <p className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-ui-danger">
             <Icon name="alert" size={11} /> {derived.warnings.length} aviso
             {derived.warnings.length === 1 ? "" : "s"}
           </p>
@@ -381,35 +381,35 @@ export function EncounterCard({
       to={`/encounters/${encounter.id}`}
       className="panel group flex flex-col transition-transform duration-100 hover:-translate-y-0.5"
     >
-      <div className="flex items-start justify-between gap-3 border-b-2 border-ink bg-paper-deep p-3">
+      <div className="flex items-start justify-between gap-3 border-b border-ui-line-strong bg-ui-surface-3 p-3">
         <div>
           <div className="mono-label">{total} enemigos</div>
           <h3 className="display mt-0.5 text-xl group-hover:text-rust">{encounter.name}</h3>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center border-2 border-ink bg-rust/15 hexagon">
+        <div className="flex h-10 w-10 items-center justify-center border border-ui-line-strong bg-rust/15 hexagon">
           <Icon name="skull" size={18} />
         </div>
       </div>
       <div className="flex-1 space-y-3 p-3">
-        <p className="line-clamp-2 text-[11px] leading-snug text-ink-soft">
+        <p className="line-clamp-2 text-[11px] leading-snug text-ui-muted">
           {encounter.description || "Sin descripción."}
         </p>
         <div className="space-y-1">
           {enemies.length === 0 ? (
-            <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint">
+            <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ui-faint">
               Sin enemigos
             </span>
           ) : (
             enemies.map(({ character, count }) => (
               <div
                 key={character.id}
-                className="flex items-center justify-between border-b border-ink/10 pb-1 text-xs"
+                className="flex items-center justify-between border-b border-ui-line pb-1 text-xs"
               >
                 <span className="flex items-center gap-1.5">
-                  <Icon name="skull" size={11} className="text-rust" />
+                  <Icon name="skull" size={11} className="text-ui-danger" />
                   {character.name}
                 </span>
-                <span className="font-mono text-[10px] text-ink-faint">×{count}</span>
+                <span className="font-mono text-[10px] text-ui-faint">×{count}</span>
               </div>
             ))
           )}

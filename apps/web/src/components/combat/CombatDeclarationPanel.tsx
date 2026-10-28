@@ -211,18 +211,18 @@ export function CombatDeclarationPanel({
             : null;
 
   return (
-    <section className="panel p-4">
+    <section className="panel-dark p-4">
       <SectionTitle
         title={title}
         action={
-          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
             {draft.length}/{maxSlots} slots
           </span>
         }
       />
 
       {error ? (
-        <div className="mb-3 flex items-start gap-2 border-2 border-rust bg-rust/10 p-2.5 text-rust-deep">
+        <div className="mb-3 flex items-start gap-2 border-2 border-rust bg-rust/10 p-2.5 text-ui-danger">
           <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
           <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug">
             {error}
@@ -238,19 +238,19 @@ export function CombatDeclarationPanel({
       ) : null}
 
       {status ? (
-        <div className="mb-3 flex items-start gap-2 border-2 border-ink/25 bg-paper p-2.5">
+        <div className="mb-3 flex items-start gap-2 border border-ui-line bg-ui-surface-3 p-2.5">
           <Icon
             name={locked ? "lock" : alive ? "broadcast" : "skull"}
             size={14}
-            className="mt-0.5 shrink-0 text-ink-faint"
+            className="mt-0.5 shrink-0 text-ui-faint"
           />
-          <p className="text-[11px] leading-snug text-ink-soft">{status}</p>
+          <p className="text-[11px] leading-snug text-ui-muted">{status}</p>
         </div>
       ) : null}
 
       <div className="space-y-2">
         {draft.length === 0 ? (
-          <p className="border-2 border-dashed border-ink/25 px-3 py-5 text-center text-[11px] text-ink-faint">
+          <p className="border border-dashed border-ui-line px-3 py-5 text-center text-[11px] text-ui-faint">
             Sin acciones. Puedes declarar hasta {maxSlots} y bloquear cuando
             estés listo.
           </p>
@@ -266,11 +266,11 @@ export function CombatDeclarationPanel({
             return (
               <div
                 key={action.id}
-                className="border-2 border-ink/35 bg-paper/55 p-2.5"
+                className="border-2 border-ui-line-strong bg-ui-surface-2 p-2.5"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink-faint">
-                    <span className="flex h-5 w-5 items-center justify-center border border-ink bg-paper-light text-ink">
+                  <span className="flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ui-faint">
+                    <span className="flex h-5 w-5 items-center justify-center border border-ui-line-strong bg-ui-surface-3 text-ui">
                       {index + 1}
                     </span>
                     {action.kind === "skill"
@@ -340,7 +340,7 @@ export function CombatDeclarationPanel({
                         <span className="truncate">
                           {utility?.name ?? "Sin utilidad"}
                         </span>
-                        <span className="shrink-0 font-mono text-[9px] text-ink-faint">
+                        <span className="shrink-0 font-mono text-[9px] text-ui-faint">
                           {unit.utilityUses} usos
                         </span>
                       </div>
@@ -365,13 +365,13 @@ export function CombatDeclarationPanel({
                     </Field>
                   </div>
                 ) : (
-                  <div className="border border-ink/25 bg-paper-light p-2">
+                  <div className="border border-ui-line bg-ui-surface-2 p-2">
                     <div className="text-xs font-semibold">
                       {action.kind === "domain"
                         ? domain?.name ?? "Dominio"
                         : habitat?.name ?? "Hábitat"}
                     </div>
-                    <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-ink-faint">
+                    <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-ui-faint">
                       {action.kind === "domain"
                         ? domain?.duration
                         : habitat?.duration}{" "}
@@ -413,7 +413,7 @@ export function CombatDeclarationPanel({
       </div>
 
       {canEdit ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/15 pt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ui-line pt-3">
           <Button
             type="button"
             variant="ghost"
@@ -474,14 +474,14 @@ export function CombatDeclarationPanel({
       ) : null}
 
       {canEdit && validationError ? (
-        <p className="mt-2 flex items-start gap-1.5 border-2 border-rust/40 bg-rust/5 px-2 py-1.5 text-[10px] font-semibold leading-snug text-rust-deep">
+        <p className="mt-2 flex items-start gap-1.5 border-2 border-rust/40 bg-rust/5 px-2 py-1.5 text-[10px] font-semibold leading-snug text-ui-danger">
           <Icon name="alert" size={12} className="mt-0.5 shrink-0" />
           {validationError}
         </p>
       ) : null}
 
       {canEdit ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink/15 pt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ui-line pt-3">
           <Button
             type="button"
             variant="primary"
@@ -516,7 +516,7 @@ export function CombatDeclarationPanel({
           <span
             className={cx(
               "ml-auto font-mono text-[9px] uppercase tracking-[0.1em]",
-              saved ? "text-moss" : "text-ink-faint",
+              saved ? "text-ui-ok" : "text-ui-faint",
             )}
           >
             {saved ? "Sincronizada" : "Sin guardar"}

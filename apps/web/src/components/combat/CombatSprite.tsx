@@ -44,12 +44,12 @@ export function CombatSprite({
         "relative flex h-40 w-full items-end justify-center overflow-hidden border-2 sm:h-52",
         active
           ? "border-amber bg-amber/10"
-          : "border-ink/30 bg-paper/45 bg-grid",
+          : "border-ui-line bg-ui-surface-2 bg-grid",
         unit.defeated && "grayscale",
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-x-6 bottom-3 h-3 rounded-[50%] bg-ink/15 blur-sm" />
+      <div className="pointer-events-none absolute inset-x-6 bottom-3 h-3 rounded-[50%] bg-black/35 blur-sm" />
 
       {plan.kind === "layered" ? (
         <div className="relative h-[92%] w-full" data-layer-count={plan.layers.length}>
@@ -81,23 +81,23 @@ export function CombatSprite({
           className="relative h-[94%] w-full object-contain object-bottom"
         />
       ) : (
-        <div className="relative mb-4 flex h-24 w-24 items-center justify-center border-2 border-ink bg-paper-light pentagon sm:h-28 sm:w-28">
-          <span className="font-display text-4xl text-ink-faint">
+        <div className="relative mb-4 flex h-24 w-24 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon sm:h-28 sm:w-28">
+          <span className="font-display text-4xl text-ui-faint">
             {unit.name.slice(0, 1).toUpperCase()}
           </span>
         </div>
       )}
 
       {unit.defeated ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-ink/45">
-          <span className="border-2 border-paper bg-ink px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-paper">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+          <span className="border border-ui-line-strong bg-ui-surface-3 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ui">
             Derrotado
           </span>
         </div>
       ) : null}
 
       {active && !unit.defeated ? (
-        <span className="absolute left-1.5 top-1.5 border border-ink bg-amber px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.14em]">
+        <span className="absolute left-1.5 top-1.5 border border-ui-line-strong bg-amber px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.14em]">
           Actuando
         </span>
       ) : null}
