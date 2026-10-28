@@ -4,30 +4,39 @@ import {
   CONTENT_SCHEMAS,
   DEFAULT_RULES,
   DEFAULT_SETTINGS,
+  DEFAULT_WALLET,
   SCHEMA_VERSION,
   calculateStats,
   emptyContent,
   findReferences,
   newId,
+  shopInputSchema,
+  shopPatchSchema,
   validateCampaign,
   validateCharacter,
   validateContent,
   validateEffect,
   validateEncounter,
   validateItem,
+  validateShop,
   validateSkill,
+  walletAdjustInputSchema,
   type Campaign,
   type CampaignContent,
   type CampaignSettings,
+  type CampaignWallet,
   type Character,
   type CharacterOverrides,
+  type CombatRewardSummary,
   type ContentType,
   type DerivedStats,
+  type Dungeon,
   type EffectAction,
   type EffectDefinition,
   type Encounter,
   type Item,
   type Ruleset,
+  type Shop,
   type Skill,
   type SpecialAbility,
   type ValidationResult,
@@ -52,6 +61,9 @@ export class HttpError extends Error {
   }
 }
 
+/** Contadores de la campaña: contenido + extras de Fase 4. */
+export type CampaignCounts = Record<ContentType | "shops" | "dungeons", number>;
+
 export interface CampaignSummary {
   id: string;
   name: string;
@@ -59,7 +71,7 @@ export interface CampaignSummary {
   schemaVersion: number;
   createdAt: string;
   updatedAt: string;
-  counts: Record<ContentType, number>;
+  counts: CampaignCounts;
 }
 
 export interface CharacterSheet {
@@ -68,6 +80,14 @@ export interface CharacterSheet {
   items: Record<string, Item>;
   skills: Record<string, Skill>;
   specials: Record<string, SpecialAbility>;
+}
+
+/** Resultado de desbloquear un objeto en la tienda (Fase 4A-3). */
+export interface ShopUnlockResult {
+  wallet: CampaignWallet;
+  shop: Shop;
+  item: Item;
+  spent: number;
 }
 
 type EntityByType = {
@@ -79,6 +99,13 @@ type EntityByType = {
 };
 
 type ContentEntity = Item | Skill | EffectDefinition | Character | Encounter;
+
+/** Contenido que vive en el JSON de `campaigns.extras` (Fase 4). */
+interface CampaignExtras {
+  shops: Shop[];
+  dungeons: Dungeon[];
+  wallet: CampaignWallet;
+}
 
 const PREFIX: Record<ContentType, string> = {
   items: "itm",
@@ -176,6 +203,8 @@ export class Repository {
         effects: this.countRows(effects, row.id),
         characters: this.countRows(characters, row.id),
         encounters: this.countRows(encounters, row.id),
+        shops: (row.extras?.shops ?? []).length,
+        dungeons: (row.extras?.dungeons ?? []).length,
       },
     }));
   }
@@ -198,6 +227,10 @@ export class Repository {
       updatedAt: row.updatedAt,
       rules: row.rules,
       settings: row.settings,
+      // Campañas de Fase 3 no traen bolsa: se lee como 0 sin migrar nada.
+      wallet: {
+        cleanShards: Math.max(0, Math.round(extras.wallet?.cleanShards ?? 0)),
+      },
       content: {
         ...emptyContent(),
         items: this.listContent("items", id),
@@ -239,7 +272,11 @@ export class Repository {
           schemaVersion: SCHEMA_VERSION,
           rules,
           settings,
-          extras: { shops: [], dungeons: [] },
+          extras: {
+            shops: [],
+            dungeons: [],
+            wallet: { ...DEFAULT_WALLET },
+          },
           createdAt: now,
           updatedAt: now,
         })
@@ -580,6 +617,284 @@ export class Repository {
   }
 
   /* ---------------------------------------------------------------------- */
+  /* Tiendas y bolsa de la party (Fase 4)                                   */
+  /* ---------------------------------------------------------------------- */
+
+  listShops(campaignId: string): Shop[] {
+    return this.readExtras(campaignId).shops;
+  }
+
+  getShop(campaignId: string, shopId: string): Shop {
+    const shop = this.readExtras(campaignId).shops.find((entry) => entry.id === shopId);
+    if (!shop) throw new HttpError(404, "shop_not_found", "La tienda no existe.");
+    return shop;
+  }
+
+  createShop(campaignId: string, input: unknown): Shop {
+    const campaign = this.getCampaign(campaignId);
+    const parsed = shopInputSchema.parse(input);
+    const shop: Shop = {
+      ...parsed,
+      id: newId("shp"),
+    };
+    assertValid(validateShop(shop, campaign.content), "la tienda");
+
+    const now = nowIso();
+    this.sqlite.transaction(() => {
+      const extras = this.readExtras(campaignId);
+      extras.shops.push(shop);
+      this.writeExtras(campaignId, extras, now);
+    })();
+    return shop;
+  }
+
+  updateShop(campaignId: string, shopId: string, patch: unknown): Shop {
+    const parsedPatch = shopPatchSchema.parse(patch);
+    const campaign = this.getCampaign(campaignId);
+    const now = nowIso();
+    return this.sqlite.transaction(() => {
+      const extras = this.readExtras(campaignId);
+      const index = extras.shops.findIndex((entry) => entry.id === shopId);
+      if (index === -1) {
+        throw new HttpError(404, "shop_not_found", "La tienda no existe.");
+      }
+      const current = extras.shops[index];
+      if (!current) {
+        throw new HttpError(404, "shop_not_found", "La tienda no existe.");
+      }
+      const next: Shop = {
+        ...current,
+        ...parsedPatch,
+        id: shopId,
+        name: parsedPatch.name ?? current.name,
+        items: parsedPatch.items ?? current.items,
+      };
+      assertValid(validateShop(next, campaign.content), "la tienda");
+      extras.shops[index] = next;
+      this.writeExtras(campaignId, extras, now);
+      return next;
+    })();
+  }
+
+  deleteShop(campaignId: string, shopId: string): void {
+    const now = nowIso();
+    this.sqlite.transaction(() => {
+      const extras = this.readExtras(campaignId);
+      const index = extras.shops.findIndex((entry) => entry.id === shopId);
+      if (index === -1) {
+        throw new HttpError(404, "shop_not_found", "La tienda no existe.");
+      }
+      extras.shops.splice(index, 1);
+      this.writeExtras(campaignId, extras, now);
+    })();
+  }
+
+  /** Ajusta la bolsa de party con un delta. Nunca deja saldo negativo. */
+  adjustWallet(campaignId: string, input: unknown): Campaign {
+    const { delta } = walletAdjustInputSchema.parse(input);
+    const now = nowIso();
+    return this.sqlite.transaction(() => {
+      const extras = this.readExtras(campaignId);
+      const cleanShards = extras.wallet.cleanShards + delta;
+      if (cleanShards < 0) {
+        throw new HttpError(
+          409,
+          "insufficient_funds",
+          "La bolsa de la party no puede quedar en negativo.",
+        );
+      }
+      extras.wallet = { cleanShards };
+      this.writeExtras(campaignId, extras, now);
+      return this.getCampaign(campaignId);
+    })();
+  }
+
+  /**
+   * Compra en la escena de tienda (Fase 4A-3): paga el precio y **desbloquea**
+   * el objeto para toda la campaña. No lo añade al inventario. Bolsa, stock y
+   * desbloqueo entran en una única transacción.
+   */
+  buyShopItemUnlock(input: {
+    campaignId: string;
+    shopId: string;
+    itemId: string;
+  }): ShopUnlockResult {
+    const now = nowIso();
+
+    return this.sqlite.transaction(() => {
+      const extras = this.readExtras(input.campaignId);
+      const shopIndex = extras.shops.findIndex(
+        (entry) => entry.id === input.shopId,
+      );
+      if (shopIndex === -1) {
+        throw new HttpError(404, "shop_not_found", "La tienda no existe.");
+      }
+      const shop = extras.shops[shopIndex];
+      if (!shop) {
+        throw new HttpError(404, "shop_not_found", "La tienda no existe.");
+      }
+      const entryIndex = shop.items.findIndex(
+        (entry) => entry.itemId === input.itemId,
+      );
+      if (entryIndex === -1) {
+        throw new HttpError(
+          404,
+          "shop_item_not_found",
+          "Ese objeto no está a la venta en esta tienda.",
+        );
+      }
+      const entry = shop.items[entryIndex];
+      if (!entry) {
+        throw new HttpError(
+          404,
+          "shop_item_not_found",
+          "Ese objeto no está a la venta en esta tienda.",
+        );
+      }
+
+      const campaign = this.getCampaign(input.campaignId);
+      const item = campaign.content.items.find(
+        (candidate) => candidate.id === input.itemId,
+      );
+      if (!item) {
+        throw new HttpError(
+          404,
+          "item_not_found",
+          "El objeto de la tienda ya no existe.",
+        );
+      }
+      if (item.unlocked === true) {
+        throw new HttpError(
+          409,
+          "item_already_unlocked",
+          "Ese objeto ya está desbloqueado para los jugadores.",
+        );
+      }
+      if (entry.stock !== undefined && entry.stock < 1) {
+        throw new HttpError(409, "out_of_stock", "Ese objeto está agotado.");
+      }
+      if (extras.wallet.cleanShards < entry.price) {
+        throw new HttpError(
+          409,
+          "insufficient_funds",
+          "No hay Clean Shards suficientes en la bolsa de la party.",
+        );
+      }
+
+      extras.wallet = {
+        cleanShards: extras.wallet.cleanShards - entry.price,
+      };
+      if (entry.stock !== undefined) {
+        shop.items[entryIndex] = { ...entry, stock: entry.stock - 1 };
+      }
+      this.writeExtras(input.campaignId, extras, now);
+
+      const unlockedItem = CONTENT_SCHEMAS.items.entity.parse({
+        ...item,
+        unlocked: true,
+      }) as Item;
+      this.updateEntity("items", item.id, unlockedItem, now);
+      this.touchCampaign(input.campaignId, now);
+
+      return {
+        wallet: extras.wallet,
+        shop,
+        item: unlockedItem,
+        spent: entry.price,
+      };
+    })();
+  }
+
+  /**
+   * Recompensas de un encuentro ganado por la party (Fase 4). La moneda entra
+   * en la bolsa común y cada objeto se entrega a cada personaje jugador
+   * indicado (todos los de la party, sin repartir). Debe llamarse dentro de la
+   * transacción de cierre de combate para que HP y botín sean atómicos.
+   */
+  grantEncounterRewards(input: {
+    campaignId: string;
+    encounterId: string;
+    characterIds: string[];
+    /**
+     * `false` con `shareLoot` desactivado: la moneda se paga pero los objetos
+     * quedan pendientes de reparto por turnos (los entrega LootService).
+     */
+    grantItems?: boolean;
+  }): CombatRewardSummary | null {
+    const campaign = this.getCampaign(input.campaignId);
+    const encounter = campaign.content.encounters.find(
+      (entry) => entry.id === input.encounterId,
+    );
+    const rewards = encounter?.rewards;
+    if (!rewards) return null;
+
+    const grantItems = input.grantItems !== false;
+    const currency = Math.max(0, Math.round(rewards.currency ?? 0));
+    const itemIds = rewards.itemIds ?? [];
+    if (currency === 0 && (!grantItems || itemIds.length === 0)) return null;
+
+    const recipients = [...new Set(input.characterIds)];
+    const now = nowIso();
+
+    return this.sqlite.transaction(() => {
+      const extras = this.readExtras(input.campaignId);
+      if (currency > 0) {
+        extras.wallet = { cleanShards: extras.wallet.cleanShards + currency };
+        this.writeExtras(input.campaignId, extras, now);
+      }
+
+      const delivered: string[] = [];
+      if (grantItems) {
+        for (const characterId of recipients) {
+          const row = this.findContentRow("characters", characterId);
+          if (!row) continue;
+          const character = row.data as Character;
+          if (character.kind !== "player") continue;
+
+          const next = this.addInventoryLines(
+            character,
+            itemIds.map((itemId) => ({ itemId, qty: 1 })),
+          );
+          this.updateEntity("characters", characterId, next, now);
+          delivered.push(characterId);
+        }
+      }
+      this.touchCampaign(input.campaignId, now);
+
+      return {
+        currency: currency > 0 ? currency : undefined,
+        itemIds:
+          grantItems && delivered.length > 0 && itemIds.length > 0
+            ? [...itemIds]
+            : undefined,
+        characterIds:
+          grantItems && delivered.length > 0 ? delivered : undefined,
+      } satisfies CombatRewardSummary;
+    })();
+  }
+
+  /**
+   * Entrega una unidad de un objeto a una ficha (Fase 4A-2, reparto de
+   * botín). Valida la ficha y persiste en su propia transacción, así puede
+   * llamarse dentro de la transacción del reparto.
+   */
+  addInventoryItem(characterId: string, itemId: string, qty = 1): Character {
+    const row = this.findContentRow("characters", characterId);
+    if (!row) {
+      throw new HttpError(404, "character_not_found", "El personaje no existe.");
+    }
+    const now = nowIso();
+    return this.sqlite.transaction(() => {
+      const next = this.addInventoryLines(row.data as Character, [
+        { itemId, qty },
+      ]);
+      this.updateEntity("characters", characterId, next, now);
+      this.touchCampaign(row.campaignId, now);
+      return next;
+    })();
+  }
+
+  /* ---------------------------------------------------------------------- */
   /* Export / import                                                        */
   /* ---------------------------------------------------------------------- */
 
@@ -620,6 +935,10 @@ export class Repository {
           extras: {
             shops: content.shops,
             dungeons: content.dungeons,
+            // Exports de Fase 3 no traen bolsa: entra a 0.
+            wallet: {
+              cleanShards: Math.max(0, Math.round(imported.wallet?.cleanShards ?? 0)),
+            },
           },
           createdAt: now,
           updatedAt: now,
@@ -702,10 +1021,67 @@ export class Repository {
     return this.getCampaign(row.campaignId);
   }
 
+  /**
+   * Suma líneas al inventario de una ficha y devuelve la ficha validada. No
+   * persiste: lo usan la compra, las recompensas y el reparto de botín dentro
+   * de sus propias transacciones.
+   */
+  private addInventoryLines(
+    character: Character,
+    additions: { itemId: string; qty: number }[],
+  ): Character {
+    const inventory = character.inventory.map((line) => ({ ...line }));
+    for (const addition of additions) {
+      const existing = inventory.find((line) => line.itemId === addition.itemId);
+      if (existing) existing.qty += addition.qty;
+      else inventory.push({ itemId: addition.itemId, qty: addition.qty });
+    }
+    return CONTENT_SCHEMAS.characters.entity.parse({
+      ...character,
+      inventory,
+    }) as Character;
+  }
+
   private touchCampaign(campaignId: string, now: string): void {
     this.db
       .update(campaigns)
       .set({ updatedAt: now })
+      .where(eq(campaigns.id, campaignId))
+      .run();
+  }
+
+  /**
+   * Lee `campaigns.extras` normalizado. Las campañas anteriores a Fase 4 no
+   * traen `wallet`; se lee como 0 sin migrar columnas.
+   */
+  private readExtras(campaignId: string): CampaignExtras {
+    const row = this.db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId))
+      .get();
+    if (!row) {
+      throw new HttpError(404, "campaign_not_found", "La campaña no existe.");
+    }
+    const extras = row.extras as Partial<CampaignExtras> | undefined;
+    return {
+      shops: [...(extras?.shops ?? [])],
+      dungeons: [...(extras?.dungeons ?? [])],
+      wallet: {
+        cleanShards: Math.max(0, Math.round(extras?.wallet?.cleanShards ?? 0)),
+      },
+    };
+  }
+
+  /** Escribe `campaigns.extras` completo. Debe ir dentro de una transacción. */
+  private writeExtras(
+    campaignId: string,
+    extras: CampaignExtras,
+    now: string,
+  ): void {
+    this.db
+      .update(campaigns)
+      .set({ extras, updatedAt: now })
       .where(eq(campaigns.id, campaignId))
       .run();
   }
@@ -929,6 +1305,7 @@ function remapContent(content: CampaignContent): CampaignContent {
   register(content.characters, "chr");
   register(content.encounters, "enc");
   register(content.specials, "spc");
+  register(content.shops, "shp");
 
   const mapId = (id: string | null | undefined): string | null => {
     if (!id) return null;
@@ -1045,6 +1422,7 @@ function remapContent(content: CampaignContent): CampaignContent {
     })),
     shops: content.shops.map((shop) => ({
       ...shop,
+      id: mapIdRequired(shop.id),
       items: shop.items.map((entry) => ({
         ...entry,
         itemId: mapIdRequired(entry.itemId),

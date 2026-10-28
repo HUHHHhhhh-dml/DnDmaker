@@ -10,11 +10,15 @@ import {
   campaignPatchSchema,
   campaignSchema,
   hostSessionSchema,
+  shopBuyInputSchema,
+  shopOpenInputSchema,
   sessionJoinSchema,
   type ContentType,
 } from "@protocol-life/shared";
 import type { CombatService } from "./combat/service";
 import { getLanIps } from "./network";
+import type { LootService } from "./loot";
+import type { ShopSceneService } from "./shop-scene";
 import type { RealtimeService } from "./realtime";
 import type { Repository } from "./repository";
 import { HttpError } from "./repository";
@@ -64,13 +68,16 @@ export interface RouteOptions {
   sessions: SessionService;
   realtime: RealtimeService;
   combat: CombatService;
+  loot: LootService;
+  shopScene: ShopSceneService;
 }
 
 export async function registerRoutes(
   app: FastifyInstance,
   options: RouteOptions,
 ): Promise<void> {
-  const { repo, uploadsDir, sessions, realtime, combat } = options;
+  const { repo, uploadsDir, sessions, realtime, combat, loot, shopScene } =
+    options;
 
   /* ---------------------------------------------------------------------- */
   /* Autorización de la mesa                                                 */
@@ -332,8 +339,17 @@ export async function registerRoutes(
 
   app.get<{ Params: { code: string } }>(
     "/api/sessions/:code/state",
-    async (request) =>
-      sessions.getState(request.params.code, getSessionToken(request)),
+    async (request) => {
+      const code = request.params.code;
+      const state = sessions.getState(code, getSessionToken(request));
+      // Fase 4A-2: el estado de la mesa incluye el reparto de botín activo.
+      const session = sessions.getByCode(code);
+      return {
+        ...state,
+        lootDraft: session ? loot.getBySession(session.id) : null,
+        activeShop: session ? shopScene.getBySession(session.id) : null,
+      };
+    },
   );
 
   app.post<{ Params: { code: string } }>(
@@ -481,6 +497,216 @@ export async function registerRoutes(
     const imported = repo.importCampaign(campaign);
     return reply.code(201).send(imported);
   });
+
+  /* ---------------------------------------------------------------------- */
+  /* Tiendas y bolsa de party (Fase 4A)                                     */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Fase 4A-3: si la campaña tiene una tienda abierta en la mesa, reemite su
+   * escena tras editar la tienda (precio, stock, borrado...). El DM ve el
+   * cambio en vivo sin recargar.
+   */
+  function emitShopIfActive(campaignId: string): void {
+    const session = sessions.getByCampaignId(campaignId);
+    if (!session) return;
+    realtime.emitShop(session.code, shopScene.getBySession(session.id));
+  }
+
+  app.get<{ Params: { campaignId: string } }>(
+    "/api/campaigns/:campaignId/shops",
+    async (request) => repo.listShops(request.params.campaignId),
+  );
+
+  app.post<{ Params: { campaignId: string } }>(
+    "/api/campaigns/:campaignId/shops",
+    async (request, reply) => {
+      const { campaignId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      const shop = repo.createShop(campaignId, request.body ?? {});
+      realtime.emitRefresh(campaignId);
+      emitShopIfActive(campaignId);
+      return reply.code(201).send(shop);
+    },
+  );
+
+  app.patch<{ Params: { campaignId: string; shopId: string } }>(
+    "/api/campaigns/:campaignId/shops/:shopId",
+    async (request) => {
+      const { campaignId, shopId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      const shop = repo.updateShop(campaignId, shopId, request.body ?? {});
+      realtime.emitRefresh(campaignId);
+      emitShopIfActive(campaignId);
+      return shop;
+    },
+  );
+
+  app.delete<{ Params: { campaignId: string; shopId: string } }>(
+    "/api/campaigns/:campaignId/shops/:shopId",
+    async (request, reply) => {
+      const { campaignId, shopId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      repo.deleteShop(campaignId, shopId);
+      realtime.emitRefresh(campaignId);
+      emitShopIfActive(campaignId);
+      return reply.code(204).send();
+    },
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* Escena de tienda (Fase 4A-3)                                          */
+  /* ---------------------------------------------------------------------- */
+
+  app.get<{ Params: { code: string } }>(
+    "/api/sessions/:code/shop",
+    async (request) => {
+      const identity = sessions.authenticate(
+        request.params.code,
+        getSessionToken(request),
+      );
+      if (!identity) {
+        throw new HttpError(401, "invalid_token", "Tu token de sesión no es válido.");
+      }
+      return shopScene.getBySession(identity.session.id);
+    },
+  );
+
+  /** Abrir una tienda en la mesa: el DM y solo fuera de combate. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/shop/open",
+    async (request) => {
+      const { code } = request.params;
+      const input = shopOpenInputSchema.parse(request.body ?? {});
+      const identity = sessions.authenticate(code, getSessionToken(request));
+      if (!identity) {
+        throw new HttpError(401, "invalid_token", "Tu token de sesión no es válido.");
+      }
+      if (combat.getLiveCombat(identity.session.campaignId)) {
+        throw new HttpError(
+          423,
+          "combat_lock",
+          "Termina el combate antes de abrir una tienda.",
+        );
+      }
+      const scene = shopScene.open(code, getSessionToken(request), input.shopId);
+      realtime.emitShop(code, scene);
+      return scene;
+    },
+  );
+
+  /** Cerrar la tienda: devuelve a los jugadores a su hoja. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/shop/close",
+    async (request, reply) => {
+      const { code } = request.params;
+      shopScene.close(code, getSessionToken(request));
+      realtime.emitShop(code, null);
+      return reply.code(204).send();
+    },
+  );
+
+  /**
+   * Comprar en la tienda abierta: paga el precio y desbloquea el objeto para
+   * la campaña. No lo añade al inventario.
+   */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/shop/buy",
+    async (request) => {
+      const { code } = request.params;
+      const input = shopBuyInputSchema.parse(request.body ?? {});
+      const identity = sessions.authenticate(code, getSessionToken(request));
+      if (!identity) {
+        throw new HttpError(401, "invalid_token", "Tu token de sesión no es válido.");
+      }
+      if (combat.getLiveCombat(identity.session.campaignId)) {
+        throw new HttpError(
+          423,
+          "combat_lock",
+          "No se puede comprar durante el combate.",
+        );
+      }
+
+      const result = shopScene.buy(code, getSessionToken(request), input.itemId);
+      realtime.emitShop(code, result.shop);
+      realtime.emitRefresh(identity.session.campaignId);
+      return result;
+    },
+  );
+
+  /** Ajuste manual de la bolsa por el DM (sumar/restar, nunca por debajo de 0). */
+  app.post<{ Params: { campaignId: string } }>(
+    "/api/campaigns/:campaignId/wallet",
+    async (request) => {
+      const { campaignId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      const campaign = repo.adjustWallet(campaignId, request.body ?? {});
+      realtime.emitRefresh(campaignId);
+      return campaign;
+    },
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* Reparto de botín por turnos (Fase 4A-2)                                */
+  /* ---------------------------------------------------------------------- */
+
+  app.get<{ Params: { code: string } }>(
+    "/api/sessions/:code/loot",
+    async (request) => {
+      const identity = sessions.authenticate(
+        request.params.code,
+        getSessionToken(request),
+      );
+      if (!identity) {
+        throw new HttpError(401, "invalid_token", "Tu token de sesión no es válido.");
+      }
+      return loot.getBySession(identity.session.id);
+    },
+  );
+
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/loot/pick",
+    async (request) => {
+      const code = request.params.code;
+      const body = (request.body ?? {}) as { itemIndex?: unknown };
+      const itemIndex = Number(body.itemIndex);
+      if (!Number.isInteger(itemIndex)) {
+        throw new HttpError(
+          400,
+          "invalid_payload",
+          "Indica el índice del objeto que quieres coger.",
+        );
+      }
+      const result = loot.pick(code, getSessionToken(request), itemIndex);
+      realtime.emitLoot(code, result.draft);
+      realtime.emitRefresh(result.draft.campaignId);
+      return result;
+    },
+  );
+
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/loot/skip",
+    async (request) => {
+      const code = request.params.code;
+      const draft = loot.skip(code, getSessionToken(request));
+      realtime.emitLoot(code, draft);
+      return draft;
+    },
+  );
+
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/loot/close",
+    async (request) => {
+      const code = request.params.code;
+      const draft = loot.close(code, getSessionToken(request));
+      realtime.emitLoot(code, draft);
+      return draft;
+    },
+  );
 
   /* ---------------------------------------------------------------------- */
   /* Ficha de personaje                                                     */

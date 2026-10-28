@@ -2,6 +2,7 @@ import type {
   Campaign,
   CampaignContent,
   CampaignSettings,
+  CampaignWallet,
   Character,
   ContentType,
   EffectDefinition,
@@ -9,10 +10,13 @@ import type {
   HostSessionResponse,
   Item,
   JoinSessionResponse,
+  LootDraft,
   PublicSession,
   SessionInfo,
   SessionJoinInput,
   SessionStateResponse,
+  Shop,
+  ShopScene,
   Skill,
   ValidationIssue,
 } from "@protocol-life/shared";
@@ -30,6 +34,9 @@ export interface ContentEntityMap {
 
 export type ContentEntity = ContentEntityMap[ContentType];
 
+/** `shops` y `dungeons` viven en `extras`, no en `content` (Fase 4). */
+export type CampaignCounts = Record<ContentType | "shops" | "dungeons", number>;
+
 export type CampaignSummary = {
   id: string;
   name: string;
@@ -37,8 +44,16 @@ export type CampaignSummary = {
   schemaVersion: number;
   createdAt: string;
   updatedAt: string;
-  counts: Record<ContentType, number>;
+  counts: CampaignCounts;
 };
+
+/** Resultado de comprar en la escena de tienda (Fase 4A-3). */
+export interface ShopBuyResult {
+  shop: ShopScene;
+  wallet: CampaignWallet;
+  item: Item;
+  spent: number;
+}
 
 export interface CharacterSheet {
   character: Character;
@@ -143,6 +158,67 @@ export const api = {
   restParty(campaignId: string): Promise<Campaign> {
     return request(`/api/campaigns/${campaignId}/rest-party`, {
       method: "POST",
+    });
+  },
+
+  /* -------------------------------------------------------------------- */
+  /* Fase 4A — tiendas y bolsa de la party                                */
+  /* -------------------------------------------------------------------- */
+
+  createShop(campaignId: string, input: unknown): Promise<Shop> {
+    return request(`/api/campaigns/${campaignId}/shops`, {
+      method: "POST",
+      body: body(input),
+    });
+  },
+
+  updateShop(campaignId: string, shopId: string, patch: unknown): Promise<Shop> {
+    return request(`/api/campaigns/${campaignId}/shops/${shopId}`, {
+      method: "PATCH",
+      body: body(patch),
+    });
+  },
+
+  deleteShop(campaignId: string, shopId: string): Promise<void> {
+    return request(`/api/campaigns/${campaignId}/shops/${shopId}`, {
+      method: "DELETE",
+    });
+  },
+
+  adjustWallet(campaignId: string, delta: number): Promise<Campaign> {
+    return request(`/api/campaigns/${campaignId}/wallet`, {
+      method: "POST",
+      body: body({ delta }),
+    });
+  },
+
+  /* -------------------------------------------------------------------- */
+  /* Fase 4A-3 — escena de tienda en vivo                                 */
+  /* -------------------------------------------------------------------- */
+
+  getActiveShop(code: string): Promise<ShopScene | null> {
+    return request(
+      `/api/sessions/${encodeURIComponent(code)}/shop`,
+    );
+  },
+
+  openShop(code: string, shopId: string): Promise<ShopScene> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/shop/open`, {
+      method: "POST",
+      body: body({ shopId }),
+    });
+  },
+
+  closeShop(code: string): Promise<void> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/shop/close`, {
+      method: "POST",
+    });
+  },
+
+  buyShopItem(code: string, itemId: string): Promise<ShopBuyResult> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/shop/buy`, {
+      method: "POST",
+      body: body({ itemId }),
     });
   },
 
@@ -259,6 +335,36 @@ export const api = {
 
   closeSession(code: string): Promise<void> {
     return request(`/api/sessions/${encodeURIComponent(code)}/close`, {
+      method: "POST",
+    });
+  },
+
+  /* -------------------------------------------------------------------- */
+  /* Fase 4A-2 — reparto de botín por turnos                              */
+  /* -------------------------------------------------------------------- */
+
+  getLoot(code: string): Promise<LootDraft | null> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/loot`);
+  },
+
+  pickLoot(
+    code: string,
+    itemIndex: number,
+  ): Promise<{ draft: LootDraft; itemId: string; character: Character }> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/loot/pick`, {
+      method: "POST",
+      body: body({ itemIndex }),
+    });
+  },
+
+  skipLoot(code: string): Promise<LootDraft> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/loot/skip`, {
+      method: "POST",
+    });
+  },
+
+  closeLoot(code: string): Promise<LootDraft> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/loot/close`, {
       method: "POST",
     });
   },

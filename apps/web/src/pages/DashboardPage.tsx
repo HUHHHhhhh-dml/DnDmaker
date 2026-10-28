@@ -1,6 +1,7 @@
 import { Link, useOutletContext } from "react-router-dom";
 import {
   CHARACTER_KIND_LABELS,
+  CURRENCY_NAME,
   EQUIPMENT_SLOT_LABELS,
   HP_PERSISTENCE_LABELS,
   TIE_RULE_LABELS,
@@ -26,6 +27,7 @@ export function DashboardPage() {
 
   const counts = [
     { key: "items", label: "Objetos", icon: "cube" as IconName, to: "/items", value: campaign.content.items.length },
+    { key: "shops", label: "Tiendas", icon: "book" as IconName, to: "/shops", value: campaign.content.shops.length },
     { key: "skills", label: "Skills", icon: "sword" as IconName, to: "/skills", value: campaign.content.skills.length },
     { key: "effects", label: "Efectos", icon: "flame" as IconName, to: "/effects", value: campaign.content.effects.length },
     { key: "characters", label: "Personajes", icon: "users" as IconName, to: "/characters", value: campaign.content.characters.length },
@@ -88,12 +90,12 @@ export function DashboardPage() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-7">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {counts.map((entry) => (
               <Link
                 key={entry.key}
                 to={entry.to}
-                className="group border border-ui-line-strong bg-ui-surface-2 p-3 transition-colors hover:bg-paper-deep"
+                className="group border border-ui-line-strong bg-ui-surface-2 p-3 transition-colors hover:bg-ui-surface-3"
               >
                 <div className="flex items-center justify-between text-ui-faint">
                   <Icon name={entry.icon} size={15} />
@@ -248,6 +250,32 @@ export function DashboardPage() {
                 </div>
               ))}
             </dl>
+          </div>
+
+          <div className="panel p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                Bolsa de la party
+              </h2>
+              <Link
+                to="/shops"
+                className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ui-accent hover:underline"
+              >
+                Ir a tiendas →
+              </Link>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="tnum font-display text-4xl leading-none text-ui-gold">
+                {campaign.wallet.cleanShards}
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ui-muted">
+                {CURRENCY_NAME}
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-ui-muted">
+              Moneda común de la party. Se gasta en las tiendas abiertas y el DM
+              la ajusta desde la mesa.
+            </p>
           </div>
 
           <div className="panel-dark p-4">

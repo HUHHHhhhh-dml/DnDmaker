@@ -128,6 +128,7 @@ export function sampleCampaign(): Campaign {
     updatedAt: now,
     rules: { ...DEFAULT_RULES },
     settings: { ...DEFAULT_SETTINGS },
+    wallet: { cleanShards: 0 },
     content: sampleContent(),
   };
 }

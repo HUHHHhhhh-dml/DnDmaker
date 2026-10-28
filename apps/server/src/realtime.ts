@@ -2,7 +2,9 @@ import type { FastifyInstance } from "fastify";
 import { Server, type Socket } from "socket.io";
 import type {
   CombatEvent,
+  LootDraft,
   PublicCombatState,
+  ShopScene,
   Team,
 } from "@protocol-life/shared";
 import type { SessionService } from "./sessions";
@@ -31,6 +33,10 @@ export type RealtimeService = {
     code: string,
     payload: { winner?: Team; log: CombatEvent[] },
   ) => void;
+  /** Fase 4A-2: reparto de botín activo (null cuando se cierra). */
+  emitLoot: (code: string, draft: LootDraft | null) => void;
+  /** Fase 4A-3: escena de tienda activa (null al cerrarse). */
+  emitShop: (code: string, shop: ShopScene | null) => void;
   close: () => void;
 };
 
@@ -148,6 +154,16 @@ export function createRealtime(
     io.to(sessionRoom(code.trim().toUpperCase())).emit("combat:ended", payload);
   }
 
+  function emitLoot(code: string, draft: LootDraft | null): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("loot:updated", {
+      draft,
+    });
+  }
+
+  function emitShop(code: string, shop: ShopScene | null): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("shop:state", { shop });
+  }
+
   function close(): void {
     io.close();
   }
@@ -161,6 +177,8 @@ export function createRealtime(
     emitCombatEvent,
     emitCombatState,
     emitCombatEnded,
+    emitLoot,
+    emitShop,
     close,
   };
 }

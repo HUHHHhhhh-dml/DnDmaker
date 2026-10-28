@@ -353,22 +353,56 @@ export const encounterSchema = encounterInputSchema.extend({ id: idSchema });
 export const encounterPatchSchema = encounterInputSchema.partial();
 
 /* -------------------------------------------------------------------------- */
-/* Tiendas y mazmorras (modelo, sin UI en Fase 1)                             */
+/* Tiendas y bolsa de la party (Fase 4)                                       */
 /* -------------------------------------------------------------------------- */
 
-export const shopSchema = z.object({
-  id: idSchema,
+export const walletSchema = z.object({
+  cleanShards: integer(0, 9_999_999),
+});
+
+export const shopItemSchema = z.object({
+  itemId: idSchema,
+  price: integer(0, 9_999_999),
+  /** Ausente = stock infinito; 0 = agotado. */
+  stock: integer(0, 9999).optional(),
+});
+
+const shopFields = {
   name: nameSchema,
   description: descriptionSchema.optional(),
   currency: z.string().max(40).optional(),
-  items: z.array(
-    z.object({
-      itemId: idSchema,
-      price: integer(0, 9_999_999),
-      stock: integer(0, 9999).optional(),
-    }),
-  ),
+  /** Fondo de la escena: imagen/GIF subido o URL (admite vídeo http). */
+  background: imageSchema.optional(),
+  items: z.array(shopItemSchema).max(200),
+};
+
+export const shopInputSchema = z.object(shopFields);
+export const shopSchema = shopInputSchema.extend({ id: idSchema });
+export const shopPatchSchema = shopInputSchema.partial();
+
+/**
+ * Compra en la escena de tienda (Fase 4A-3): paga el precio y desbloquea el
+ * objeto para toda la campaña. No entra en el inventario.
+ */
+export const shopBuyInputSchema = z.object({
+  itemId: idSchema,
 });
+
+/** Abrir una tienda en la mesa: solo el DM y solo una a la vez. */
+export const shopOpenInputSchema = z.object({
+  shopId: idSchema,
+});
+
+/** Ajuste de la bolsa por el DM. `delta` puede ser negativo; nunca deja < 0. */
+export const walletAdjustInputSchema = z.object({
+  delta: integer(-9_999_999, 9_999_999),
+});
+
+export type ShopInput = z.infer<typeof shopInputSchema>;
+export type ShopPatchInput = z.infer<typeof shopPatchSchema>;
+export type ShopBuyInput = z.infer<typeof shopBuyInputSchema>;
+export type ShopOpenInput = z.infer<typeof shopOpenInputSchema>;
+export type WalletAdjustInput = z.infer<typeof walletAdjustInputSchema>;
 
 export const dungeonSchema = z.object({
   id: idSchema,
@@ -384,6 +418,37 @@ export const dungeonSchema = z.object({
     }),
   ),
 });
+
+/* -------------------------------------------------------------------------- */
+/* Reparto de botín (Fase 4A-2)                                               */
+/* -------------------------------------------------------------------------- */
+
+export const lootDraftPickSchema = z.object({
+  characterId: idSchema,
+  itemId: idSchema,
+  at: z.string().min(1),
+});
+
+/** Estado persistido de un reparto por turnos. Se valida al guardar. */
+export const lootDraftSchema = z.object({
+  id: idSchema,
+  campaignId: idSchema,
+  sessionId: idSchema,
+  combatId: idSchema.optional(),
+  encounterId: idSchema,
+  status: z.enum(["active", "done"]),
+  /** Objetos pendientes; ids repetidos = copias distintas. */
+  pool: z.array(idSchema).max(500),
+  /** Participantes en orden base (SPD descendente), máximo 6 jugadores. */
+  order: z.array(idSchema).min(1).max(6),
+  round: integer(1, 999),
+  turnIndex: integer(0, 5),
+  picks: z.array(lootDraftPickSchema).max(500),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
+export type LootDraftState = z.infer<typeof lootDraftSchema>;
 
 /* -------------------------------------------------------------------------- */
 /* Reglas, settings y campaña                                                  */
@@ -407,6 +472,8 @@ export const campaignSettingsSchema = z.object({
   requirePin: z.boolean().optional(),
   pin: z.string().max(12).optional(),
   baseCharacterImage: imageSchema.optional(),
+  /** Fase 4A-2: reparto de objetos; ausente = todos reciben cada objeto. */
+  shareLoot: z.boolean().optional(),
 });
 
 export const campaignContentSchema = z.object({
@@ -430,6 +497,8 @@ export const campaignSchema = z.object({
   updatedAt: z.string().min(1),
   rules: rulesetSchema,
   settings: campaignSettingsSchema,
+  /** Opcional al importar: los exports de Fase 3 no traen bolsa. */
+  wallet: walletSchema.default({ cleanShards: 0 }),
   content: campaignContentSchema,
 });
 
@@ -615,6 +684,16 @@ export const combatStateSchema = z.object({
   scene: combatSceneSchema.optional(),
   log: z.array(combatEventSchema).max(50_000),
   winner: teamSchema.optional(),
+  /** Fase 4: el botín ya se pagó; evita duplicarlo al reabrir el cierre. */
+  rewardsApplied: z.boolean().optional(),
+  /** Fase 4: resumen de lo entregado al ganar el encuentro. */
+  rewardSummary: z
+    .object({
+      currency: integer(0, 9_999_999).optional(),
+      itemIds: z.array(idSchema).max(500).optional(),
+      characterIds: z.array(idSchema).max(100).optional(),
+    })
+    .optional(),
 });
 
 /* -------------------------------------------------------------------------- */

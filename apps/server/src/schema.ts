@@ -7,21 +7,26 @@ import {
 } from "drizzle-orm/sqlite-core";
 import type {
   CampaignSettings,
+  CampaignWallet,
   Character,
   CombatEvent,
   CombatState,
+  Dungeon,
   EffectDefinition,
   Encounter,
   Item,
+  LootDraft,
   Ruleset,
   Session,
+  Shop,
   Skill,
 } from "@protocol-life/shared";
 
 /**
  * Esquema SQLite. Las entidades de contenido guardan el JSON validado en
  * `data` y espejan los campos útiles para listar/filtrar (name, slot...).
- * Las tiendas y mazmorras viven en `campaigns.extras` (modelo sin UI aún).
+ * Las tiendas, mazmorras y la bolsa de party viven en `campaigns.extras`
+ * para no migrar columnas (Fase 4).
  */
 
 export const campaigns = sqliteTable("campaigns", {
@@ -34,7 +39,12 @@ export const campaigns = sqliteTable("campaigns", {
     .$type<CampaignSettings>()
     .notNull(),
   extras: text("extras", { mode: "json" })
-    .$type<{ shops: unknown[]; dungeons: unknown[] }>()
+    .$type<{
+      shops: Shop[];
+      dungeons: Dungeon[];
+      /** Ausente en campañas anteriores a Fase 4. */
+      wallet?: CampaignWallet;
+    }>()
     .notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -186,6 +196,47 @@ export const combatEvents = sqliteTable(
   (table) => [
     uniqueIndex("idx_combat_events_combat_seq").on(table.combatId, table.seq),
     index("idx_combat_events_combat").on(table.combatId),
+  ],
+);
+
+/**
+ * Tienda abierta en una sesión (Fase 4A-3). Una fila por sesión: el DM la
+ * abre y la cierra; la escena se reconstruye desde el contenido de campaña.
+ */
+export const activeShops = sqliteTable("active_shops", {
+  sessionId: text("session_id")
+    .primaryKey()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  campaignId: text("campaign_id")
+    .notNull()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
+  shopId: text("shop_id").notNull(),
+  openedAt: text("opened_at").notNull(),
+});
+
+/**
+ * Reparto de botín por turnos (Fase 4A-2). Una fila por reparto; el índice
+ * único parcial de la DDL garantiza un solo reparto activo por sesión.
+ */
+export const lootDrafts = sqliteTable(
+  "loot_drafts",
+  {
+    id: text("id").primaryKey(),
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    combatId: text("combat_id"),
+    encounterId: text("encounter_id").notNull(),
+    status: text("status").$type<LootDraft["status"]>().notNull(),
+    state: text("state", { mode: "json" }).$type<LootDraft>().notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("idx_loot_drafts_session").on(table.sessionId),
   ],
 );
 

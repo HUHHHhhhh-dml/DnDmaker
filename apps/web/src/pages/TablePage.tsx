@@ -2,22 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import {
+  CURRENCY_NAME,
   SESSION_STATUS_LABELS,
   calculateStats,
   type PublicSessionPlayer,
 } from "@protocol-life/shared";
-import { useAppStore } from "../store/useAppStore";
+import { useAppStore, describeError } from "../store/useAppStore";
 import { useLiveStore } from "../store/useLiveStore";
 import { api } from "../lib/api";
 import { Icon } from "../components/Icons";
 import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import { DmCombatConsole } from "../components/combat/DmCombatConsole";
+import { LootDraftPanel } from "../components/combat/LootDraftPanel";
+import { ShopScene } from "../components/shop/ShopScene";
 import {
   Button,
   ConfirmDialog,
   EmptyState,
   Field,
   LinkButton,
+  NumberInput,
   PageHeader,
   SectionTitle,
   Select,
@@ -44,7 +48,14 @@ export function TablePage() {
   const clearCombatError = useLiveStore((state) => state.clearCombatError);
   const startCombat = useLiveStore((state) => state.startCombat);
   const dismissRecentCombat = useLiveStore((state) => state.dismissRecentCombat);
+  const lootDraft = useLiveStore((state) => state.lootDraft);
+  const skipLoot = useLiveStore((state) => state.skipLoot);
+  const closeLoot = useLiveStore((state) => state.closeLoot);
+  const activeShop = useLiveStore((state) => state.activeShop);
+  const openShop = useLiveStore((state) => state.openShop);
+  const closeShop = useLiveStore((state) => state.closeShop);
   const restParty = useAppStore((state) => state.restParty);
+  const refreshCampaign = useAppStore((state) => state.refreshCampaign);
 
   const [requirePin, setRequirePin] = useState(
     campaign?.settings.requirePin ?? false,
@@ -55,6 +66,11 @@ export function TablePage() {
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmRest, setConfirmRest] = useState(false);
   const [selectedEncounterId, setSelectedEncounterId] = useState("");
+  const [selectedShopId, setSelectedShopId] = useState("");
+  const [walletDelta, setWalletDelta] = useState<number | undefined>(undefined);
+  const [walletBusy, setWalletBusy] = useState(false);
+  const [lootBusy, setLootBusy] = useState(false);
+  const [shopBusy, setShopBusy] = useState(false);
 
   useEffect(() => {
     if (!campaign) return;
@@ -79,6 +95,14 @@ export function TablePage() {
     );
   }, [encounterIds]);
 
+  const shopIds = (campaign?.content.shops ?? []).map((shop) => shop.id).join("|");
+  useEffect(() => {
+    const ids = shopIds ? shopIds.split("|") : [];
+    setSelectedShopId((current) =>
+      current && ids.includes(current) ? current : (ids[0] ?? ""),
+    );
+  }, [shopIds]);
+
   const joinUrl = useMemo(() => {
     if (!code) return "";
     const url = new URL(window.location.origin);
@@ -99,6 +123,7 @@ export function TablePage() {
 
   const activeCampaign = campaign;
   const players = session?.players ?? [];
+  const shops = activeCampaign.content.shops;
 
   async function copyText(value: string, label: string) {
     if (!value) return;
@@ -155,6 +180,24 @@ export function TablePage() {
     startCombat(selectedEncounterId);
   }
 
+  async function handleOpenShop() {
+    if (!selectedShopId) return;
+    const shop = shops.find((entry) => entry.id === selectedShopId);
+    setShopBusy(true);
+    const ok = await openShop(selectedShopId);
+    setShopBusy(false);
+    if (ok) {
+      notify("ok", `«${shop?.name ?? "Tienda"}» abierta en la mesa.`);
+    }
+  }
+
+  async function handleCloseShop() {
+    setShopBusy(true);
+    const ok = await closeShop();
+    setShopBusy(false);
+    if (ok) notify("ok", "Tienda cerrada; los jugadores vuelven a su hoja.");
+  }
+
   async function handleRestParty() {
     try {
       await restParty();
@@ -162,6 +205,45 @@ export function TablePage() {
       // El store ya notificó el error (por ejemplo, combate en curso).
     } finally {
       setConfirmRest(false);
+    }
+  }
+
+  async function handleSkipLoot() {
+    setLootBusy(true);
+    try {
+      await skipLoot();
+    } finally {
+      setLootBusy(false);
+    }
+  }
+
+  async function handleCloseLoot() {
+    setLootBusy(true);
+    try {
+      await closeLoot();
+    } finally {
+      setLootBusy(false);
+    }
+  }
+
+  async function handleWalletDelta(delta: number | undefined) {
+    if (delta === undefined || delta === 0) {
+      notify("error", "Indica una cantidad distinta de 0 para ajustar la bolsa.");
+      return;
+    }
+    setWalletBusy(true);
+    try {
+      await api.adjustWallet(activeCampaign.id, delta);
+      await refreshCampaign();
+      notify(
+        "ok",
+        `Bolsa ajustada en ${delta > 0 ? `+${delta}` : delta} ${CURRENCY_NAME}.`,
+      );
+      setWalletDelta(undefined);
+    } catch (error) {
+      notify("error", describeError(error));
+    } finally {
+      setWalletBusy(false);
     }
   }
 
@@ -433,6 +515,14 @@ export function TablePage() {
 
             {combat ? (
               <DmCombatConsole campaign={activeCampaign} />
+            ) : activeShop ? (
+              <ShopScene
+                scene={activeShop}
+                campaign={activeCampaign}
+                viewer={{ role: "dm" }}
+                busy={shopBusy}
+                onClose={() => void closeShop()}
+              />
             ) : (
               <>
                 {recentCombat ? (
@@ -635,6 +725,17 @@ export function TablePage() {
                 </section>
               </>
             )}
+
+            {lootDraft ? (
+              <LootDraftPanel
+                draft={lootDraft}
+                campaign={activeCampaign}
+                viewer={{ role: "dm" }}
+                busy={lootBusy}
+                onSkip={() => void handleSkipLoot()}
+                onClose={() => void handleCloseLoot()}
+              />
+            ) : null}
           </div>
 
           {combat ? null : (
@@ -667,6 +768,178 @@ export function TablePage() {
                   </dd>
                 </div>
               </dl>
+            </div>
+
+            <div className="panel p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                  Bolsa de la party
+                </h2>
+                <Link
+                  to="/shops"
+                  className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ui-accent hover:underline"
+                >
+                  Tiendas →
+                </Link>
+              </div>
+              <div className="flex items-baseline justify-between gap-2 border border-ui-line bg-ui-surface-2 px-3 py-2">
+                <span className="tnum font-display text-3xl leading-none text-ui-gold">
+                  {activeCampaign.wallet.cleanShards}
+                </span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
+                  {CURRENCY_NAME}
+                </span>
+              </div>
+              <div className="mt-3">
+                <Field
+                  label="Ajustar bolsa"
+                  hint="Delta entero; admite negativos (+50 / −20). Nunca puede quedar por debajo de 0."
+                >
+                  <NumberInput
+                    value={walletDelta}
+                    onValueChange={setWalletDelta}
+                    step={1}
+                    min={-9_999_999}
+                    max={9_999_999}
+                    placeholder="+50 / -20"
+                  />
+                </Field>
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={walletBusy || !walletDelta}
+                    onClick={() =>
+                      void handleWalletDelta(
+                        walletDelta === undefined
+                          ? undefined
+                          : Math.abs(walletDelta),
+                      )
+                    }
+                  >
+                    Sumar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={walletBusy || !walletDelta}
+                    onClick={() =>
+                      void handleWalletDelta(
+                        walletDelta === undefined
+                          ? undefined
+                          : -Math.abs(walletDelta),
+                      )
+                    }
+                  >
+                    Restar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="accent"
+                    size="sm"
+                    loading={walletBusy}
+                    disabled={!walletDelta}
+                    onClick={() => void handleWalletDelta(walletDelta)}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-2 text-[10px] leading-snug text-ui-faint">
+                La bolsa es común: cualquier jugador gasta de aquí al comprar en una
+                tienda abierta.
+              </p>
+            </div>
+
+            <div className="panel p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                  Tienda en la mesa
+                </h2>
+                <Link
+                  to="/shops"
+                  className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ui-accent hover:underline"
+                >
+                  Gestionar →
+                </Link>
+              </div>
+
+              {activeShop ? (
+                <div className="mb-3 border border-moss/50 bg-moss/10 p-2.5">
+                  <div className="mono-label text-ui-ok">Abierta ahora</div>
+                  <div className="display mt-0.5 truncate text-xl text-ui">
+                    {activeShop.name}
+                  </div>
+                  <p className="mt-1 text-[10px] leading-snug text-ui-muted">
+                    La sala la ve en vivo. Los jugadores compran por confirmación
+                    con la bolsa común.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    icon="lock"
+                    className="mt-2 w-full"
+                    loading={shopBusy}
+                    onClick={() => void handleCloseShop()}
+                  >
+                    Cerrar tienda
+                  </Button>
+                </div>
+              ) : null}
+
+              {shops.length === 0 ? (
+                <p className="border border-dashed border-ui-line p-2 text-[11px] leading-snug text-ui-muted">
+                  Todavía no hay tiendas en esta campaña.{" "}
+                  <Link
+                    to="/shops/new"
+                    className="font-semibold text-ui-accent hover:underline"
+                  >
+                    Crea una
+                  </Link>{" "}
+                  para abrirla aquí.
+                </p>
+              ) : (
+                <>
+                  <Field label="Tienda" hint="El DM abre una cada vez; el combate la bloquea.">
+                    <Select
+                      aria-label="Tienda a abrir en la mesa"
+                      value={selectedShopId}
+                      onValueChange={setSelectedShopId}
+                      disabled={!session || Boolean(activeShop) || shopBusy}
+                    >
+                      {shops.map((shop) => (
+                        <option key={shop.id} value={shop.id}>
+                          {shop.name} · {shop.items.length} objetos
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    icon="unlock"
+                    className="mt-2 w-full"
+                    disabled={
+                      !session ||
+                      !selectedShopId ||
+                      Boolean(activeShop) ||
+                      shopBusy
+                    }
+                    loading={shopBusy}
+                    onClick={() => void handleOpenShop()}
+                  >
+                    Abrir tienda
+                  </Button>
+                </>
+              )}
+              <p className="mt-2 text-[10px] leading-snug text-ui-faint">
+                Al abrirla, toda la sala ve la escena de tienda. Al cerrarla,
+                cada jugador vuelve a su hoja.
+              </p>
             </div>
 
             <div className="border border-ui-line p-3">

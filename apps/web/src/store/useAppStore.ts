@@ -9,6 +9,7 @@ import type {
 import {
   ApiError,
   api,
+  type CampaignCounts,
   type CampaignSummary,
   type ContentEntity,
   type ContentEntityMap,
@@ -94,13 +95,15 @@ function writeStoredCampaignId(id: string | null): void {
   }
 }
 
-function countsFor(campaign: Campaign): Record<ContentType, number> {
+function countsFor(campaign: Campaign): CampaignCounts {
   return {
     items: campaign.content.items.length,
     skills: campaign.content.skills.length,
     effects: campaign.content.effects.length,
     characters: campaign.content.characters.length,
     encounters: campaign.content.encounters.length,
+    shops: campaign.content.shops.length,
+    dungeons: campaign.content.dungeons.length,
   };
 }
 

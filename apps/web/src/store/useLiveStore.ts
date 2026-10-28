@@ -3,10 +3,13 @@ import { create } from "zustand";
 import type {
   CombatEvent,
   CombatScenePatchInput,
+  LootDraft,
+  LootUpdatedEvent,
   PublicCombatState,
   PublicSession,
   PublicSessionPlayer,
   SessionPlayersEvent,
+  ShopScene,
   StateFullPayload,
 } from "@protocol-life/shared";
 import { ApiError, api } from "../lib/api";
@@ -39,6 +42,10 @@ interface LiveState {
   recentCombat: PublicCombatState | null;
   combatEvents: CombatEvent[];
   combatError: string | null;
+  /** Reparto de botín por turnos de la sala (`settings.shareLoot === false`). */
+  lootDraft: LootDraft | null;
+  /** Escena de tienda abierta en la mesa (Fase 4A-3). */
+  activeShop: ShopScene | null;
 
   host: (
     campaignId: string,
@@ -57,6 +64,14 @@ interface LiveState {
   dismissCombat: () => void;
   dismissRecentCombat: () => void;
   clearCombatError: () => void;
+  /** DM: salta el turno actual sin entregar objeto. */
+  skipLoot: () => Promise<boolean>;
+  /** DM: cierra el reparto; lo no elegido se pierde. */
+  closeLoot: () => Promise<boolean>;
+  /** DM: abre una tienda de la campaña en la mesa. */
+  openShop: (shopId: string) => Promise<boolean>;
+  /** DM: cierra la tienda abierta y devuelve a los jugadores a su hoja. */
+  closeShop: () => Promise<boolean>;
 }
 
 const EMPTY_COMBAT = {
@@ -86,6 +101,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   connected: false,
   loading: false,
   error: null,
+  lootDraft: null,
+  activeShop: null,
   ...EMPTY_COMBAT,
 
   async host(campaignId, input) {
@@ -103,6 +120,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         session: hosted.session,
         campaignId,
         code: hosted.session.code,
+        lootDraft: null,
+        activeShop: null,
         ...EMPTY_COMBAT,
       });
       connectSocket(hosted.session.code, hosted.dmToken, set, get);
@@ -134,6 +153,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         session: state.session,
         campaignId,
         code: stored.code,
+        lootDraft: state.lootDraft ?? null,
+        activeShop: state.activeShop ?? null,
         ...EMPTY_COMBAT,
       });
       connectSocket(stored.code, stored.token, set, get);
@@ -143,7 +164,14 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       if (status === 401 || status === 404) {
         clearDmSession(campaignId);
         clearSessionToken();
-        set({ session: null, role: null, code: null, campaignId: null });
+        set({
+          session: null,
+          role: null,
+          code: null,
+          campaignId: null,
+          lootDraft: null,
+          activeShop: null,
+        });
         return false;
       }
       const message = describeError(error);
@@ -174,6 +202,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         campaignId: null,
         code: null,
         connected: false,
+        lootDraft: null,
+        activeShop: null,
         ...EMPTY_COMBAT,
       });
     }
@@ -189,6 +219,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       code: null,
       connected: false,
       error: null,
+      lootDraft: null,
+      activeShop: null,
       ...EMPTY_COMBAT,
     });
   },
@@ -289,6 +321,70 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   clearCombatError() {
     set({ combatError: null });
   },
+
+  async skipLoot() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    try {
+      const draft = await api.skipLoot(code);
+      set({ lootDraft: draft });
+      return true;
+    } catch (error) {
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async closeLoot() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    try {
+      const draft = await api.closeLoot(code);
+      set({ lootDraft: draft });
+      return true;
+    } catch (error) {
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async openShop(shopId) {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    try {
+      const shop = await api.openShop(code, shopId);
+      set({ activeShop: shop });
+      return true;
+    } catch (error) {
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async closeShop() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    try {
+      await api.closeShop(code);
+      set({ activeShop: null });
+      return true;
+    } catch (error) {
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
 }));
 
 function connectSocket(
@@ -337,6 +433,8 @@ function connectSocket(
       recentCombat: recent,
       combatEvents: payload.combat?.log ?? recent?.log ?? [],
       combatError: null,
+      lootDraft: payload.lootDraft ?? null,
+      activeShop: payload.activeShop ?? null,
     });
   });
 
@@ -410,6 +508,14 @@ function connectSocket(
     });
   });
 
+  next.on("loot:updated", (payload: LootUpdatedEvent) => {
+    set({ lootDraft: payload?.draft ?? null });
+  });
+
+  next.on("shop:state", (payload: { shop: ShopScene | null }) => {
+    set({ activeShop: payload?.shop ?? null });
+  });
+
   next.on("campaign:refresh", () => {
     void useAppStore.getState().refreshCampaign();
   });
@@ -425,6 +531,8 @@ function connectSocket(
       campaignId: null,
       code: null,
       connected: false,
+      lootDraft: null,
+      activeShop: null,
       ...EMPTY_COMBAT,
     });
     useAppStore.getState().notify("info", "La sala se cerró.");
@@ -443,6 +551,8 @@ function connectSocket(
         code: null,
         connected: false,
         error: payload.message ?? "La sala ya no es válida.",
+        lootDraft: null,
+        activeShop: null,
         ...EMPTY_COMBAT,
       });
       useAppStore.getState().notify("info", "La sala anterior ya no está abierta.");

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  CURRENCY_NAME,
   SESSION_STATUS_LABELS,
   STAT_KEYS,
   STAT_LABELS,
@@ -18,6 +19,8 @@ import { StatPanel } from "../components/StatPanel";
 import { Icon } from "../components/Icons";
 import { PlayerCombatView } from "./PlayerCombatView";
 import { CombatResultPanel } from "../components/combat/CombatResultPanel";
+import { LootDraftPanel } from "../components/combat/LootDraftPanel";
+import { ShopScene } from "../components/shop/ShopScene";
 import {
   Button,
   ConfirmDialog,
@@ -54,11 +57,20 @@ export function PlayerTablePage() {
     (state) => state.dismissRecentCombat,
   );
   const leave = usePlayerStore((state) => state.leave);
+  const lootDraft = usePlayerStore((state) => state.lootDraft);
+  const pickLoot = usePlayerStore((state) => state.pickLoot);
+  const activeShop = usePlayerStore((state) => state.activeShop);
+  const buyShopItem = usePlayerStore((state) => state.buyShopItem);
 
   const [booting, setBooting] = useState(true);
   const [editing, setEditing] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [lootError, setLootError] = useState<string | null>(null);
+  const [lootBusy, setLootBusy] = useState(false);
+  const [shopBusy, setShopBusy] = useState(false);
+  const [shopError, setShopError] = useState<string | null>(null);
+  const [shopNotice, setShopNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +96,19 @@ export function PlayerTablePage() {
     }
   }, [combat, session?.status]);
 
+  // Un error de reparto («no es tu turno») deja de valer cuando el turno
+  // avanza o el reparto cambia de estado.
+  useEffect(() => {
+    setLootError(null);
+  }, [lootDraft?.id, lootDraft?.turnIndex, lootDraft?.status]);
+
+  // Cada tienda nueva empieza sin avisos de la anterior.
+  useEffect(() => {
+    setShopError(null);
+    setShopNotice(null);
+    setShopBusy(false);
+  }, [activeShop?.shopId]);
+
   const derived = useMemo(
     () =>
       character && campaign
@@ -94,6 +119,34 @@ export function PlayerTablePage() {
 
   const combatLocked = session?.status === "combat";
   const canEdit = Boolean(campaign?.settings.allowPlayerEdit) && !combatLocked;
+
+  async function handlePickLoot(itemIndex: number) {
+    setLootBusy(true);
+    setLootError(null);
+    const message = await pickLoot(itemIndex);
+    setLootError(message);
+    setLootBusy(false);
+  }
+
+  async function handleBuy(itemId: string) {
+    const entry = activeShop?.items.find(
+      (candidate) => candidate.item.id === itemId,
+    );
+    setShopBusy(true);
+    setShopError(null);
+    setShopNotice(null);
+    const message = await buyShopItem(itemId);
+    setShopBusy(false);
+    if (message) {
+      setShopError(message);
+      return;
+    }
+    setShopNotice(
+      entry
+        ? `«${entry.item.name}» desbloqueado para toda la campaña.`
+        : "Objeto desbloqueado para toda la campaña.",
+    );
+  }
 
   async function handleLeave() {
     setLeaving(true);
@@ -187,6 +240,19 @@ export function PlayerTablePage() {
     );
   }
 
+  // El reparto de botín aparece en cuanto termina el combate, también en la
+  // propia escena de resultado: los objetos se eligen al ganar.
+  const lootPanel = lootDraft ? (
+    <LootDraftPanel
+      draft={lootDraft}
+      campaign={campaign}
+      viewer={{ role: "player", characterId: character.id }}
+      busy={lootBusy}
+      error={lootError}
+      onPick={(itemIndex) => void handlePickLoot(itemIndex)}
+    />
+  ) : null;
+
   // La mesa entra en combate: la ficha pasa a solo lectura y se muestra la
   // pantalla de combate. Se mantiene el resultado hasta que el jugador vuelve.
   if (session.status === "combat" || combat) {
@@ -205,6 +271,33 @@ export function PlayerTablePage() {
             session={session}
             code={code}
             connected={connected}
+          />
+          {lootPanel ? <div className="mt-5">{lootPanel}</div> : null}
+        </main>
+      </div>
+    );
+  }
+
+  // Tienda abierta por el DM (Fase 4A-3): sustituye a la ficha hasta que la
+  // cierre. El combate tiene prioridad porque el servidor no permite ambas.
+  if (activeShop) {
+    return (
+      <div className="min-h-screen">
+        <PlayerHeader
+          campaignName={campaign.name}
+          code={code}
+          connected={connected}
+          hideNav
+        />
+        <main className="px-3 py-4 sm:px-5 sm:py-6">
+          <ShopScene
+            scene={activeShop}
+            campaign={campaign}
+            viewer={{ role: "player" }}
+            busy={shopBusy}
+            error={shopError}
+            notice={shopNotice}
+            onBuy={(itemId) => void handleBuy(itemId)}
           />
         </main>
       </div>
@@ -253,6 +346,8 @@ export function PlayerTablePage() {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-5">
+            {lootPanel}
+
             <section className="panel animate-rise overflow-hidden">
               <div className="grid sm:grid-cols-[190px_minmax(0,1fr)]">
                 <div className="relative min-h-[190px] border-b border-ui-line-strong bg-grid bg-ui-surface-3 sm:border-b-0 sm:border-r">
@@ -497,6 +592,7 @@ export function PlayerTablePage() {
             content={campaign.content}
             rules={campaign.rules}
             selfId={player.id}
+            wallet={campaign.wallet.cleanShards}
           />
         </div>
       </main>
@@ -607,11 +703,13 @@ function PartyColumn({
   content,
   rules,
   selfId,
+  wallet,
 }: {
   session: PublicSession;
   content: CampaignContent;
   rules: Ruleset;
   selfId: string;
+  wallet: number;
 }) {
   return (
     <aside className="space-y-4">
@@ -671,6 +769,22 @@ function PartyColumn({
         <p className="mt-3 border-t border-ui-line pt-2 text-[10px] leading-snug text-ui-faint">
           Solo ves la party y tu ficha. Los enemigos y las notas del DM quedan en su
           pantalla.
+        </p>
+      </div>
+
+      <div className="panel p-4">
+        <SectionTitle title="Bolsa de la party" />
+        <div className="flex items-baseline justify-between gap-2 border border-ui-line-strong bg-ui-surface-2 px-3 py-2">
+          <span className="tnum font-display text-3xl leading-none text-ui-gold">
+            {wallet}
+          </span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
+            {CURRENCY_NAME}
+          </span>
+        </div>
+        <p className="mt-3 border-t border-ui-line pt-2 text-[10px] leading-snug text-ui-faint">
+          Moneda común de la party. Se gasta al comprar en la tienda que abra el
+          DM.
         </p>
       </div>
     </aside>

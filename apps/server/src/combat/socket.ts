@@ -11,6 +11,8 @@ import {
   type CombatState,
 } from "@protocol-life/shared";
 import { HttpError } from "../repository";
+import type { LootService } from "../loot";
+import type { ShopSceneService } from "../shop-scene";
 import type { SessionIdentity, SessionService } from "../sessions";
 import type { DeclaredActionInput } from "./declarations";
 import { toPublicCombatState } from "./public";
@@ -32,6 +34,10 @@ export interface CombatSocketDeps {
   io: Server;
   sessions: SessionService;
   combat: CombatService;
+  /** Fase 4A-2: el snapshot inicial incluye el reparto de botín activo. */
+  loot: LootService;
+  /** Fase 4A-3: el snapshot inicial incluye la tienda abierta. */
+  shopScene: ShopSceneService;
 }
 
 interface SocketAuth {
@@ -219,6 +225,8 @@ export function registerCombatSocket(deps: CombatSocketDeps): void {
         ...state,
         combat: live ? toPublicCombatState(live) : null,
         recentCombat: recent ? toPublicCombatState(recent) : null,
+        lootDraft: deps.loot.getBySession(identity.session.id),
+        activeShop: deps.shopScene.getBySession(identity.session.id),
       });
     } catch (error) {
       emitError(socket, error);

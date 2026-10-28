@@ -12,6 +12,8 @@ import { ItemEditorPage } from "./pages/ItemEditorPage";
 import { ItemsPage } from "./pages/ItemsPage";
 import { JoinPage } from "./pages/JoinPage";
 import { PlayerTablePage } from "./pages/PlayerTablePage";
+import { ShopEditorPage } from "./pages/ShopEditorPage";
+import { ShopsPage } from "./pages/ShopsPage";
 import { SkillEditorPage } from "./pages/SkillEditorPage";
 import { SkillsPage } from "./pages/SkillsPage";
 import { TablePage } from "./pages/TablePage";
@@ -57,6 +59,9 @@ export function App() {
         <Route path="items" element={<ItemsPage />} />
         <Route path="items/new" element={<ItemEditorPage />} />
         <Route path="items/:itemId" element={<ItemEditorPage />} />
+        <Route path="shops" element={<ShopsPage />} />
+        <Route path="shops/new" element={<ShopEditorPage />} />
+        <Route path="shops/:shopId" element={<ShopEditorPage />} />
         <Route path="skills" element={<SkillsPage />} />
         <Route path="skills/new" element={<SkillEditorPage />} />
         <Route path="skills/:skillId" element={<SkillEditorPage />} />

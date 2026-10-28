@@ -426,6 +426,12 @@ export function EditCampaignModal({
             </div>
             <div className="space-y-3 border border-ui-line bg-ui-surface-2 p-3">
               <Toggle
+                checked={settings.shareLoot !== false}
+                onCheckedChange={(value) => patchSettings({ shareLoot: value })}
+                label="Mismos objetos para todos los jugadores"
+                hint="Activado: cada jugador recibe cada objeto del botín. Desactivado: los objetos se reparten por turnos, en orden de iniciativa (serpiente)."
+              />
+              <Toggle
                 checked={settings.allowPlayerEdit}
                 onCheckedChange={(value) => patchSettings({ allowPlayerEdit: value })}
                 label="Los jugadores pueden editar su ficha fuera de combate"

@@ -361,10 +361,12 @@ export class SessionService {
   }
 
   /**
-   * Campaña vista por un jugador: sin enemigos, notas, tiendas, PIN ni
-   * contenido bloqueado. En combate (`includeCombatReferences`) se añaden las
-   * skills/objetos referenciados por los enemigos porque ya son visibles en el
-   * estado de combate y el renderer/log los necesitan.
+   * Campaña vista por un jugador: sin enemigos, notas, PIN ni contenido
+   * bloqueado. Las tiendas tampoco viajan: la escena de tienda (Fase 4A-3)
+   * manda su propio snapshot cuando el DM la abre. En combate
+   * (`includeCombatReferences`) se añaden las skills/objetos referenciados por
+   * los enemigos porque ya son visibles en el estado de combate y el
+   * renderer/log los necesitan.
    */
   sanitizeCampaign(
     campaign: ReturnType<Repository["getCampaign"]>,

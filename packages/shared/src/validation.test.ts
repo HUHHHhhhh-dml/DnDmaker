@@ -8,14 +8,16 @@ import {
   combatStateSchema,
   encounterInputSchema,
   itemInputSchema,
+  shopInputSchema,
   skillInputSchema,
 } from "./schemas";
-import type { CampaignContent, Character, Encounter } from "./types";
+import type { CampaignContent, Character, Encounter, Shop } from "./types";
 import {
   findReferences,
   validateCampaign,
   validateCharacter,
   validateContent,
+  validateShop,
 } from "./validation";
 
 function cloneContent(): CampaignContent {
@@ -302,5 +304,69 @@ describe("escena de combate y compatibilidad (3F.5)", () => {
       encounterInputSchema.safeParse({ ...encounter, sceneTheme: "neon" })
         .success,
     ).toBe(false);
+  });
+
+  it("valida tiendas: referencias, duplicados y objetos bloqueados", () => {
+    const content = cloneContent();
+    const item = content.items[0];
+    if (!item) throw new Error("El fixture no tiene objetos.");
+
+    const validShop: Shop = {
+      id: "shp_1",
+      name: "Mercado",
+      background: "/uploads/mercado.gif",
+      items: [{ itemId: item.id, price: 10, stock: 2 }],
+    };
+    expect(validateShop(validShop, content).valid).toBe(true);
+
+    const missing = validateShop(
+      { ...validShop, items: [{ itemId: "itm_no_existe", price: 1 }] },
+      content,
+    );
+    expect(missing.valid).toBe(false);
+
+    const duplicated = validateShop(
+      {
+        ...validShop,
+        items: [
+          { itemId: item.id, price: 1 },
+          { itemId: item.id, price: 2 },
+        ],
+      },
+      content,
+    );
+    expect(duplicated.valid).toBe(false);
+
+    const locked: Shop = {
+      ...validShop,
+      items: [{ itemId: item.id, price: 1 }],
+    };
+    // `sampleContent` trae objetos bloqueados: avisar no invalida la tienda.
+    const lockedResult = validateShop(locked, {
+      items: [{ ...item, unlocked: false }],
+    });
+    expect(lockedResult.valid).toBe(true);
+    expect(
+      lockedResult.issues.some(
+        (entry) => entry.severity === "warning" && entry.path.includes(".items"),
+      ),
+    ).toBe(true);
+
+    expect(
+      validateContent({ ...content, shops: [validShop, { ...validShop }] }).valid,
+    ).toBe(false);
+
+    expect(
+      shopInputSchema.safeParse({
+        name: "Tienda",
+        items: [{ itemId: item.id, price: -1 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      shopInputSchema.safeParse({
+        name: "Tienda",
+        items: [{ itemId: item.id, price: 5 }],
+      }).success,
+    ).toBe(true);
   });
 });

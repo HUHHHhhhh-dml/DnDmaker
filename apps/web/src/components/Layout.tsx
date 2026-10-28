@@ -11,7 +11,14 @@ interface NavItem {
   to: string;
   label: string;
   icon: IconName;
-  countKey?: "items" | "skills" | "effects" | "characters" | "encounters";
+  countKey?:
+    | "items"
+    | "skills"
+    | "effects"
+    | "characters"
+    | "encounters"
+    | "shops"
+    | "dungeons";
   end?: boolean;
 }
 
@@ -19,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Panel", icon: "grid", end: true },
   { to: "/table", label: "Mesa", icon: "broadcast" },
   { to: "/items", label: "Objetos", icon: "cube", countKey: "items" },
+  { to: "/shops", label: "Tiendas", icon: "book", countKey: "shops" },
   { to: "/skills", label: "Skills", icon: "sword", countKey: "skills" },
   { to: "/effects", label: "Efectos", icon: "flame", countKey: "effects" },
   { to: "/characters", label: "Personajes", icon: "users", countKey: "characters" },
@@ -100,6 +108,8 @@ export function Layout() {
     effects: campaign.content.effects.length,
     characters: campaign.content.characters.length,
     encounters: campaign.content.encounters.length,
+    shops: campaign.content.shops.length,
+    dungeons: campaign.content.dungeons.length,
   };
 
   const sidebar = (

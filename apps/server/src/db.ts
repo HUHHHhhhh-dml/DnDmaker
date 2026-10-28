@@ -117,6 +117,29 @@ CREATE TABLE IF NOT EXISTS combat_events (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS loot_drafts (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  combat_id TEXT,
+  encounter_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  state TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS active_shops (
+  session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  shop_id TEXT NOT NULL,
+  opened_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_loot_drafts_session ON loot_drafts(session_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_loot_drafts_active
+  ON loot_drafts(session_id) WHERE status = 'active';
+
 CREATE INDEX IF NOT EXISTS idx_items_campaign ON items(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_skills_campaign ON skills(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_effects_campaign ON effects(campaign_id);

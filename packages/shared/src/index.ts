@@ -6,3 +6,4 @@ export * from "./visual";
 export * from "./validation";
 export * from "./session";
 export * from "./combat";
+export * from "./loot";

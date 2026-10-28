@@ -1,9 +1,11 @@
 import type {
   Campaign,
   Character,
+  LootDraft,
   PublicCombatState,
   Session,
   SessionPlayer,
+  ShopScene,
 } from "./types";
 
 /**
@@ -53,6 +55,10 @@ export interface SessionStateResponse {
   campaign: Campaign;
   player?: PublicSessionPlayer;
   character?: Character;
+  /** Fase 4A-2: reparto de botín activo de la sala, si lo hay. */
+  lootDraft?: LootDraft | null;
+  /** Fase 4A-3: escena de tienda abierta por el DM, si la hay. */
+  activeShop?: ShopScene | null;
 }
 
 /**
@@ -72,6 +78,16 @@ export interface SessionPlayersEvent {
   players: PublicSessionPlayer[];
   status: Session["status"];
   dmConnected?: boolean;
+}
+
+/** Evento `loot:updated`: snapshot del reparto (null al cerrarse o limpiarse). */
+export interface LootUpdatedEvent {
+  draft: LootDraft | null;
+}
+
+/** Evento `shop:state`: escena de tienda activa (null al cerrarse). */
+export interface ShopSceneEvent {
+  shop: ShopScene | null;
 }
 
 /** Sin caracteres ambiguos (sin I, O, 0, 1). */

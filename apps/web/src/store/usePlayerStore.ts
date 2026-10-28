@@ -4,12 +4,15 @@ import type {
   Campaign,
   Character,
   CombatEvent,
+  LootDraft,
+  LootUpdatedEvent,
   PublicCombatState,
   PublicSession,
   PublicSessionPlayer,
   SessionJoinInput,
   SessionPlayersEvent,
   SessionStateResponse,
+  ShopScene,
   StateFullPayload,
 } from "@protocol-life/shared";
 import { ApiError, api } from "../lib/api";
@@ -68,6 +71,10 @@ export interface PlayerState {
   /** Timeline de eventos; el estado ya viene resuelto del servidor. */
   combatEvents: CombatEvent[];
   combatError: string | null;
+  /** Reparto de botín por turnos de la sala (`settings.shareLoot === false`). */
+  lootDraft: LootDraft | null;
+  /** Escena de tienda abierta por el DM (Fase 4A-3); null = hoja normal. */
+  activeShop: ShopScene | null;
 
   join: (code: string, input: SessionJoinInput) => Promise<boolean>;
   restore: (code: string) => Promise<boolean>;
@@ -79,6 +86,13 @@ export interface PlayerState {
   dismissCombat: () => void;
   dismissRecentCombat: () => void;
   clearCombatError: () => void;
+  /** Elige un objeto del reparto (solo en tu turno). `null` si fue bien. */
+  pickLoot: (itemIndex: number) => Promise<string | null>;
+  /**
+   * Compra en la tienda abierta: paga la bolsa y desbloquea el objeto para
+   * toda la campaña. Devuelve `null` o el mensaje de error.
+   */
+  buyShopItem: (itemId: string) => Promise<string | null>;
 }
 
 let socket: Socket | null = null;
@@ -107,6 +121,8 @@ const EMPTY_STATE: Pick<
   | "recentCombat"
   | "combatEvents"
   | "combatError"
+  | "lootDraft"
+  | "activeShop"
 > = {
   token: null,
   code: null,
@@ -122,6 +138,8 @@ const EMPTY_STATE: Pick<
   recentCombat: null,
   combatEvents: [],
   combatError: null,
+  lootDraft: null,
+  activeShop: null,
 };
 
 export function describePlayerError(error: unknown): string {
@@ -171,6 +189,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         recentCombat: null,
         combatEvents: [],
         combatError: null,
+        lootDraft: null,
+        activeShop: null,
       });
       connectSocket(normalized, token, set, get);
       return true;
@@ -203,6 +223,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         recentCombat: null,
         combatEvents: [],
         combatError: null,
+        lootDraft: null,
+        activeShop: null,
       });
       applyState(state, stored.code, stored.token, set);
       connectSocket(stored.code, stored.token, set, get);
@@ -226,6 +248,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           recentCombat: null,
           combatEvents: [],
           combatError: null,
+          lootDraft: null,
+          activeShop: null,
           error: describePlayerError(error),
         });
       } else {
@@ -248,6 +272,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         campaign: state.campaign,
         character: state.character ?? null,
         player: state.player ?? null,
+        lootDraft: state.lootDraft ?? null,
+        activeShop: state.activeShop ?? null,
         error: null,
       });
     } catch (error) {
@@ -373,6 +399,32 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   clearCombatError() {
     set({ combatError: null });
   },
+
+  async pickLoot(itemIndex) {
+    const code = get().code;
+    if (!code) return "No estás conectado a la mesa.";
+    try {
+      const result = await api.pickLoot(code, itemIndex);
+      set({ lootDraft: result.draft, character: result.character });
+      return null;
+    } catch (error) {
+      return describePlayerError(error);
+    }
+  },
+
+  async buyShopItem(itemId) {
+    const code = get().code;
+    if (!code) return "No estás conectado a la mesa.";
+    try {
+      const result = await api.buyShopItem(code, itemId);
+      set({ activeShop: result.shop });
+      // La bolsa y el desbloqueo llegan por `campaign:refresh`; el servidor es
+      // la única autoridad del gasto.
+      return null;
+    } catch (error) {
+      return describePlayerError(error);
+    }
+  },
 }));
 
 function applyState(
@@ -388,6 +440,8 @@ function applyState(
     campaign: state.campaign,
     character: state.character ?? null,
     player: state.player ?? null,
+    lootDraft: state.lootDraft ?? null,
+    activeShop: state.activeShop ?? null,
     closed: false,
   });
 }
@@ -444,6 +498,8 @@ function connectSocket(
       recentCombat: recent,
       combatEvents: payload.combat?.log ?? recent?.log ?? [],
       combatError: null,
+      lootDraft: payload.lootDraft ?? null,
+      activeShop: payload.activeShop ?? null,
       closed: false,
     });
   });
@@ -533,6 +589,14 @@ function connectSocket(
     });
   });
 
+  next.on("loot:updated", (payload: LootUpdatedEvent) => {
+    set({ lootDraft: payload?.draft ?? null });
+  });
+
+  next.on("shop:state", (payload: { shop: ShopScene | null }) => {
+    set({ activeShop: payload?.shop ?? null });
+  });
+
   next.on("campaign:refresh", () => {
     void get().refresh();
   });
@@ -550,6 +614,8 @@ function connectSocket(
       recentCombat: null,
       combatEvents: [],
       combatError: null,
+      lootDraft: null,
+      activeShop: null,
     });
   });
 
@@ -568,6 +634,8 @@ function connectSocket(
         recentCombat: null,
         combatEvents: [],
         combatError: null,
+        lootDraft: null,
+        activeShop: null,
       });
       return;
     }

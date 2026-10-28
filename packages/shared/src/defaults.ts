@@ -16,6 +16,9 @@ export const SCHEMA_VERSION = 1 as const;
 /** Moneda de campaña. Nunca dinero real. */
 export const CURRENCY_NAME = "Clean Shards";
 
+/** Bolsa inicial de la party: vacía. */
+export const DEFAULT_WALLET = { cleanShards: 0 } as const;
+
 export const DEFAULT_STATS: Stats = {
   hpMax: 50,
   def: 0,
@@ -44,7 +47,16 @@ export const DEFAULT_SETTINGS: CampaignSettings = {
   allowPlayerEditDuringCombat: false,
   requirePin: false,
   baseCharacterImage: DEFAULT_BASE_CHARACTER_IMAGE,
+  shareLoot: true,
 };
+
+/**
+ * ¿El botín de objetos se duplica para cada jugador? Ausente = sí (Fase 3
+ * no tenía la opción y las campañas viejas deben seguir igual).
+ */
+export function sharesLoot(settings: { shareLoot?: boolean }): boolean {
+  return settings.shareLoot !== false;
+}
 
 export const EQUIPMENT_SLOTS = [
   "horns",

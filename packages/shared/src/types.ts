@@ -314,7 +314,55 @@ export interface Shop {
   name: string;
   description?: string;
   currency?: string;
+  /**
+   * Fase 4: fondo de la escena de tienda. Admite imagen o GIF subido
+   * (`/uploads/...`) y URLs http(s); si apunta a un vídeo, el cliente lo
+   * reproduce en bucle.
+   */
+  background?: string;
   items: ShopItem[];
+}
+
+/**
+ * Escena de tienda abierta por el DM (Fase 4A-3). Es un snapshot para la UI:
+ * incluye objetos bloqueados (que el jugador no ve en su biblioteca) con lo
+ * necesario para pintarlos y comprarlos.
+ */
+export interface ShopSceneItemInfo {
+  id: Id;
+  name: string;
+  code?: string;
+  description?: string;
+  icon?: string;
+  image?: string;
+  slot: EquipmentSlot;
+  rarity?: string;
+  stats?: Partial<Stats>;
+}
+
+export interface ShopSceneItem {
+  item: ShopSceneItemInfo;
+  price: number;
+  /** Ausente = stock infinito; 0 = agotado. */
+  stock?: number;
+  /** Ya desbloqueado para la campaña: no se puede volver a comprar. */
+  unlocked: boolean;
+}
+
+export interface ShopScene {
+  shopId: Id;
+  name: string;
+  description?: string;
+  background?: string;
+  currency?: string;
+  openedAt: IsoDate;
+  items: ShopSceneItem[];
+}
+
+/** Bolsa común de la party (Fase 4). Nunca dinero real. */
+export interface CampaignWallet {
+  /** Clean Shards disponibles para toda la party. */
+  cleanShards: number;
 }
 
 export interface DungeonRoom {
@@ -330,6 +378,44 @@ export interface Dungeon {
   description?: string;
   entryRoomId?: Id;
   rooms: DungeonRoom[];
+}
+
+/* ========================================================================== */
+/* Reparto de botín por turnos (Fase 4A-2)                                    */
+/* ========================================================================== */
+
+export type LootDraftStatus = "active" | "done";
+
+/** Una elección ya hecha dentro del reparto. */
+export interface LootDraftPick {
+  characterId: Id;
+  itemId: Id;
+  at: IsoDate;
+}
+
+/**
+ * Reparto de los objetos de un encuentro ganado cuando
+ * `settings.shareLoot === false`. Los objetos no se entregan al ganar: se
+ * eligen por turnos en orden serpiente (SPD).
+ */
+export interface LootDraft {
+  id: Id;
+  campaignId: Id;
+  sessionId: Id;
+  combatId?: Id;
+  encounterId: Id;
+  status: LootDraftStatus;
+  /** Objetos pendientes; una entrada por unidad (ids repetidos = copias). */
+  pool: Id[];
+  /** Fichas participantes en orden base (SPD descendente). */
+  order: Id[];
+  /** Ronda de reparto, 1-based. Las impares van hacia delante y las pares atrás. */
+  round: number;
+  /** Posición dentro de la ronda (0..order.length-1). */
+  turnIndex: number;
+  picks: LootDraftPick[];
+  createdAt: IsoDate;
+  updatedAt: IsoDate;
 }
 
 /* ========================================================================== */
@@ -355,6 +441,11 @@ export interface CampaignSettings {
   pin?: string;
   /** Imagen base para el muñeco de equipo de los jugadores. */
   baseCharacterImage?: string;
+  /**
+   * Fase 4: al ganar un encuentro, ¿cada jugador recibe cada objeto del botín
+   * (true, por defecto) o se reparte por turnos (false)?
+   */
+  shareLoot?: boolean;
 }
 
 export interface CampaignContent {
@@ -377,6 +468,8 @@ export interface Campaign {
   updatedAt: IsoDate;
   rules: Ruleset;
   settings: CampaignSettings;
+  /** Fase 4: bolsa de party, persistida en `campaigns.extras.wallet`. */
+  wallet: CampaignWallet;
   content: CampaignContent;
 }
 
@@ -534,6 +627,27 @@ export interface CombatState {
   scene?: CombatScene;
   log: CombatEvent[];
   winner?: Team;
+  /**
+   * Fase 4: recompensas del encuentro ya aplicadas. Vive en el JSON del
+   * estado (sin migración) y evita pagar dos veces al reabrir el cierre.
+   */
+  rewardsApplied?: boolean;
+  /** Resumen de lo entregado al ganar, para el log y la escena de resultado. */
+  rewardSummary?: CombatRewardSummary;
+}
+
+/** Lo que la party recibió al ganar un encuentro (Fase 4). */
+export interface CombatRewardSummary {
+  /** Clean Shards añadidos a la bolsa de party. */
+  currency?: number;
+  /** Objetos entregados (una entrada por unidad; repetidos = varias copias). */
+  itemIds?: Id[];
+  /** Fichas que recibieron objetos. */
+  characterIds?: Id[];
+  /** Objetos que quedan pendientes de reparto por turnos (`shareLoot` off). */
+  pendingItemIds?: Id[];
+  /** Reparto creado para esos objetos pendientes. */
+  lootDraftId?: Id;
 }
 
 /** Vista de combate apta para clientes: mismo estado sin la semilla. */

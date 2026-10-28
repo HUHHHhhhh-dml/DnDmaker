@@ -11,6 +11,8 @@ import { registerCombatSocket } from "./combat/socket";
 import { CombatStore } from "./combat/store";
 import { dbPath as defaultDbPath, uploadsDir as defaultUploadsDir, webDistDir as defaultWebDistDir } from "./config";
 import { openDatabase } from "./db";
+import { LootService } from "./loot";
+import { ShopSceneService } from "./shop-scene";
 import { createRealtime, type RealtimeService } from "./realtime";
 import { HttpError, Repository } from "./repository";
 import { errorPayload, registerRoutes, uploadLimits } from "./routes";
@@ -34,6 +36,8 @@ export interface BuiltApp {
   realtime: RealtimeService;
   combatStore: CombatStore;
   combat: CombatService;
+  loot: LootService;
+  shopScene: ShopSceneService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp> {
@@ -46,6 +50,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
   const sessions = new SessionService(db, repository);
   sessions.resetPresence();
   const combatStore = new CombatStore(db, sqlite);
+  const loot = new LootService(db, sqlite, repository, sessions);
+  const shopScene = new ShopSceneService(db, repository, sessions);
 
   if (options.seed !== false) {
     const seeded = repository.ensureSeedCampaign();
@@ -61,31 +67,47 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
   });
 
   const realtime = createRealtime(app, sessions);
-  const combat = new CombatService(repository, sessions, combatStore, {
-    onStarted: (state, session) => {
-      realtime.emitCombatStarted(session.code, toPublicCombatState(state));
-      realtime.emitPlayers(session.code);
-      // En combate el jugador necesita las skills/objetos de los enemigos
-      // para dibujar el side-view y leer el log; `getState` los incluye
-      // mientras la sala está en `combat`.
-      realtime.emitRefresh(session.campaignId);
+  const combat = new CombatService(
+    repository,
+    sessions,
+    combatStore,
+    {
+      onStarted: (state, session) => {
+        realtime.emitCombatStarted(session.code, toPublicCombatState(state));
+        realtime.emitPlayers(session.code);
+        // En combate el jugador necesita las skills/objetos de los enemigos
+        // para dibujar el side-view y leer el log; `getState` los incluye
+        // mientras la sala está en `combat`.
+        realtime.emitRefresh(session.campaignId);
+        // Empezar combate cierra cualquier reparto pendiente de la sesión.
+        realtime.emitLoot(session.code, loot.getBySession(session.id));
+        // Y también la tienda que estuviera abierta.
+        realtime.emitShop(session.code, shopScene.getBySession(session.id));
+      },
+      onCombatEvent: (_state, event, session) => {
+        realtime.emitCombatEvent(session.code, event);
+      },
+      onCombatState: (state, session) => {
+        realtime.emitCombatState(session.code, toPublicCombatState(state));
+      },
+      onCombatEnded: (state, session) => {
+        realtime.emitCombatEnded(session.code, {
+          winner: state.winner,
+          log: state.log,
+        });
+        // La mesa vuelve a `playing`; refresca la presencia/estado de la sala.
+        realtime.emitPlayers(session.code);
+        // Fase 4: la victoria puede haber movido la bolsa y el inventario de la
+        // party; el refresco hace que DM y jugadores lo vean sin recargar.
+        realtime.emitRefresh(session.campaignId);
+        // Fase 4A-2: si el botín quedó pendiente, la sala recibe el reparto.
+        realtime.emitLoot(session.code, loot.getBySession(session.id));
+      },
     },
-    onCombatEvent: (_state, event, session) => {
-      realtime.emitCombatEvent(session.code, event);
-    },
-    onCombatState: (state, session) => {
-      realtime.emitCombatState(session.code, toPublicCombatState(state));
-    },
-    onCombatEnded: (state, session) => {
-      realtime.emitCombatEnded(session.code, {
-        winner: state.winner,
-        log: state.log,
-      });
-      // La mesa vuelve a `playing`; refresca la presencia/estado de la sala.
-      realtime.emitPlayers(session.code);
-    },
-  });
-  registerCombatSocket({ io: realtime.io, sessions, combat });
+    loot,
+    shopScene,
+  );
+  registerCombatSocket({ io: realtime.io, sessions, combat, loot, shopScene });
 
   await app.register(cors, { origin: true });
   await app.register(multipart, { limits: uploadLimits });
@@ -96,6 +118,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     sessions,
     realtime,
     combat,
+    loot,
+    shopScene,
   });
 
   const webIndex = join(webDist, "index.html");
@@ -166,5 +190,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     }
   });
 
-  return { app, repository, sessions, realtime, combatStore, combat };
+  return {
+    app,
+    repository,
+    sessions,
+    realtime,
+    combatStore,
+    combat,
+    loot,
+    shopScene,
+  };
 }

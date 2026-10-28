@@ -4,11 +4,13 @@ import type {
   Campaign,
   CampaignContent,
   Character,
+  Dungeon,
   EffectAction,
   EffectDefinition,
   Encounter,
   Item,
   Ruleset,
+  Shop,
   Skill,
 } from "./types";
 import { DEFAULT_RULES } from "./defaults";
@@ -347,6 +349,49 @@ export function validateEncounter(
   return result(issues);
 }
 
+/**
+ * Fase 4 — coherencia de una tienda frente al contenido de la campaña.
+ * El precio y el stock los acota Zod; aquí se comprueban referencias y
+ * duplicados, que es lo que puede romper la compra.
+ */
+export function validateShop(
+  shop: Shop,
+  content: Pick<CampaignContent, "items">,
+): ValidationResult {
+  const issues: ValidationIssue[] = [];
+  const items = groupById(content.items);
+  const path = `shops[${shop.id}]`;
+  const seen = new Set<string>();
+
+  shop.items.forEach((entry, index) => {
+    if (seen.has(entry.itemId)) {
+      issues.push(
+        issue(`${path}.items[${index}]`, "El objeto está repetido en la tienda."),
+      );
+    }
+    seen.add(entry.itemId);
+
+    const item = items.get(entry.itemId);
+    if (!item) {
+      issues.push(
+        issue(`${path}.items[${index}].itemId`, "El objeto de la tienda no existe."),
+      );
+      return;
+    }
+    if (item.unlocked !== true) {
+      issues.push(
+        issue(
+          `${path}.items[${index}].itemId`,
+          `"${item.name}" está bloqueado para jugadores: no se podrá comprar.`,
+          "warning",
+        ),
+      );
+    }
+  });
+
+  return result(issues);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Campaña completa                                                           */
 /* -------------------------------------------------------------------------- */
@@ -362,6 +407,7 @@ export function validateContent(
     ...findDuplicateIds(content.characters, "characters"),
     ...findDuplicateIds(content.encounters, "encounters"),
     ...findDuplicateIds(content.specials, "specials"),
+    ...findDuplicateIds(content.shops, "shops"),
   ];
 
   for (const item of content.items) {
@@ -378,6 +424,9 @@ export function validateContent(
   }
   for (const encounter of content.encounters) {
     issues.push(...validateEncounter(encounter, content).issues);
+  }
+  for (const shop of content.shops) {
+    issues.push(...validateShop(shop, content).issues);
   }
   for (const special of content.specials) {
     issues.push(

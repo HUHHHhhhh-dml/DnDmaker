@@ -5,16 +5,21 @@ import {
   createRng,
   newId,
   resolveRound,
+  sharesLoot,
   type Campaign,
   type CombatEvent,
+  type CombatRewardSummary,
   type CombatScene,
   type CombatScenePatch,
   type CombatState,
   type CombatUnit,
   type Encounter,
+  type LootDraft,
   type SessionPlayer,
   type Team,
 } from "@protocol-life/shared";
+import type { LootService } from "../loot";
+import type { ShopSceneService } from "../shop-scene";
 import { HttpError, type Repository } from "../repository";
 import type { SessionRow, SessionService } from "../sessions";
 import {
@@ -120,6 +125,10 @@ export class CombatService {
     private readonly sessions: SessionService,
     private readonly store: CombatStore,
     private readonly events: CombatEventSink = {},
+    /** Fase 4A-2: crea el reparto de botín cuando `shareLoot` está off. */
+    private readonly loot?: LootService,
+    /** Fase 4A-3: cierra la tienda abierta al empezar un combate. */
+    private readonly shopScene?: ShopSceneService,
   ) {}
 
   /**
@@ -240,6 +249,11 @@ export class CombatService {
     // El estado y el cambio a `combat` deben entrar juntos: si algo falla, no
     // queremos una sala en combate sin snapshot (o al revés).
     this.repo.transaction(() => {
+      // Fase 4A-2: empezar un combate descarta un reparto de botín pendiente
+      // (lo ya elegido queda entregado; el resto se pierde). Va aquí, dentro
+      // de la transacción, para no perderlo si el combate no llega a crearse.
+      this.loot?.closeActiveForSession(sessionId);
+      this.shopScene?.closeForSession(sessionId);
       this.store.create(state, { campaignId, sessionId });
       this.sessions.setStatus(sessionId, "combat");
     });
@@ -480,8 +494,9 @@ export class CombatService {
   }
 
   /**
-   * Termina el combate, persiste el HP de la party y devuelve la mesa a
-   * `playing`. Es idempotente: llamarlo dos veces no duplica eventos ni HP.
+   * Termina el combate, persiste el HP de la party, aplica el botín del
+   * encuentro (Fase 4) y devuelve la mesa a `playing`. Es idempotente:
+   * llamarlo dos veces no duplica eventos, HP ni recompensas.
    */
   endEncounter(combatId: string, reason = "dm"): CombatState {
     const record = this.store.get(combatId);
@@ -538,6 +553,63 @@ export class CombatService {
           if (!(error instanceof HttpError && error.code === "character_not_found")) {
             throw error;
           }
+        }
+      }
+
+      // Fase 4: las recompensas del encuentro se pagan una sola vez por
+      // combate y dentro de la misma transacción que el HP. Solo con victoria
+      // de la party; si el DM cierra el combate con enemigos vivos, no hay
+      // ganador y no se paga nada.
+      if (winner === "players" && !state.rewardsApplied) {
+        const partyUnits = state.units.filter(
+          (unit) => unit.team === "players",
+        );
+        const characterIds = partyUnits.map((unit) => unit.characterId);
+        const encounter = campaign.content.encounters.find(
+          (entry) => entry.id === state.encounterId,
+        );
+        const rewardItems = encounter?.rewards?.itemIds ?? [];
+
+        // Con `shareLoot` off y 2+ jugadores, los objetos quedan pendientes de
+        // reparto. Con 0–1 jugadores se entregan igual: un reparto de una
+        // persona no aporta nada.
+        const canDraft =
+          Boolean(this.loot) &&
+          !sharesLoot(campaign.settings) &&
+          new Set(characterIds).size > 1;
+
+        const summary = this.repo.grantEncounterRewards({
+          campaignId: record.campaignId,
+          encounterId: state.encounterId,
+          characterIds,
+          grantItems: !canDraft,
+        });
+
+        const pendingItemIds = canDraft ? [...rewardItems] : [];
+        let draft: LootDraft | null = null;
+        if (pendingItemIds.length > 0 && record.sessionId && this.loot) {
+          draft = this.loot.createForVictory({
+            campaignId: record.campaignId,
+            sessionId: record.sessionId,
+            combatId: state.id,
+            encounterId: state.encounterId,
+            units: partyUnits.map((unit) => ({
+              characterId: unit.characterId,
+              spd: unit.stats.spd,
+            })),
+            itemIds: pendingItemIds,
+          });
+        }
+
+        state.rewardsApplied = true;
+        const combined: CombatRewardSummary = {
+          ...(summary ?? {}),
+          ...(pendingItemIds.length > 0 ? { pendingItemIds } : {}),
+          ...(draft ? { lootDraftId: draft.id } : {}),
+        };
+        if (Object.keys(combined).length > 0) {
+          state.rewardSummary = combined;
+          endEvent.data = { ...endEvent.data, rewards: combined };
         }
       }
 

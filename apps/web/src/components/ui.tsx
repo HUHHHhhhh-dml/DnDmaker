@@ -477,6 +477,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Eliminar",
+  cancelLabel = "Cancelar",
   onConfirm,
   onCancel,
   busy,
@@ -485,6 +486,7 @@ export function ConfirmDialog({
   title: string;
   message: ReactNode;
   confirmLabel?: string;
+  cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   busy?: boolean;
@@ -499,7 +501,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="ghost" size="sm" onClick={onCancel}>
-            Cancelar
+            {cancelLabel}
           </Button>
           <Button variant="accent" size="sm" onClick={onConfirm} loading={busy}>
             {confirmLabel}
