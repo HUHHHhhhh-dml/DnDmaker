@@ -43,6 +43,8 @@
     var(--ui-surface-2);
   color: var(--ui-text);
   cursor: pointer;
+  touch-action: none;
+  user-select: none;
   transition:
     border-color 150ms ease,
     background 150ms ease,
@@ -56,12 +58,30 @@
     var(--ui-surface-2);
 }
 
+.dice-main.is-dragging {
+  cursor: grabbing;
+  border-color: var(--ui-accent);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(217, 139, 43, 0.18), transparent 62%),
+    var(--ui-surface-2);
+}
+
 .dice-main:active:not(:disabled) {
   transform: scale(0.985);
 }
 
 .dice-main:disabled {
   cursor: wait;
+}
+
+.dice-main-visual {
+  display: grid;
+  place-items: center;
+  transition: transform 140ms ease-out;
+}
+
+.dice-main.is-dragging .dice-main-visual {
+  transition: none;
 }
 
 .dice-main-icon {

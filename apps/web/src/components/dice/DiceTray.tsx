@@ -1,11 +1,19 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   DICE_SIDES,
   type DiceRoll,
   type DiceSides,
+  type DiceThrowInput,
 } from "@protocol-life/shared";
 import { usePlayerStore } from "../../store/usePlayerStore";
 import { useLiveStore } from "../../store/useLiveStore";
+import { DRAG_THRESHOLD_PX, throwFromDrag } from "../../lib/diceThrow";
 import { DiceIcon } from "./DiceIcon";
 import { cx } from "../ui";
 import "./DiceTray.css";
@@ -28,6 +36,10 @@ function breakdown(roll: DiceRoll): string {
   return roll.results.join(" + ");
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
   const playerRoll = usePlayerStore((state) => state.rollDice);
   const playerRolls = usePlayerStore((state) => state.diceRolls);
@@ -42,6 +54,15 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
   const [rolling, setRolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [last, setLast] = useState<DiceRoll | null>(null);
+  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+
+  const dragStart = useRef<{
+    x: number;
+    y: number;
+    pointerId: number;
+  } | null>(null);
+  const dragged = useRef(false);
+  const suppressClick = useRef(false);
 
   useEffect(() => {
     try {
@@ -64,11 +85,11 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
     setError(null);
   }
 
-  async function handleRoll() {
+  async function handleRoll(throwInput?: DiceThrowInput) {
     if (rolling) return;
     setRolling(true);
     setError(null);
-    const result = await rollDice(sides, count);
+    const result = await rollDice(sides, count, throwInput);
     if (typeof result === "string") {
       setError(result);
       setRolling(false);
@@ -77,6 +98,77 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
     setLast(result);
     window.setTimeout(() => setRolling(false), 1000);
   }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (rolling || event.button !== 0) return;
+    dragStart.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId,
+    };
+    dragged.current = false;
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Sin captura el gesto sigue funcionando mientras el puntero no salga.
+    }
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const start = dragStart.current;
+    if (!start || start.pointerId !== event.pointerId || rolling) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (!dragged.current && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+      dragged.current = true;
+    }
+    if (dragged.current) setDrag({ dx, dy });
+  }
+
+  function handlePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const start = dragStart.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    dragStart.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDrag(null);
+    if (!dragged.current) return; // El click normal se encarga.
+    dragged.current = false;
+    suppressClick.current = true;
+    void handleRoll(throwFromDrag(dx, dy) ?? undefined);
+  }
+
+  function handlePointerCancel() {
+    dragStart.current = null;
+    dragged.current = false;
+    suppressClick.current = false;
+    setDrag(null);
+  }
+
+  function handleClick() {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    if (dragged.current) {
+      dragged.current = false;
+      return;
+    }
+    void handleRoll();
+  }
+
+  const dragStyle: CSSProperties | undefined = drag
+    ? {
+        transform: `translate(${clamp(drag.dx, -44, 44)}px, ${clamp(
+          drag.dy,
+          -44,
+          44,
+        )}px) rotate(${drag.dx * 0.12}deg)`,
+      }
+    : undefined;
 
   const recent = rolls.slice(-5).reverse();
 
@@ -92,21 +184,35 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
 
       <button
         type="button"
-        className={cx("dice-main", rolling && "is-rolling")}
-        onClick={() => void handleRoll()}
+        className={cx(
+          "dice-main",
+          rolling && "is-rolling",
+          drag && "is-dragging",
+        )}
+        onClick={handleClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         disabled={rolling}
-        aria-label={`Tirar ${count}d${sides}`}
+        aria-label={`Tirar ${count}d${sides}: clic para tirar o arrastra el dado para lanzar`}
       >
-        <DiceIcon sides={sides} size={72} className="dice-main-icon" />
+        <span className="dice-main-visual" style={dragStyle}>
+          <DiceIcon sides={sides} size={72} className="dice-main-icon" />
+        </span>
         <span className="dice-main-label">
           {rolling ? "Tirando…" : `${count}d${sides}`}
         </span>
         <span className="dice-main-result">
-          {last
-            ? last.count > 1
-              ? `Total ${last.result} · ${breakdown(last)}`
-              : `Último: ${last.result}`
-            : "Click para tirar"}
+          {rolling
+            ? "Calculando la caída…"
+            : drag
+              ? "Suelta para lanzar"
+              : last
+                ? last.count > 1
+                  ? `Total ${last.result} · ${breakdown(last)}`
+                  : `Último: ${last.result}`
+                : "Clic o arrastra para tirar"}
         </span>
       </button>
 
@@ -193,8 +299,8 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
       </div>
       <p className="dice-tray-foot">
         {viewer === "dm"
-          ? "Puedes tirar tú también: toda la mesa ve el pop de 5 s. El log es de esta sesión."
-          : "La tirada la resuelve el servidor y la ve toda la mesa. El log es de esta sesión."}
+          ? "Arrastra el dado grande para lanzarlo (o haz clic). Toda la mesa ve la misma caída."
+          : "Arrastra el dado grande para lanzarlo (o haz clic). La tirada la simula el servidor y la ve toda la mesa."}
       </p>
     </section>
   );
