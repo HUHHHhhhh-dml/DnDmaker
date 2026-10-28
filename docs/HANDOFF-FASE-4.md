@@ -1,10 +1,12 @@
 # HANDOFF — PROTOCOL LIFE · Fase 4
 
 > **Instrucción para el siguiente agente:** continúa desde aquí. Fase 3 está
-> cerrada (`11aa86b`) y el plan de Fase 4 vive en
-> [`PROMPTS-FASE-4.md`](./PROMPTS-FASE-4.md). **4A-1 está implementada y verde,
-> sin commit.** No rehagas Fase 3, no cambies reglas de combate ni permisos.
-> Trabaja en español y pide OK al final de cada checkpoint.
+> cerrada (`11aa86b`); **4A está commiteada en `409f5e1`**. El plan original de
+> Fase 4 está en [`PROMPTS-FASE-4.md`](./PROMPTS-FASE-4.md), pero **4B/4C se
+> redefinieron** a la dungeon lineal+ de
+> [`DISENO-DUNGEON-LINEAL.md`](./DISENO-DUNGEON-LINEAL.md). No rehagas Fase 3,
+> no cambies reglas de combate ni permisos. Trabaja en español y pide OK al
+> final de cada checkpoint.
 
 ---
 
@@ -14,16 +16,18 @@
 |---|---|
 | Fase 3 (3A–3G) | Cerrada en `11aa86b` |
 | Análisis y prompts Fase 4 | `0363109` |
-| **4A-1 · Economía y tiendas** | **Hecha, sin commit** |
-| **4A-2 · Reparto de botín (snake)** | **Hecha, sin commit** |
-| **4A-3 · Escena de tienda (rediseño)** | **Hecha, sin commit** |
-| 4B / 4C / 4D / 4E | Pendientes |
+| **4A · Economía, tiendas y botín** | **Commiteada en `409f5e1`** |
+| **4B/4C · Dungeon lineal+** | **Pendiente, diseño cerrado** |
+| 4D / 4E | Pendientes |
+| Fase 5 · Crawler 2D | Futuro (ver diseño) |
 | `npm test` | 191/191 en 17 archivos |
 | `npm run typecheck` | OK (shared + server + web) |
 | `npm run build` | OK (aviso conocido de chunk > 500 kB) |
 
-Repo: `/home/serahdml/Documents/GAMES/protocol-life`, rama `master`, árbol con
-cambios sin commitear de 4A-1.
+Repo: `/home/serahdml/Documents/GAMES/protocol-life`, rama `master`.
+`409f5e1` contiene 4A y `4e523f8` los cambios de combate del usuario
+(apuntado de apoyo/hostiles en `CombatScene`). Árbol limpio al cerrar este
+handoff.
 
 **Servidor de desarrollo del usuario:** hay un `npm run dev` vivo (API 3001,
 Vite 5173) apuntando a `data/protocol-life.sqlite`. Editar servidor reinicia
@@ -216,34 +220,36 @@ Deuda conocida de 4A-3:
   `shadow-stamp`, `bg-white`.
 - No commitear sin permiso del usuario.
 
-## 6. Siguiente: 4B — mazmorras (modelo y editor)
+## 6. Siguiente: 4B/4C — dungeon lineal+
 
-4A está completa (pendiente solo de tu OK). Lo siguiente de
-`PROMPTS-FASE-4.md` es 4B:
+La 4B/4C originales (lista de salas sin escena) quedan **sustituidas** por el
+diseño de [`DISENO-DUNGEON-LINEAL.md`](./DISENO-DUNGEON-LINEAL.md):
 
-- CRUD `Dungeon` en `campaigns.extras.dungeons` (repository + rutas DM
-  `/api/campaigns/:id/dungeons`), con `dungeonInputSchema`/`dungeonPatchSchema`.
-- Validación: nombres, `rooms >= 1`, `entryRoomId` existente, ids únicos y
-  `encounterId` existente o `null`; export/import con **remapeo de ids de
-  mazmorra y de sala** (hoy solo se remapean las referencias).
-- `DungeonsPage` + `DungeonEditorPage` (salas, notas, encuentro vinculado,
-  orden lineal, elegir entrada, no borrar la entrada sin elegir otra).
-- Permisos: solo DM crea/edita; bloqueado durante el combate. Visibilidad de
-  jugador se resuelve en 4C con la run.
-- Tests con SQLite temporal (CRUD, validaciones, export/import, borrado de
-  encuentro referenciado ya bloqueado por `findReferences`).
+- Salas como **escenas a pantalla completa** con fondo propio (imagen/GIF/URL
+  de vídeo), texto público y notas privadas.
+- Tipos: `encounter`, `boss`, `rest`, `treasure`; acciones del DM: iniciar
+  encuentro, descansar, abrir cofre, avanzar, terminar.
+- Run por sesión (`dungeon_runs` por DDL), recompensas de cofre reutilizando
+  la economía y `shareLoot`/loot draft, hook de victoria para marcar la sala.
+- Editor `DungeonsPage` + `DungeonEditorPage`, remapeo de ids de mazmorra y
+  sala en export/import.
+- Sin mapa, grid, niebla ni movimiento: eso es **Fase 5 (crawler 2D)**.
+
+Orden recomendado: 4B (modelo + editor: shared, repository, rutas, tests, UI)
+y luego 4C (run + escena). Checkpoint al final de cada uno. Después 4D
+(backup/restore) y 4E (QA/docs).
 
 ## 7. Prompt sugerido para el siguiente chat
 
 ```text
 Continúa PROTOCOL LIFE en /home/serahdml/Documents/GAMES/protocol-life.
-Lee docs/HANDOFF-FASE-4.md y docs/PROMPTS-FASE-4.md. Fase 3 cerrada; 4A
-completa (economía, tiendas con escena en vivo, desbloqueo por compra y
-reparto de botín) implementada y verde (191/191, typecheck, build) pero SIN
-COMMIT.
+Lee docs/HANDOFF-FASE-4.md, docs/DISENO-DUNGEON-LINEAL.md y
+docs/PROMPTS-FASE-4.md. Fase 3 cerrada; 4A commiteada en 409f5e1 y los cambios
+de combate del usuario en 4e523f8 (191/191, typecheck y build verdes; árbol
+limpio).
 Preflight: git status/log, npm test, npm run typecheck, npm run build.
-Si todo está verde, implementa 4B (mazmorras: modelo y editor) según §6 del
-handoff. No toques combate, permisos, 4A ni 4C–4E. Tests con SQLite temporal;
-nunca data/protocol-life.sqlite. Checkpoint al final: tests/typecheck/build +
-resumen y espera OK. No commit.
+Implementa 4B (modelo + editor de la dungeon lineal+): tipos/schemas/
+validación, CRUD en extras, rutas DM, remapeo en export/import, tests con
+SQLite temporal y UI (DungeonsPage + DungeonEditorPage). No toques combate ni
+4C-4E. Checkpoint: tests/typecheck/build + resumen y espera OK. No commit.
 ```
