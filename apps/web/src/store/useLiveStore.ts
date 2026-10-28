@@ -5,6 +5,9 @@ import {
   type CombatEvent,
   type CombatRewardSummary,
   type CombatScenePatchInput,
+  type DiceRoll,
+  type DiceRolledEvent,
+  type DiceSides,
   type DungeonStateEvent,
   type LootDraft,
   type LootUpdatedEvent,
@@ -54,6 +57,8 @@ interface LiveState {
   dungeonRun: PublicDungeonRun | null;
   /** Hay una llamada de mazmorra en vuelo (una sola cada vez). */
   dungeonBusy: boolean;
+  /** Últimas tiradas compartidas de la sala (log efímero del cliente). */
+  diceRolls: DiceRoll[];
 
   host: (
     campaignId: string,
@@ -92,6 +97,8 @@ interface LiveState {
   advanceDungeon: () => Promise<boolean>;
   /** DM: termina la run y devuelve a los jugadores a su hoja. */
   endDungeon: () => Promise<boolean>;
+  /** DM: tirada compartida; el servidor decide el resultado. */
+  rollDice: (sides: DiceSides, count?: number) => Promise<DiceRoll | string>;
 }
 
 const EMPTY_COMBAT = {
@@ -160,6 +167,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   activeShop: null,
   dungeonRun: null,
   dungeonBusy: false,
+  diceRolls: [],
   ...EMPTY_COMBAT,
 
   async host(campaignId, input) {
@@ -180,6 +188,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         lootDraft: null,
         activeShop: null,
         dungeonRun: null,
+        diceRolls: [],
         dungeonBusy: false,
         ...EMPTY_COMBAT,
       });
@@ -233,6 +242,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
           lootDraft: null,
           activeShop: null,
           dungeonRun: null,
+          diceRolls: [],
           dungeonBusy: false,
         });
         return false;
@@ -268,6 +278,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         lootDraft: null,
         activeShop: null,
         dungeonRun: null,
+        diceRolls: [],
         dungeonBusy: false,
         ...EMPTY_COMBAT,
       });
@@ -287,6 +298,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       lootDraft: null,
       activeShop: null,
       dungeonRun: null,
+      diceRolls: [],
       dungeonBusy: false,
       ...EMPTY_COMBAT,
     });
@@ -575,6 +587,18 @@ export const useLiveStore = create<LiveState>((set, get) => ({
     }
   },
 
+  async rollDice(sides, count = 1) {
+    const code = get().code;
+    if (!code) return "No hay una sala abierta.";
+    try {
+      const roll = await api.rollDice(code, sides, count);
+      set({ diceRolls: appendDiceRoll(get().diceRolls, roll) });
+      return roll;
+    } catch (error) {
+      return describeError(error);
+    }
+  },
+
   async endDungeon() {
     const code = get().code;
     if (!code) {
@@ -596,6 +620,13 @@ export const useLiveStore = create<LiveState>((set, get) => ({
     }
   },
 }));
+
+const DICE_LOG_LIMIT = 10;
+
+function appendDiceRoll(rolls: DiceRoll[], roll: DiceRoll): DiceRoll[] {
+  if (rolls.some((entry) => entry.id === roll.id)) return rolls;
+  return [...rolls, roll].slice(-DICE_LOG_LIMIT);
+}
 
 function connectSocket(
   code: string,
@@ -731,6 +762,11 @@ function connectSocket(
     set({ dungeonRun: payload?.run ?? null });
   });
 
+  next.on("dice:rolled", (payload: DiceRolledEvent) => {
+    if (!payload?.roll) return;
+    set({ diceRolls: appendDiceRoll(get().diceRolls, payload.roll) });
+  });
+
   next.on("campaign:refresh", () => {
     void useAppStore.getState().refreshCampaign();
   });
@@ -749,6 +785,7 @@ function connectSocket(
       lootDraft: null,
       activeShop: null,
       dungeonRun: null,
+      diceRolls: [],
       dungeonBusy: false,
       ...EMPTY_COMBAT,
     });
@@ -771,6 +808,7 @@ function connectSocket(
         lootDraft: null,
         activeShop: null,
         dungeonRun: null,
+        diceRolls: [],
         dungeonBusy: false,
         ...EMPTY_COMBAT,
       });

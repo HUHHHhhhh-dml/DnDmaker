@@ -11,6 +11,7 @@ import { registerCombatSocket } from "./combat/socket";
 import { CombatStore } from "./combat/store";
 import { dbPath as defaultDbPath, uploadsDir as defaultUploadsDir, webDistDir as defaultWebDistDir } from "./config";
 import { openDatabase } from "./db";
+import { DiceService } from "./dice";
 import { DungeonRunService } from "./dungeon-run";
 import { LootService } from "./loot";
 import { ShopSceneService } from "./shop-scene";
@@ -40,6 +41,7 @@ export interface BuiltApp {
   loot: LootService;
   shopScene: ShopSceneService;
   dungeonRuns: DungeonRunService;
+  dice: DiceService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp> {
@@ -51,6 +53,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
   const repository = new Repository(db, sqlite);
   const sessions = new SessionService(db, repository);
   sessions.resetPresence();
+  const dice = new DiceService(sessions);
   const combatStore = new CombatStore(db, sqlite);
   const loot = new LootService(db, sqlite, repository, sessions);
   const shopScene = new ShopSceneService(db, repository, sessions);
@@ -152,6 +155,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     loot,
     shopScene,
     dungeonRuns,
+    dice,
   });
 
   const webIndex = join(webDist, "index.html");
@@ -232,5 +236,6 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     loot,
     shopScene,
     dungeonRuns,
+    dice,
   };
 }

@@ -20,6 +20,9 @@ import { Icon } from "../components/Icons";
 import { PlayerCombatView } from "./PlayerCombatView";
 import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import { LootDraftPanel } from "../components/combat/LootDraftPanel";
+import { DiceCelebration } from "../components/dice/DiceCelebration";
+import { DiceRollToast } from "../components/dice/DiceRollToast";
+import { DiceTray } from "../components/dice/DiceTray";
 import { ShopScene } from "../components/shop/ShopScene";
 import { DungeonScene } from "../components/dungeon/DungeonScene";
 import {
@@ -677,6 +680,7 @@ function PlayerHeader({
   /** Durante el combate no se ofrece salir de la mesa. */
   hideNav?: boolean;
 }) {
+  const diceRolls = usePlayerStore((state) => state.diceRolls);
   return (
     <header className="border-b border-[var(--ui-line)] bg-[var(--ui-surface-1)] text-[var(--ui-text)]">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-8">
@@ -740,6 +744,8 @@ function PlayerHeader({
           )}
         </div>
       </div>
+      <DiceRollToast rolls={diceRolls} />
+      <DiceCelebration rolls={diceRolls} />
     </header>
   );
 }
@@ -833,6 +839,8 @@ function PartyColumn({
           DM.
         </p>
       </div>
+
+      <DiceTray viewer="player" />
     </aside>
   );
 }

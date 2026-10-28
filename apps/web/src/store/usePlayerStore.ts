@@ -4,6 +4,9 @@ import type {
   Campaign,
   Character,
   CombatEvent,
+  DiceRoll,
+  DiceRolledEvent,
+  DiceSides,
   DungeonStateEvent,
   LootDraft,
   LootUpdatedEvent,
@@ -79,6 +82,8 @@ export interface PlayerState {
   activeShop: ShopScene | null;
   /** Run de mazmorra activa de la mesa (Fase 4C); null = sin mazmorra. */
   dungeonRun: PublicDungeonRun | null;
+  /** Últimas tiradas compartidas de la sala (log efímero del cliente). */
+  diceRolls: DiceRoll[];
 
   join: (code: string, input: SessionJoinInput) => Promise<boolean>;
   restore: (code: string) => Promise<boolean>;
@@ -102,6 +107,8 @@ export interface PlayerState {
    * la campaña (no se equipa). Devuelve `null` o el mensaje de error.
    */
   buyShopSkill: (skillId: string) => Promise<string | null>;
+  /** Tira un dado en el servidor y devuelve la tirada o un mensaje de error. */
+  rollDice: (sides: DiceSides, count?: number) => Promise<DiceRoll | string>;
 }
 
 let socket: Socket | null = null;
@@ -133,6 +140,7 @@ const EMPTY_STATE: Pick<
   | "lootDraft"
   | "activeShop"
   | "dungeonRun"
+  | "diceRolls"
 > = {
   token: null,
   code: null,
@@ -151,6 +159,7 @@ const EMPTY_STATE: Pick<
   lootDraft: null,
   activeShop: null,
   dungeonRun: null,
+  diceRolls: [],
 };
 
 export function describePlayerError(error: unknown): string {
@@ -203,6 +212,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         lootDraft: null,
         activeShop: null,
         dungeonRun: null,
+        diceRolls: [],
       });
       connectSocket(normalized, token, set, get);
       return true;
@@ -238,6 +248,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         lootDraft: null,
         activeShop: null,
         dungeonRun: null,
+        diceRolls: [],
       });
       applyState(state, stored.code, stored.token, set);
       connectSocket(stored.code, stored.token, set, get);
@@ -264,6 +275,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           lootDraft: null,
           activeShop: null,
           dungeonRun: null,
+          diceRolls: [],
           error: describePlayerError(error),
         });
       } else {
@@ -454,7 +466,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return describePlayerError(error);
     }
   },
+
+  async rollDice(sides, count = 1) {
+    const code = get().code;
+    if (!code) return "No estás conectado a la mesa.";
+    try {
+      const roll = await api.rollDice(code, sides, count);
+      set({ diceRolls: appendDiceRoll(get().diceRolls, roll) });
+      return roll;
+    } catch (error) {
+      return describePlayerError(error);
+    }
+  },
 }));
+
+const DICE_LOG_LIMIT = 10;
+
+function appendDiceRoll(rolls: DiceRoll[], roll: DiceRoll): DiceRoll[] {
+  if (rolls.some((entry) => entry.id === roll.id)) return rolls;
+  return [...rolls, roll].slice(-DICE_LOG_LIMIT);
+}
 
 function applyState(
   state: SessionStateResponse,
@@ -632,6 +663,11 @@ function connectSocket(
     set({ dungeonRun: payload?.run ?? null });
   });
 
+  next.on("dice:rolled", (payload: DiceRolledEvent) => {
+    if (!payload?.roll) return;
+    set({ diceRolls: appendDiceRoll(get().diceRolls, payload.roll) });
+  });
+
   next.on("campaign:refresh", () => {
     void get().refresh();
   });
@@ -652,6 +688,7 @@ function connectSocket(
       lootDraft: null,
       activeShop: null,
       dungeonRun: null,
+      diceRolls: [],
     });
   });
 
@@ -673,6 +710,7 @@ function connectSocket(
         lootDraft: null,
         activeShop: null,
         dungeonRun: null,
+        diceRolls: [],
       });
       return;
     }

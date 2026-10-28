@@ -6,6 +6,8 @@ import type {
   Character,
   CombatRewardSummary,
   ContentType,
+  DiceRoll,
+  DiceSides,
   Dungeon,
   DungeonInput,
   DungeonPatchInput,
@@ -492,6 +494,22 @@ export const api = {
   closeLoot(code: string): Promise<LootDraft> {
     return request(`/api/sessions/${encodeURIComponent(code)}/loot/close`, {
       method: "POST",
+    });
+  },
+
+  /* -------------------------------------------------------------------- */
+  /* Dados de mesa (Fase 4E+)                                             */
+  /* -------------------------------------------------------------------- */
+
+  /** Tirada compartida: el servidor decide el resultado y la emite a la sala. */
+  rollDice(
+    code: string,
+    sides: DiceSides,
+    count = 1,
+  ): Promise<DiceRoll> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/dice`, {
+      method: "POST",
+      body: body({ sides, count }),
     });
   },
 

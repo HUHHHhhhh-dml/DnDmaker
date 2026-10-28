@@ -1,0 +1,213 @@
+.dice-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  animation: dice-celebration-fade 200ms ease-out;
+}
+
+.dice-celebration.is-nat20 {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(212, 167, 44, 0.22), transparent 38%),
+    radial-gradient(circle at 50% 50%, transparent 45%, rgba(0, 0, 0, 0.24));
+}
+
+.dice-celebration.is-nat1 {
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 38%,
+    rgba(130, 10, 10, 0.28) 100%
+  );
+  box-shadow: inset 0 0 160px 45px rgba(180, 40, 40, 0.55);
+}
+
+.dice-celebration-sparks {
+  position: absolute;
+  inset: 0;
+}
+
+.dice-spark {
+  position: absolute;
+  top: -8%;
+  left: var(--spark-left);
+  height: var(--spark-size);
+  width: var(--spark-size);
+  border-radius: 999px;
+  background: #ffe8a3;
+  box-shadow:
+    0 0 7px rgba(255, 226, 150, 0.95),
+    0 0 16px rgba(212, 167, 44, 0.7);
+  opacity: 0;
+  animation: dice-spark-fall var(--spark-duration) ease-in var(--spark-delay)
+    forwards;
+}
+
+.dice-celebration-copy {
+  position: relative;
+  display: flex;
+  max-width: min(560px, calc(100vw - 40px));
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  animation: dice-celebration-pop 420ms cubic-bezier(0.18, 0.9, 0.25, 1.25);
+}
+
+.dice-celebration-die {
+  margin-bottom: 6px;
+  color: var(--ui-gold);
+  filter: drop-shadow(0 0 18px rgba(212, 167, 44, 0.65));
+  animation: dice-celebration-die 900ms ease-in-out infinite alternate;
+}
+
+.dice-celebration-kicker {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+}
+
+.dice-celebration-title {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(2.6rem, 8vw, 5rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: var(--ui-gold);
+  text-shadow:
+    0 0 18px rgba(212, 167, 44, 0.45),
+    0 0 45px rgba(212, 167, 44, 0.2);
+}
+
+.dice-celebration-name {
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--ui-text);
+}
+
+.dice-celebration-result {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ui-text-muted);
+}
+
+.dice-celebration.is-nat1 .dice-celebration-die,
+.dice-celebration.is-nat1 .dice-celebration-title {
+  color: var(--ui-danger);
+  filter: drop-shadow(0 0 16px rgba(226, 121, 108, 0.55));
+  text-shadow:
+    0 0 18px rgba(226, 121, 108, 0.45),
+    0 0 40px rgba(130, 10, 10, 0.35);
+}
+
+.dice-celebration.is-nat1 .dice-celebration-kicker {
+  color: var(--ui-danger);
+}
+
+body.dice-rumble #root {
+  animation: dice-page-rumble 360ms ease-in-out;
+}
+
+@keyframes dice-celebration-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dice-celebration-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(12px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dice-celebration-die {
+  from {
+    transform: translateY(0) rotate(-3deg);
+  }
+  to {
+    transform: translateY(-5px) rotate(3deg);
+  }
+}
+
+@keyframes dice-spark-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -8vh, 0) rotate(0deg) scale(0.7);
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--spark-drift), 108vh, 0)
+      rotate(var(--spark-rotate)) scale(1);
+  }
+}
+
+@keyframes dice-page-rumble {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  18% {
+    transform: translate3d(-4px, 2px, 0);
+  }
+  36% {
+    transform: translate3d(4px, -2px, 0);
+  }
+  54% {
+    transform: translate3d(-3px, 1px, 0);
+  }
+  72% {
+    transform: translate3d(3px, -1px, 0);
+  }
+  88% {
+    transform: translate3d(-1px, 1px, 0);
+  }
+}
+
+@media (max-width: 640px) {
+  .dice-celebration-copy {
+    max-width: calc(100vw - 28px);
+  }
+
+  .dice-celebration-title {
+    font-size: clamp(2.2rem, 14vw, 3.6rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-celebration,
+  .dice-celebration-copy,
+  .dice-celebration-die,
+  .dice-spark,
+  body.dice-rumble #root {
+    animation: none;
+  }
+
+  .dice-spark {
+    display: none;
+  }
+}

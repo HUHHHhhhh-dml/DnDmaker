@@ -554,6 +554,32 @@ export interface LootDraft {
 }
 
 /* ========================================================================== */
+/* Dados de mesa (Fase 4E+)                                                   */
+/* ========================================================================== */
+
+export type DiceSides = 4 | 6 | 8 | 10 | 12 | 20 | 100;
+
+export interface DiceRoller {
+  role: "dm" | "player";
+  /** Nombre de la mesa: «DM» o el nombre del jugador. */
+  name: string;
+}
+
+/** Una tirada compartida. Efímera: no se persiste en SQLite. */
+export interface DiceRoll {
+  id: Id;
+  sides: DiceSides;
+  /** Cuántos dados del mismo tipo se tiraron. */
+  count: number;
+  /** Resultado individual de cada dado. */
+  results: number[];
+  /** Suma de `results`; para un solo dado coincide con su cara. */
+  result: number;
+  roller: DiceRoller;
+  at: IsoDate;
+}
+
+/* ========================================================================== */
 /* Reglas y campaña                                                           */
 /* ========================================================================== */
 

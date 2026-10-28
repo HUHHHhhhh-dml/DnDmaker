@@ -484,6 +484,25 @@ export type DungeonRoomInput = z.infer<typeof dungeonRoomInputSchema>;
 export type DungeonInput = z.infer<typeof dungeonInputSchema>;
 export type DungeonPatchInput = z.infer<typeof dungeonPatchSchema>;
 
+/** Tirada de dado (Fase 4E+). El servidor decide el resultado. */
+export const diceSidesSchema = z.union([
+  z.literal(4),
+  z.literal(6),
+  z.literal(8),
+  z.literal(10),
+  z.literal(12),
+  z.literal(20),
+  z.literal(100),
+]);
+
+export const diceRollInputSchema = z.object({
+  sides: diceSidesSchema,
+  /** Dados del mismo tipo que se tiran y se suman; 1 por defecto. */
+  count: z.number().int().min(1).max(20).optional(),
+});
+
+export type DiceRollInput = z.infer<typeof diceRollInputSchema>;
+
 /** Empezar una run desde la mesa (Fase 4C). */
 export const dungeonStartInputSchema = z.object({
   dungeonId: idSchema,

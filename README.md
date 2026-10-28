@@ -233,6 +233,24 @@ exige el servidor parado, igual que en Linux.
 6. **Terminar mazmorra** cierra la run y devuelve a todos a su hoja. La tienda se
    cierra al iniciar la mazmorra y abrir una tienda cierra la run.
 
+#### Dados de mesa
+
+En la hoja del jugador, debajo de la bolsa de la party, hay una bandeja con los
+dados **d20, d12, d100, d10, d8, d6 y d4**. Se elige uno en la fila inferior,
+se ajusta la cantidad con **+ / −** (hasta 20 dados del mismo tipo) y se pulsa
+el dado grande para tirar. El servidor tira todos los dados y devuelve el total
+además de las caras individuales. Toda la mesa conectada recibe un pop de 5
+segundos con el dado, el resultado y quién lo tiró; las últimas 5 tiradas quedan
+en un log efímero del cliente. El DM tiene la misma bandeja en el panel lateral
+de **Mesa**.
+
+Si en un **d20** sale una cara **20**, la pantalla se llena de brillitos dorados
+y aparece «¡NAT 20!»; si sale una cara **1**, los bordes se tiñen de rojo y la
+página hace un pequeño rumble. El 20 tiene prioridad si en una tirada múltiple
+salen 20 y 1. Solo se celebra la **cara individual** (un 10+10 en 2d20 no es Nat
+20), dura ~2 s, no bloquea clics y respeta `prefers-reduced-motion`. Es flavor
+de mesa: no cambia reglas, combate, dados ni se guarda en SQLite.
+
 ### Capturas
 
 | Mesa del jugador | Entrada a la sala |
@@ -343,6 +361,7 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 | POST | `/api/sessions/:code/shop/buy` | Comprar `{ itemId }` o `{ skillId }`; desbloquea para la campaña. |
 | GET | `/api/sessions/:code/dungeon` | Run de mazmorra activa saneada (o `null`). |
 | POST | `/api/sessions/:code/dungeon/start\|encounter\|rest\|chest\|advance\|end` | Acciones del DM sobre la run. |
+| POST | `/api/sessions/:code/dice` | Tirada compartida `{ sides, count? }` (1–20 dados, se suman); el servidor decide el resultado y la emite a la sala. |
 | GET/POST | `/api/campaigns/:id/:type` | Listar / crear contenido (`items`, `skills`, `effects`, `characters`, `encounters`). |
 | GET/PATCH/DELETE | `/api/content/:type/:id` | Leer / editar / borrar; el jugador solo puede editar su ficha. |
 | GET | `/api/campaigns/:id/characters/:charId/sheet` | Ficha con equipo y stats derivados. |
@@ -351,7 +370,7 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 
 **Socket.IO** (mismo origen, path `/socket.io`; auth `{ code, token }`):
 
-- Servidor → cliente: `session:state`, `session:players`, `campaign:refresh`, `session:closed`, `session:error`, `combat:*`, `loot:updated`, `shop:state`, `dungeon:state`.
+- Servidor → cliente: `session:state`, `session:players`, `campaign:refresh`, `session:closed`, `session:error`, `combat:*`, `loot:updated`, `shop:state`, `dungeon:state`, `dice:rolled`.
 - `state:full` incluye el combate vivo, `lootDraft`, `activeShop` y `dungeonRun` para reconexiones.
 - El cliente no muta por socket: las escrituras van por HTTP y se validan en el servidor.
 
@@ -409,6 +428,8 @@ npm test
 - `apps/server/src/dungeon.test.ts`: CRUD/validación de mazmorras, recompensas de cofre y export/import con remapeo.
 - `apps/server/src/dungeon-run.test.ts`: run, combate/victoria/derrota, descanso, cofre, skills, avance, fin, permisos y exclusividad con tienda.
 - `apps/server/src/backup.test.ts`: copia con el servidor abierto, retención, copia diaria, restore en base temporal, copia previa de seguridad, archivo inválido/ausente y lock del servidor.
+- `apps/server/src/dice.test.ts`: tirada en servidor, tirada múltiple con suma, permisos, cooldown, resultados en rango y broadcast `dice:rolled`.
+- `apps/web/src/lib/dice.test.ts`: detección de Nat 20/Nat 1 por cara individual, prioridad del 20 y no confundir con la suma.
 - `apps/server/src/fase4-qa.test.ts`: sesión completa de Fase 4 con 2 jugadores (tienda, mazmorra, combate, cofre, skills, backup/restore y reconexión).
 - `apps/web/src/lib/combat.test.ts` y `clash.test.ts`: contrato de `targetSlot` y lectura de la cinemática de clash.
 

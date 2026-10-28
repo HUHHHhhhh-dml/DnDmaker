@@ -32,6 +32,14 @@
   servidor por PID. Sin endpoint HTTP de restore.
 - **QA y documentación (4E)**: test end-to-end de Fase 4 con 2 jugadores,
   `README` de tiendas/mazmorras/backup y este changelog.
+- **Dados de mesa**: bandeja bajo la bolsa de la party y en el panel lateral del
+  DM, con d20, d12, d100, d10, d8, d6 y d4; botones +/− para tirar hasta 20
+  dados del mismo tipo y sumarlos; tirada resuelta en servidor (`POST /dice`),
+  pop de 5 s para toda la sala (`dice:rolled`) y log efímero de las últimas
+  tiradas. Los **Nat 20** en d20 llenan la pantalla de brillitos dorados y los
+  **Nat 1** muestran bordes rojos con un pequeño rumble; solo cuenta la cara
+  individual, respeta `prefers-reduced-motion` y no cambia reglas. Sin SQLite ni
+  cambios en combate.
 
 ### Cambios
 
@@ -54,8 +62,9 @@
 
 ### Tests
 
-- `npm test`: 247 tests en 21 archivos. Incluye economía, tiendas, skills,
-  loot, mazmorras, run de mazmorra, backup/restore y QA end-to-end de Fase 4.
+- `npm test`: 256 tests en 23 archivos. Incluye economía, tiendas, skills,
+  loot, mazmorras, run de mazmorra, backup/restore, dados (tirada múltiple,
+  Nat 20/Nat 1) y QA end-to-end de Fase 4.
 - `npm run typecheck` y `npm run build` verdes; solo el aviso conocido de chunk
   > 500 kB.
 - Sin QA visual en navegador (el entorno no incluye tooling de screenshot).

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { Server, type Socket } from "socket.io";
 import type {
   CombatEvent,
+  DiceRoll,
   LootDraft,
   PublicCombatState,
   PublicDungeonRun,
@@ -40,6 +41,8 @@ export type RealtimeService = {
   emitShop: (code: string, shop: ShopScene | null) => void;
   /** Fase 4C: run de mazmorra activa (null al terminar o cerrarse). */
   emitDungeon: (code: string, run: PublicDungeonRun | null) => void;
+  /** Fase 4E+: tirada compartida de la mesa. */
+  emitDice: (code: string, roll: DiceRoll) => void;
   close: () => void;
 };
 
@@ -173,6 +176,12 @@ export function createRealtime(
     });
   }
 
+  function emitDice(code: string, roll: DiceRoll): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("dice:rolled", {
+      roll,
+    });
+  }
+
   function close(): void {
     io.close();
   }
@@ -189,6 +198,7 @@ export function createRealtime(
     emitLoot,
     emitShop,
     emitDungeon,
+    emitDice,
     close,
   };
 }

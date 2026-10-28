@@ -9,6 +9,7 @@ import {
   campaignCreateSchema,
   campaignPatchSchema,
   campaignSchema,
+  diceRollInputSchema,
   dungeonStartInputSchema,
   hostSessionSchema,
   shopBuyInputSchema,
@@ -17,6 +18,7 @@ import {
   type ContentType,
 } from "@protocol-life/shared";
 import type { CombatService } from "./combat/service";
+import type { DiceService } from "./dice";
 import type { DungeonRunService } from "./dungeon-run";
 import { getLanIps } from "./network";
 import type { LootService } from "./loot";
@@ -73,13 +75,14 @@ export interface RouteOptions {
   loot: LootService;
   shopScene: ShopSceneService;
   dungeonRuns: DungeonRunService;
+  dice: DiceService;
 }
 
 export async function registerRoutes(
   app: FastifyInstance,
   options: RouteOptions,
 ): Promise<void> {
-  const { repo, uploadsDir, sessions, realtime, combat, loot, shopScene, dungeonRuns } =
+  const { repo, uploadsDir, sessions, realtime, combat, loot, shopScene, dungeonRuns, dice } =
     options;
 
   /* ---------------------------------------------------------------------- */
@@ -353,6 +356,26 @@ export async function registerRoutes(
         activeShop: session ? shopScene.getBySession(session.id) : null,
         dungeonRun: session ? dungeonRuns.getBySession(session.id) : null,
       };
+    },
+  );
+
+  /**
+   * Tirada compartida (Fase 4E+). El servidor decide el resultado y la emite a
+   * toda la sala; no se persiste. El cooldown evita spam de pops.
+   */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/dice",
+    async (request) => {
+      const { code } = request.params;
+      const input = diceRollInputSchema.parse(request.body ?? {});
+      const roll = dice.roll(
+        code,
+        getSessionToken(request),
+        input.sides,
+        input.count ?? 1,
+      );
+      realtime.emitDice(code, roll);
+      return roll;
     },
   );
 

@@ -16,6 +16,9 @@ export const SCHEMA_VERSION = 1 as const;
 /** Moneda de campaña. Nunca dinero real. */
 export const CURRENCY_NAME = "Clean Shards";
 
+/** Dados disponibles en la mesa (Fase 4E+). */
+export const DICE_SIDES = [4, 6, 8, 10, 12, 20, 100] as const;
+
 /** Bolsa inicial de la party: vacía. */
 export const DEFAULT_WALLET = { cleanShards: 0 } as const;
 

@@ -1,6 +1,7 @@
 import type {
   Campaign,
   Character,
+  DiceRoll,
   LootDraft,
   PublicCombatState,
   PublicDungeonRun,
@@ -96,6 +97,11 @@ export interface ShopSceneEvent {
 /** Evento `dungeon:state`: run activa (null al terminar/cerrarse). */
 export interface DungeonStateEvent {
   run: PublicDungeonRun | null;
+}
+
+/** Evento `dice:rolled`: tirada compartida de la mesa. */
+export interface DiceRolledEvent {
+  roll: DiceRoll;
 }
 
 /** Sin caracteres ambiguos (sin I, O, 0, 1). */

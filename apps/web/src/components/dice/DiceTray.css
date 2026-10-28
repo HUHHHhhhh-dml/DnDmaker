@@ -1,0 +1,323 @@
+.dice-tray {
+  position: relative;
+}
+
+.dice-tray-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.dice-tray-title {
+  margin-top: 2px;
+  font-family: var(--font-display, inherit);
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--ui-text);
+}
+
+.dice-tray-hint {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ui-text-faint);
+}
+
+.dice-main {
+  display: flex;
+  width: 100%;
+  max-width: 190px;
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+  min-height: 118px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid var(--ui-line-strong);
+  background:
+    radial-gradient(circle at 50% 38%, var(--ui-surface-3), transparent 62%),
+    var(--ui-surface-2);
+  color: var(--ui-text);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 120ms ease;
+}
+
+.dice-main:hover:not(:disabled) {
+  border-color: var(--ui-accent);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(217, 139, 43, 0.12), transparent 62%),
+    var(--ui-surface-2);
+}
+
+.dice-main:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.dice-main:disabled {
+  cursor: wait;
+}
+
+.dice-main-icon {
+  color: var(--ui-gold);
+  filter: drop-shadow(0 0 10px rgba(217, 139, 43, 0.18));
+}
+
+.dice-main.is-rolling .dice-main-icon {
+  animation: dice-tumble 180ms linear infinite;
+}
+
+.dice-main-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ui-accent);
+}
+
+.dice-main-result {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--ui-text-faint);
+}
+
+.dice-tray-error {
+  margin-top: 8px;
+  border: 1px solid var(--ui-danger, #b44);
+  background: rgba(180, 68, 68, 0.1);
+  padding: 6px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--ui-danger, #d66);
+}
+
+.dice-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.dice-choice {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-surface-2);
+  padding: 6px 2px 5px;
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.dice-choice:hover:not(:disabled) {
+  border-color: var(--ui-line-strong);
+  color: var(--ui-text);
+}
+
+.dice-choice.is-active {
+  border-color: var(--ui-accent);
+  background: rgba(217, 139, 43, 0.12);
+  color: var(--ui-gold);
+}
+
+.dice-choice:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.dice-log {
+  margin-top: 12px;
+  border-top: 1px solid var(--ui-line);
+  padding-top: 8px;
+}
+
+.dice-log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-text-faint);
+}
+
+.dice-log-empty {
+  margin-top: 6px;
+  border: 1px dashed var(--ui-line);
+  padding: 8px;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--ui-text-muted);
+}
+
+.dice-log-list {
+  display: flex;
+  max-height: 132px;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  overflow-y: auto;
+}
+
+.dice-log-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-surface-2);
+  padding: 4px 7px;
+  font-size: 10px;
+  color: var(--ui-text-muted);
+}
+
+.dice-log-die {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ui-accent);
+}
+
+.dice-log-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-text);
+}
+
+.dice-log-result {
+  flex-shrink: 0;
+  font-family: var(--font-display, inherit);
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--ui-gold);
+}
+
+.dice-tray-foot {
+  margin-top: 8px;
+  font-size: 9px;
+  line-height: 1.45;
+  color: var(--ui-text-faint);
+}
+
+@keyframes dice-tumble {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(18deg) scale(0.92);
+  }
+  100% {
+    transform: rotate(-14deg) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-main.is-rolling .dice-main-icon {
+    animation: none;
+  }
+}
+
+.dice-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-surface-2);
+  padding: 5px 7px;
+}
+
+.dice-count-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-text-faint);
+}
+
+.dice-count-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dice-count-button {
+  display: grid;
+  height: 22px;
+  width: 24px;
+  place-items: center;
+  border: 1px solid var(--ui-line-strong);
+  background: var(--ui-surface-3);
+  color: var(--ui-text);
+  font-family: var(--font-mono, monospace);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dice-count-button:hover:not(:disabled) {
+  border-color: var(--ui-accent);
+  color: var(--ui-gold);
+}
+
+.dice-count-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.dice-count-value {
+  min-width: 22px;
+  text-align: center;
+  font-family: var(--font-display, inherit);
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--ui-gold);
+}
+
+.dice-log-breakdown {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--ui-text-faint);
+}

@@ -16,6 +16,9 @@ import { DmCombatConsole } from "../components/combat/DmCombatConsole";
 import { LootDraftPanel } from "../components/combat/LootDraftPanel";
 import { ShopScene } from "../components/shop/ShopScene";
 import { DungeonScene } from "../components/dungeon/DungeonScene";
+import { DiceCelebration } from "../components/dice/DiceCelebration";
+import { DiceRollToast } from "../components/dice/DiceRollToast";
+import { DiceTray } from "../components/dice/DiceTray";
 import {
   Button,
   ConfirmDialog,
@@ -65,6 +68,7 @@ export function TablePage() {
   const openDungeonChest = useLiveStore((state) => state.openDungeonChest);
   const advanceDungeon = useLiveStore((state) => state.advanceDungeon);
   const endDungeon = useLiveStore((state) => state.endDungeon);
+  const diceRolls = useLiveStore((state) => state.diceRolls);
   const restParty = useAppStore((state) => state.restParty);
   const refreshCampaign = useAppStore((state) => state.refreshCampaign);
 
@@ -928,6 +932,8 @@ export function TablePage() {
               </p>
             </div>
 
+            <DiceTray viewer="dm" />
+
             <div className="panel p-4">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
@@ -1242,6 +1248,9 @@ export function TablePage() {
           )}
         </div>
       )}
+
+      <DiceRollToast rolls={diceRolls} />
+      <DiceCelebration rolls={diceRolls} />
 
       <ConfirmDialog
         open={confirmClose}
