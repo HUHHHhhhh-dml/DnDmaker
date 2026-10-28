@@ -28,8 +28,12 @@ import {
 
 type ClashViewer = { role: "dm" } | { role: "player"; characterId: string };
 
-/** Tiempo en pantalla de cada clash antes de pasar al siguiente. */
-const ADVANCE_MS = 2800;
+/**
+ * Tiempo en pantalla de cada clash antes de pasar al siguiente. Incluye 2 s
+ * extra para leer el resultado; la barra `.sv-clash-timer` refleja este mismo
+ * valor.
+ */
+const ADVANCE_MS = 4800;
 
 export interface ClashCinematicProps {
   combat: PublicCombatState;
@@ -169,6 +173,7 @@ export function ClashCinematic({
   const right = sideFor(leftIsAttacker ? defender : attacker, !leftIsAttacker);
 
   const cancelled = current.cancelled;
+  const timerReady = cancelled || damages.length > 0;
   const title = cancelled
     ? "EMPATE · ACCIONES CANCELADAS"
     : current.tie
@@ -228,6 +233,15 @@ export function ClashCinematic({
             </button>
           </div>
         </header>
+
+        <div className="sv-clash-timer" aria-hidden="true">
+          {timerReady ? (
+            <span
+              key={`${current.id}:${damages.length}`}
+              style={{ animationDuration: `${ADVANCE_MS}ms` }}
+            />
+          ) : null}
+        </div>
 
         <div className="sv-clash-arena">
           <ClashSide side={left} />

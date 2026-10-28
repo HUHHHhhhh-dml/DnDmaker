@@ -43,6 +43,8 @@
 
 ### Cambios
 
+- La cinemática de clash permanece 4,8 s por resolución (2 s más) y muestra una
+  barra de progreso que indica cuándo se cerrará o pasará al siguiente clash.
 - `EncounterRewards` y las recompensas de mazmorra comparten la entrega
   transaccional; `grantRewards` es la pieza común de encuentro y cofre.
 - `validateShop` avisa cuando un objeto/skill **ya desbloqueado** no se podrá

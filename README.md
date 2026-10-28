@@ -186,8 +186,9 @@ exige el servidor parado, igual que en Linux.
    Después pulsa **Listo**.
 5. El DM declara las acciones de los enemigos y pulsa **Listo (todos)**.
 6. Cuando todas las unidades vivas están bloqueadas, el servidor resuelve la
-   ronda: monedas, clash, daño, efectos y cinemática. No hay cálculos en el
-   cliente.
+   ronda: monedas, clash, daño, efectos y cinemática. La cinemática dura 4,8 s
+   por clash y una barra de progreso indica cuándo pasa al siguiente (o al
+   terminar). No hay cálculos en el cliente.
 7. Se repiten las rondas hasta la victoria o la derrota. Al terminar, el HP de
    la party se guarda; fuera de combate, **Rest party** cura a la party.
 

@@ -2253,6 +2253,38 @@
   gap: 6px;
 }
 
+.sv-clash-timer {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  background: var(--ui-surface-3);
+}
+
+.sv-clash-timer span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: linear-gradient(
+    90deg,
+    rgba(212, 167, 44, 0.55),
+    var(--ui-gold)
+  );
+  animation-name: sv-clash-timer-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes sv-clash-timer-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 .sv-clash-arena {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr);
@@ -2728,6 +2760,12 @@
   .sv-clash-coin,
   .sv-clash-damage {
     animation: none;
+  }
+
+  .sv-clash-timer span {
+    animation: none;
+    transform: scaleX(1);
+    opacity: 0.55;
   }
 }
 
