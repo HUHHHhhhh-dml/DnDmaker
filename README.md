@@ -275,6 +275,7 @@ npm test
 - [Rediseño de combate y cierre de 3F.5](./docs/REDISENO-COMBATE.md)
 - [Mapa de migración al tema oscuro](./docs/UI-MIGRATION-MAP.md)
 - [Changelog de Fase 3](./CHANGELOG.md)
+- [Prompts de Fase 4](./docs/PROMPTS-FASE-4.md)
 - [Decisión de side-view (Fase 3)](./docs/DECISION-SIDE-VIEW.md)
 - [Handoff / plan de Fase 1](./docs/HANDOFF-FASE-1.md)
 - [Prototipo original](./reference/protocol-game-v1.1.html) (solo referencia estética/mecánica)
