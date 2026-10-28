@@ -6,6 +6,8 @@ import type {
   Shop,
   ShopScene,
   ShopSceneItem,
+  ShopSceneSkill,
+  Skill,
 } from "@protocol-life/shared";
 import type { AppDatabase } from "./db";
 import { HttpError, Repository } from "./repository";
@@ -25,12 +27,21 @@ import { SessionService } from "./sessions";
  * reconstruye desde el contenido, así que refleja precios/stock al día.
  */
 
-export interface ShopBuyResult {
-  shop: ShopScene;
-  wallet: CampaignWallet;
-  item: Item;
-  spent: number;
-}
+export type ShopBuyResult =
+  | {
+      kind: "item";
+      shop: ShopScene;
+      wallet: CampaignWallet;
+      item: Item;
+      spent: number;
+    }
+  | {
+      kind: "skill";
+      shop: ShopScene;
+      wallet: CampaignWallet;
+      skill: Skill;
+      spent: number;
+    };
 
 const nowIso = (): string => new Date().toISOString();
 
@@ -115,7 +126,11 @@ export class ShopSceneService {
    * Compra de un jugador: paga el precio y desbloquea el objeto para la
    * campaña. No entra en el inventario.
    */
-  buy(code: string, token: string | null, itemId: string): ShopBuyResult {
+  buy(
+    code: string,
+    token: string | null,
+    input: { itemId: string } | { skillId: string },
+  ): ShopBuyResult {
     const identity = this.requirePlayer(code, token);
     if (identity.session.status === "combat") {
       throw new HttpError(
@@ -138,14 +153,28 @@ export class ShopSceneService {
       );
     }
 
+    if ("skillId" in input) {
+      const result = this.repo.buyShopSkillUnlock({
+        campaignId: row.campaignId,
+        shopId: row.shopId,
+        skillId: input.skillId,
+      });
+      return {
+        ...result,
+        kind: "skill",
+        shop: this.rebuild(row.campaignId, row.shopId, row.openedAt),
+      };
+    }
+
     const result = this.repo.buyShopItemUnlock({
       campaignId: row.campaignId,
       shopId: row.shopId,
-      itemId,
+      itemId: input.itemId,
     });
 
     return {
       ...result,
+      kind: "item",
       shop: this.rebuild(row.campaignId, row.shopId, row.openedAt),
     };
   }
@@ -189,6 +218,36 @@ export class ShopSceneService {
       });
     }
 
+    const skillsById = new Map(
+      campaign.content.skills.map((skill) => [skill.id, skill]),
+    );
+    const skills: ShopSceneSkill[] = [];
+    for (const entry of shop.skills ?? []) {
+      const skill = skillsById.get(entry.skillId);
+      if (!skill) continue;
+      skills.push({
+        skill: {
+          id: skill.id,
+          name: skill.name,
+          ...(skill.code ? { code: skill.code } : {}),
+          ...(skill.description ? { description: skill.description } : {}),
+          ...(skill.image ? { image: skill.image } : {}),
+          coins: skill.coins,
+          baseClash: skill.baseClash,
+          coinClash: skill.coinClash,
+          baseDamage: skill.baseDamage,
+          coinDamage: skill.coinDamage,
+          ...(skill.fullHeadsMultiplier !== undefined
+            ? { fullHeadsMultiplier: skill.fullHeadsMultiplier }
+            : {}),
+          ...(skill.tags ? { tags: skill.tags } : {}),
+        },
+        price: entry.price,
+        ...(entry.stock === undefined ? {} : { stock: entry.stock }),
+        unlocked: skill.unlocked === true,
+      });
+    }
+
     return {
       shopId: shop.id,
       name: shop.name,
@@ -197,6 +256,7 @@ export class ShopSceneService {
       ...(shop.currency ? { currency: shop.currency } : {}),
       openedAt,
       items,
+      skills,
     };
   }
 

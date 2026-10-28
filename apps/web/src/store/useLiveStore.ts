@@ -1,16 +1,20 @@
 import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
-import type {
-  CombatEvent,
-  CombatScenePatchInput,
-  LootDraft,
-  LootUpdatedEvent,
-  PublicCombatState,
-  PublicSession,
-  PublicSessionPlayer,
-  SessionPlayersEvent,
-  ShopScene,
-  StateFullPayload,
+import {
+  CURRENCY_NAME,
+  type CombatEvent,
+  type CombatRewardSummary,
+  type CombatScenePatchInput,
+  type DungeonStateEvent,
+  type LootDraft,
+  type LootUpdatedEvent,
+  type PublicCombatState,
+  type PublicDungeonRun,
+  type PublicSession,
+  type PublicSessionPlayer,
+  type SessionPlayersEvent,
+  type ShopScene,
+  type StateFullPayload,
 } from "@protocol-life/shared";
 import { ApiError, api } from "../lib/api";
 import type { CombatDeclaration } from "../lib/combat";
@@ -46,6 +50,10 @@ interface LiveState {
   lootDraft: LootDraft | null;
   /** Escena de tienda abierta en la mesa (Fase 4A-3). */
   activeShop: ShopScene | null;
+  /** Run de mazmorra activa de la mesa (Fase 4C); null = sin mazmorra. */
+  dungeonRun: PublicDungeonRun | null;
+  /** Hay una llamada de mazmorra en vuelo (una sola cada vez). */
+  dungeonBusy: boolean;
 
   host: (
     campaignId: string,
@@ -72,6 +80,18 @@ interface LiveState {
   openShop: (shopId: string) => Promise<boolean>;
   /** DM: cierra la tienda abierta y devuelve a los jugadores a su hoja. */
   closeShop: () => Promise<boolean>;
+  /** DM: inicia (o reinicia) la run de una mazmorra de la campaña. */
+  startDungeon: (dungeonId: string, entryRoomId?: string) => Promise<boolean>;
+  /** DM: lanza el encuentro de la sala actual. */
+  startDungeonEncounter: () => Promise<boolean>;
+  /** DM: descansa una vez en la sala de descanso actual. */
+  restDungeon: () => Promise<boolean>;
+  /** DM: abre el cofre de la sala actual (notifica las recompensas). */
+  openDungeonChest: () => Promise<boolean>;
+  /** DM: avanza de sala; si era la última, la mazmorra termina. */
+  advanceDungeon: () => Promise<boolean>;
+  /** DM: termina la run y devuelve a los jugadores a su hoja. */
+  endDungeon: () => Promise<boolean>;
 }
 
 const EMPTY_COMBAT = {
@@ -85,6 +105,41 @@ const EMPTY_COMBAT = {
 >;
 
 let socket: Socket | null = null;
+
+/** Resumen legible de lo que salió de un cofre, para el aviso del DM. */
+function describeChestRewards(rewards: CombatRewardSummary | null): string {
+  if (!rewards) return "El cofre estaba vacío.";
+  const parts: string[] = [];
+  if (rewards.currency) {
+    parts.push(`+${rewards.currency} ${CURRENCY_NAME}`);
+  }
+  const items = rewards.itemIds?.length ?? 0;
+  if (items > 0) parts.push(`${items} objeto${items === 1 ? "" : "s"}`);
+  const pending = rewards.pendingItemIds?.length ?? 0;
+  if (pending > 0) parts.push(`${pending} por repartir`);
+  const unlocked = rewards.unlockedItemIds?.length ?? 0;
+  if (unlocked > 0) {
+    // Con A el mismo objeto se entrega y se desbloquea: no lo repetimos.
+    parts.push(
+      items > 0 && unlocked >= items
+        ? "desbloqueado para la campaña"
+        : `${unlocked} objeto${unlocked === 1 ? "" : "s"} desbloqueado${
+            unlocked === 1 ? "" : "s"
+          } para la campaña`,
+    );
+  }
+  // Las skills de un cofre siempre se desbloquean (no pasan por inventario).
+  const unlockedSkills = rewards.unlockedSkillIds?.length ?? 0;
+  if (unlockedSkills > 0) {
+    parts.push(
+      `${unlockedSkills} skill${
+        unlockedSkills === 1 ? "" : "s"
+      } desbloqueada${unlockedSkills === 1 ? "" : "s"} para la campaña`,
+    );
+  }
+  if (parts.length === 0) return "Cofre abierto.";
+  return `Cofre abierto: ${parts.join(" · ")}.`;
+}
 
 function disconnectSocket(): void {
   if (!socket) return;
@@ -103,6 +158,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   error: null,
   lootDraft: null,
   activeShop: null,
+  dungeonRun: null,
+  dungeonBusy: false,
   ...EMPTY_COMBAT,
 
   async host(campaignId, input) {
@@ -122,6 +179,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         code: hosted.session.code,
         lootDraft: null,
         activeShop: null,
+        dungeonRun: null,
+        dungeonBusy: false,
         ...EMPTY_COMBAT,
       });
       connectSocket(hosted.session.code, hosted.dmToken, set, get);
@@ -155,6 +214,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         code: stored.code,
         lootDraft: state.lootDraft ?? null,
         activeShop: state.activeShop ?? null,
+        dungeonRun: state.dungeonRun ?? null,
+        dungeonBusy: false,
         ...EMPTY_COMBAT,
       });
       connectSocket(stored.code, stored.token, set, get);
@@ -171,6 +232,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
           campaignId: null,
           lootDraft: null,
           activeShop: null,
+          dungeonRun: null,
+          dungeonBusy: false,
         });
         return false;
       }
@@ -204,6 +267,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         connected: false,
         lootDraft: null,
         activeShop: null,
+        dungeonRun: null,
+        dungeonBusy: false,
         ...EMPTY_COMBAT,
       });
     }
@@ -221,6 +286,8 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       error: null,
       lootDraft: null,
       activeShop: null,
+      dungeonRun: null,
+      dungeonBusy: false,
       ...EMPTY_COMBAT,
     });
   },
@@ -362,7 +429,9 @@ export const useLiveStore = create<LiveState>((set, get) => ({
     }
     try {
       const shop = await api.openShop(code, shopId);
-      set({ activeShop: shop });
+      // El servidor cierra la run al abrir la tienda; lo reflejamos ya para
+      // que la escena de mazmorra no tape la tienda mientras llega el evento.
+      set({ activeShop: shop, dungeonRun: null });
       return true;
     } catch (error) {
       useAppStore.getState().notify("error", describeError(error));
@@ -381,6 +450,147 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       set({ activeShop: null });
       return true;
     } catch (error) {
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async startDungeon(dungeonId, entryRoomId) {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    set({ dungeonBusy: true });
+    try {
+      const run = await api.startDungeon(code, dungeonId, entryRoomId);
+      // El servidor cierra la tienda al iniciar la run; el socket también lo
+      // avisa, pero no dependemos de él para no pintar dos escenas a la vez.
+      set({ dungeonRun: run, activeShop: null, dungeonBusy: false });
+      useAppStore.getState().notify("ok", `«${run.dungeonName}» en marcha.`);
+      void useAppStore.getState().refreshCampaign();
+      return true;
+    } catch (error) {
+      set({ dungeonBusy: false });
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async startDungeonEncounter() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    set({ dungeonBusy: true });
+    try {
+      const run = await api.startDungeonEncounter(code);
+      const room = run.rooms.find((entry) => entry.id === run.currentRoomId);
+      set({ dungeonRun: run, dungeonBusy: false });
+      useAppStore
+        .getState()
+        .notify(
+          "ok",
+          room
+            ? `Encuentro de «${room.name}» iniciado.`
+            : "Encuentro de la sala iniciado.",
+        );
+      return true;
+    } catch (error) {
+      set({ dungeonBusy: false });
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async restDungeon() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    set({ dungeonBusy: true });
+    try {
+      const run = await api.restDungeon(code);
+      set({ dungeonRun: run, dungeonBusy: false });
+      useAppStore.getState().notify("ok", "La party descansa y recupera HP.");
+      void useAppStore.getState().refreshCampaign();
+      return true;
+    } catch (error) {
+      set({ dungeonBusy: false });
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async openDungeonChest() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    set({ dungeonBusy: true });
+    try {
+      const { run, rewards } = await api.openDungeonChest(code);
+      set({ dungeonRun: run, dungeonBusy: false });
+      useAppStore.getState().notify("ok", describeChestRewards(rewards));
+      void useAppStore.getState().refreshCampaign();
+      return true;
+    } catch (error) {
+      set({ dungeonBusy: false });
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async advanceDungeon() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    set({ dungeonBusy: true });
+    try {
+      const run = await api.advanceDungeon(code);
+      set({ dungeonRun: run, dungeonBusy: false });
+      const roomName = run
+        ? (run.rooms.find((room) => room.id === run.currentRoomId)?.name ??
+          "la siguiente sala")
+        : null;
+      useAppStore
+        .getState()
+        .notify(
+          "ok",
+          roomName
+            ? `Avanzas a «${roomName}».`
+            : "Mazmorra completada: era la última sala.",
+        );
+      void useAppStore.getState().refreshCampaign();
+      return true;
+    } catch (error) {
+      set({ dungeonBusy: false });
+      useAppStore.getState().notify("error", describeError(error));
+      return false;
+    }
+  },
+
+  async endDungeon() {
+    const code = get().code;
+    if (!code) {
+      useAppStore.getState().notify("error", "No hay una sala abierta.");
+      return false;
+    }
+    set({ dungeonBusy: true });
+    try {
+      await api.endDungeon(code);
+      set({ dungeonRun: null, dungeonBusy: false });
+      useAppStore
+        .getState()
+        .notify("ok", "Mazmorra cerrada; los jugadores vuelven a su hoja.");
+      return true;
+    } catch (error) {
+      set({ dungeonBusy: false });
       useAppStore.getState().notify("error", describeError(error));
       return false;
     }
@@ -435,6 +645,7 @@ function connectSocket(
       combatError: null,
       lootDraft: payload.lootDraft ?? null,
       activeShop: payload.activeShop ?? null,
+      dungeonRun: payload.dungeonRun ?? null,
     });
   });
 
@@ -516,6 +727,10 @@ function connectSocket(
     set({ activeShop: payload?.shop ?? null });
   });
 
+  next.on("dungeon:state", (payload: DungeonStateEvent) => {
+    set({ dungeonRun: payload?.run ?? null });
+  });
+
   next.on("campaign:refresh", () => {
     void useAppStore.getState().refreshCampaign();
   });
@@ -533,6 +748,8 @@ function connectSocket(
       connected: false,
       lootDraft: null,
       activeShop: null,
+      dungeonRun: null,
+      dungeonBusy: false,
       ...EMPTY_COMBAT,
     });
     useAppStore.getState().notify("info", "La sala se cerró.");
@@ -553,6 +770,8 @@ function connectSocket(
         error: payload.message ?? "La sala ya no es válida.",
         lootDraft: null,
         activeShop: null,
+        dungeonRun: null,
+        dungeonBusy: false,
         ...EMPTY_COMBAT,
       });
       useAppStore.getState().notify("info", "La sala anterior ya no está abierta.");

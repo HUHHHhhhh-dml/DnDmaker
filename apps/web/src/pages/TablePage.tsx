@@ -15,6 +15,7 @@ import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import { DmCombatConsole } from "../components/combat/DmCombatConsole";
 import { LootDraftPanel } from "../components/combat/LootDraftPanel";
 import { ShopScene } from "../components/shop/ShopScene";
+import { DungeonScene } from "../components/dungeon/DungeonScene";
 import {
   Button,
   ConfirmDialog,
@@ -54,6 +55,16 @@ export function TablePage() {
   const activeShop = useLiveStore((state) => state.activeShop);
   const openShop = useLiveStore((state) => state.openShop);
   const closeShop = useLiveStore((state) => state.closeShop);
+  const dungeonRun = useLiveStore((state) => state.dungeonRun);
+  const dungeonBusy = useLiveStore((state) => state.dungeonBusy);
+  const startDungeon = useLiveStore((state) => state.startDungeon);
+  const startDungeonEncounter = useLiveStore(
+    (state) => state.startDungeonEncounter,
+  );
+  const restDungeon = useLiveStore((state) => state.restDungeon);
+  const openDungeonChest = useLiveStore((state) => state.openDungeonChest);
+  const advanceDungeon = useLiveStore((state) => state.advanceDungeon);
+  const endDungeon = useLiveStore((state) => state.endDungeon);
   const restParty = useAppStore((state) => state.restParty);
   const refreshCampaign = useAppStore((state) => state.refreshCampaign);
 
@@ -67,6 +78,9 @@ export function TablePage() {
   const [confirmRest, setConfirmRest] = useState(false);
   const [selectedEncounterId, setSelectedEncounterId] = useState("");
   const [selectedShopId, setSelectedShopId] = useState("");
+  const [selectedDungeonId, setSelectedDungeonId] = useState("");
+  const [selectedEntryRoomId, setSelectedEntryRoomId] = useState("");
+  const [confirmEndDungeon, setConfirmEndDungeon] = useState(false);
   const [walletDelta, setWalletDelta] = useState<number | undefined>(undefined);
   const [walletBusy, setWalletBusy] = useState(false);
   const [lootBusy, setLootBusy] = useState(false);
@@ -103,6 +117,37 @@ export function TablePage() {
     );
   }, [shopIds]);
 
+  const dungeonIds = (campaign?.content.dungeons ?? [])
+    .map((dungeon) => dungeon.id)
+    .join("|");
+  useEffect(() => {
+    const ids = dungeonIds ? dungeonIds.split("|") : [];
+    setSelectedDungeonId((current) =>
+      current && ids.includes(current) ? current : (ids[0] ?? ""),
+    );
+  }, [dungeonIds]);
+
+  // La sala de entrada se elige dentro de la mazmorra seleccionada; al
+  // cambiar de mazmorra vuelve al valor por defecto del editor ("").
+  const entryRoomIds = (
+    campaign?.content.dungeons.find((dungeon) => dungeon.id === selectedDungeonId)
+      ?.rooms ?? []
+  )
+    .map((room) => room.id)
+    .join("|");
+  useEffect(() => {
+    const ids = entryRoomIds ? entryRoomIds.split("|") : [];
+    setSelectedEntryRoomId((current) =>
+      current && ids.includes(current) ? current : "",
+    );
+  }, [entryRoomIds]);
+
+  // La confirmación de «Terminar mazmorra» no sobrevive a la propia run.
+  const dungeonRunId = dungeonRun?.id ?? null;
+  useEffect(() => {
+    if (!dungeonRunId) setConfirmEndDungeon(false);
+  }, [dungeonRunId]);
+
   const joinUrl = useMemo(() => {
     if (!code) return "";
     const url = new URL(window.location.origin);
@@ -124,6 +169,24 @@ export function TablePage() {
   const activeCampaign = campaign;
   const players = session?.players ?? [];
   const shops = activeCampaign.content.shops;
+  const dungeons = activeCampaign.content.dungeons;
+  const dungeonRooms = dungeonRun?.rooms ?? [];
+  const dungeonRoomIndex = dungeonRun
+    ? dungeonRooms.findIndex((room) => room.id === dungeonRun.currentRoomId)
+    : -1;
+  const currentDungeonRoom =
+    dungeonRoomIndex >= 0 ? (dungeonRooms[dungeonRoomIndex] ?? null) : null;
+  const dungeonCleared = dungeonRun
+    ? dungeonRooms.filter((room) => dungeonRun.clearedRoomIds.includes(room.id))
+        .length
+    : 0;
+  const selectedDungeonRooms =
+    dungeons.find((dungeon) => dungeon.id === selectedDungeonId)?.rooms ?? [];
+  /** El combate (vivo o de la propia run) bloquea las acciones de mazmorra. */
+  const dungeonLocked =
+    Boolean(combat) ||
+    session?.status === "combat" ||
+    Boolean(dungeonRun?.combatId);
 
   async function copyText(value: string, label: string) {
     if (!value) return;
@@ -196,6 +259,16 @@ export function TablePage() {
     const ok = await closeShop();
     setShopBusy(false);
     if (ok) notify("ok", "Tienda cerrada; los jugadores vuelven a su hoja.");
+  }
+
+  async function handleStartDungeon() {
+    if (!selectedDungeonId) return;
+    await startDungeon(selectedDungeonId, selectedEntryRoomId || undefined);
+  }
+
+  async function handleEndDungeon() {
+    await endDungeon();
+    setConfirmEndDungeon(false);
   }
 
   async function handleRestParty() {
@@ -515,6 +588,8 @@ export function TablePage() {
 
             {combat ? (
               <DmCombatConsole campaign={activeCampaign} />
+            ) : dungeonRun ? (
+              <DungeonScene run={dungeonRun} viewer={{ role: "dm" }} />
             ) : activeShop ? (
               <ShopScene
                 scene={activeShop}
@@ -942,6 +1017,210 @@ export function TablePage() {
               </p>
             </div>
 
+            <div className="panel p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                  Mazmorra en la mesa
+                </h2>
+                <Link
+                  to="/dungeons"
+                  className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ui-accent hover:underline"
+                >
+                  Gestionar →
+                </Link>
+              </div>
+
+              {dungeonRun ? (
+                <>
+                  <div className="mb-3 border border-amber/50 bg-amber/10 p-2.5">
+                    <div className="mono-label text-ui-gold">En curso</div>
+                    <div className="display mt-0.5 truncate text-xl text-ui">
+                      {dungeonRun.dungeonName}
+                    </div>
+                    <p className="mt-1 text-[10px] leading-snug text-ui-muted">
+                      Sala {dungeonRoomIndex + 1} de {dungeonRooms.length}
+                      {currentDungeonRoom
+                        ? ` · ${currentDungeonRoom.name}`
+                        : ""}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-ui-line pt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
+                      <span>Superadas</span>
+                      <span className="tnum font-bold text-ui">
+                        {dungeonCleared}/{dungeonRooms.length}
+                      </span>
+                    </div>
+                    {dungeonRun.combatId ? (
+                      <p className="mt-2 flex items-center gap-1.5 border border-rust/50 bg-rust/10 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-ui-danger">
+                        <Icon name="sword" size={11} />
+                        Combate en curso
+                      </p>
+                    ) : dungeonRun.pendingAction ? (
+                      <p className="mt-2 border border-ui-line-strong bg-ui-surface-3 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ui-muted">
+                        Acción pendiente:{" "}
+                        {dungeonRun.pendingAction === "encounter"
+                          ? "encuentro"
+                          : dungeonRun.pendingAction === "rest"
+                            ? "descanso"
+                            : "cofre"}
+                      </p>
+                    ) : (
+                      <p className="mt-2 border border-moss/50 bg-moss/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ui-ok">
+                        Sala resuelta
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-1.5">
+                    {dungeonRun.pendingAction === "encounter" ? (
+                      <Button
+                        type="button"
+                        variant="accent"
+                        size="sm"
+                        icon="sword"
+                        className="w-full"
+                        loading={dungeonBusy}
+                        disabled={dungeonLocked || dungeonBusy}
+                        onClick={() => void startDungeonEncounter()}
+                      >
+                        Iniciar encuentro
+                      </Button>
+                    ) : null}
+                    {dungeonRun.pendingAction === "rest" ? (
+                      <Button
+                        type="button"
+                        variant="accent"
+                        size="sm"
+                        icon="flame"
+                        className="w-full"
+                        loading={dungeonBusy}
+                        disabled={dungeonLocked || dungeonBusy}
+                        onClick={() => void restDungeon()}
+                      >
+                        Descansar
+                      </Button>
+                    ) : null}
+                    {dungeonRun.pendingAction === "chest" ? (
+                      <Button
+                        type="button"
+                        variant="accent"
+                        size="sm"
+                        icon="cube"
+                        className="w-full"
+                        loading={dungeonBusy}
+                        disabled={dungeonLocked || dungeonBusy}
+                        onClick={() => void openDungeonChest()}
+                      >
+                        Abrir cofre
+                      </Button>
+                    ) : null}
+                    {dungeonRun.canAdvance ? (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        icon="chevron-down"
+                        className="w-full"
+                        loading={dungeonBusy}
+                        disabled={dungeonLocked || dungeonBusy}
+                        onClick={() => void advanceDungeon()}
+                      >
+                        Avanzar de sala
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      icon="close"
+                      className="w-full"
+                      disabled={dungeonLocked || dungeonBusy}
+                      onClick={() => setConfirmEndDungeon(true)}
+                    >
+                      Terminar mazmorra
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-[10px] leading-snug text-ui-faint">
+                    {dungeonRun.combatId
+                      ? "Hay un combate en curso: termínalo para seguir con la mazmorra."
+                      : dungeonRun.canAdvance
+                        ? "La sala está resuelta: avanza para seguir bajando."
+                        : "Resuelve la sala actual para poder avanzar."}
+                  </p>
+                </>
+              ) : dungeons.length === 0 ? (
+                <p className="border border-dashed border-ui-line p-2 text-[11px] leading-snug text-ui-muted">
+                  Todavía no hay mazmorras en esta campaña.{" "}
+                  <Link
+                    to="/dungeons/new"
+                    className="font-semibold text-ui-accent hover:underline"
+                  >
+                    Crea una
+                  </Link>{" "}
+                  para recorrerla en la mesa.
+                </p>
+              ) : (
+                <>
+                  <Field
+                    label="Mazmorra"
+                    hint="Sustituye la hoja del jugador por la escena de la sala."
+                  >
+                    <Select
+                      aria-label="Mazmorra a iniciar en la mesa"
+                      value={selectedDungeonId}
+                      onValueChange={setSelectedDungeonId}
+                      disabled={!session || dungeonBusy}
+                    >
+                      {dungeons.map((dungeon) => (
+                        <option key={dungeon.id} value={dungeon.id}>
+                          {dungeon.name} · {dungeon.rooms.length} salas
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field
+                    label="Sala de entrada"
+                    hint="Opcional: por defecto usa la entrada del editor."
+                    className="mt-2"
+                  >
+                    <Select
+                      aria-label="Sala de entrada de la mazmorra"
+                      value={selectedEntryRoomId}
+                      onValueChange={setSelectedEntryRoomId}
+                      disabled={!session || dungeonBusy}
+                    >
+                      <option value="">Entrada de la mazmorra</option>
+                      {selectedDungeonRooms.map((room, index) => (
+                        <option key={room.id} value={room.id}>
+                          {index + 1}. {room.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    icon="grid"
+                    className="mt-2 w-full"
+                    disabled={
+                      !session ||
+                      !selectedDungeonId ||
+                      dungeonLocked ||
+                      dungeonBusy
+                    }
+                    loading={dungeonBusy}
+                    onClick={() => void handleStartDungeon()}
+                  >
+                    Iniciar mazmorra
+                  </Button>
+                </>
+              )}
+              <p className="mt-2 text-[10px] leading-snug text-ui-faint">
+                La run tiene prioridad sobre la tienda; el combate manda sobre
+                ambas. Los controles viven aquí, nunca en la escena.
+              </p>
+            </div>
+
             <div className="border border-ui-line p-3">
               <div className="mono-label mb-1">PIN y permisos</div>
               <p className="text-[11px] leading-relaxed text-ui-muted">
@@ -977,6 +1256,22 @@ export function TablePage() {
         onCancel={() => setConfirmClose(false)}
         onConfirm={() => void handleClose()}
         busy={busy}
+      />
+
+      <ConfirmDialog
+        open={confirmEndDungeon}
+        title="Terminar la mazmorra"
+        message={
+          <>
+            Se cerrará <strong>«{dungeonRun?.dungeonName ?? "la mazmorra"}»</strong> y
+            los jugadores volverán a su hoja. El progreso de esta run se pierde;
+            las salas ya superadas no se repiten.
+          </>
+        }
+        confirmLabel="Terminar"
+        onCancel={() => setConfirmEndDungeon(false)}
+        onConfirm={() => void handleEndDungeon()}
+        busy={dungeonBusy}
       />
 
       <ConfirmDialog

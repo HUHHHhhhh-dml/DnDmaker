@@ -8,7 +8,9 @@
     "dev": "tsx watch --clear-screen=false src/index.ts",
     "start": "tsx src/index.ts",
     "seed": "tsx src/seed-cli.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "backup": "tsx src/backup-cli.ts",
+    "restore": "tsx src/restore-cli.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.1",

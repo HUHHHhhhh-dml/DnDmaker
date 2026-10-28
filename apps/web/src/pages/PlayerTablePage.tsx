@@ -21,6 +21,7 @@ import { PlayerCombatView } from "./PlayerCombatView";
 import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import { LootDraftPanel } from "../components/combat/LootDraftPanel";
 import { ShopScene } from "../components/shop/ShopScene";
+import { DungeonScene } from "../components/dungeon/DungeonScene";
 import {
   Button,
   ConfirmDialog,
@@ -61,6 +62,8 @@ export function PlayerTablePage() {
   const pickLoot = usePlayerStore((state) => state.pickLoot);
   const activeShop = usePlayerStore((state) => state.activeShop);
   const buyShopItem = usePlayerStore((state) => state.buyShopItem);
+  const buyShopSkill = usePlayerStore((state) => state.buyShopSkill);
+  const dungeonRun = usePlayerStore((state) => state.dungeonRun);
 
   const [booting, setBooting] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -145,6 +148,26 @@ export function PlayerTablePage() {
       entry
         ? `«${entry.item.name}» desbloqueado para toda la campaña.`
         : "Objeto desbloqueado para toda la campaña.",
+    );
+  }
+
+  async function handleBuySkill(skillId: string) {
+    const entry = activeShop?.skills?.find(
+      (candidate) => candidate.skill.id === skillId,
+    );
+    setShopBusy(true);
+    setShopError(null);
+    setShopNotice(null);
+    const message = await buyShopSkill(skillId);
+    setShopBusy(false);
+    if (message) {
+      setShopError(message);
+      return;
+    }
+    setShopNotice(
+      entry
+        ? `«${entry.skill.name}» desbloqueada para toda la campaña (no se equipa automáticamente).`
+        : "Skill desbloqueada para toda la campaña (no se equipa automáticamente).",
     );
   }
 
@@ -278,6 +301,28 @@ export function PlayerTablePage() {
     );
   }
 
+  // Mazmorra activa (Fase 4C): la escena de la sala sustituye a la ficha. El
+  // combate manda mientras dure; la tienda no convive con una run en el
+  // servidor. El reparto de botín se queda debajo para poder elegir objeto.
+  if (dungeonRun) {
+    return (
+      <div className="min-h-screen">
+        <PlayerHeader
+          campaignName={campaign.name}
+          code={code}
+          connected={connected}
+          hideNav
+        />
+        <main className="px-3 py-4 sm:px-5 sm:py-6">
+          <DungeonScene run={dungeonRun} viewer={{ role: "player" }} />
+          {lootPanel ? (
+            <div className="mx-auto mt-5 max-w-5xl">{lootPanel}</div>
+          ) : null}
+        </main>
+      </div>
+    );
+  }
+
   // Tienda abierta por el DM (Fase 4A-3): sustituye a la ficha hasta que la
   // cierre. El combate tiene prioridad porque el servidor no permite ambas.
   if (activeShop) {
@@ -298,6 +343,7 @@ export function PlayerTablePage() {
             error={shopError}
             notice={shopNotice}
             onBuy={(itemId) => void handleBuy(itemId)}
+            onBuySkill={(skillId) => void handleBuySkill(skillId)}
           />
         </main>
       </div>

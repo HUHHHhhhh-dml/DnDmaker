@@ -30,12 +30,21 @@ interface ShopItemDraft {
   stock: number | undefined;
 }
 
+interface ShopSkillDraft {
+  /** Clave local estable: el `skillId` puede repetirse mientras se edita. */
+  key: string;
+  skillId: string;
+  price: number | undefined;
+  stock: number | undefined;
+}
+
 interface ShopDraft {
   name: string;
   description: string;
   /** Fondo de la escena: imagen, GIF o URL de vídeo (mp4/webm). */
   background: string;
   items: ShopItemDraft[];
+  skills: ShopSkillDraft[];
 }
 
 let rowSequence = 0;
@@ -45,7 +54,7 @@ function newRowKey(): string {
 }
 
 function emptyDraft(): ShopDraft {
-  return { name: "", description: "", background: "", items: [] };
+  return { name: "", description: "", background: "", items: [], skills: [] };
 }
 
 function draftFromShop(shop: Shop): ShopDraft {
@@ -56,6 +65,12 @@ function draftFromShop(shop: Shop): ShopDraft {
     items: shop.items.map((entry) => ({
       key: newRowKey(),
       itemId: entry.itemId,
+      price: entry.price,
+      stock: entry.stock,
+    })),
+    skills: (shop.skills ?? []).map((entry) => ({
+      key: newRowKey(),
+      skillId: entry.skillId,
       price: entry.price,
       stock: entry.stock,
     })),
@@ -124,9 +139,13 @@ export function ShopEditorPage() {
   }
 
   const catalog = campaign.content.items;
+  const skillCatalog = campaign.content.skills;
   const campaignId = campaign.id;
   const itemName = (itemId: string): string =>
     catalog.find((item) => item.id === itemId)?.name ?? "Objeto no disponible";
+  const skillName = (skillId: string): string =>
+    skillCatalog.find((skill) => skill.id === skillId)?.name ??
+    "Skill no disponible";
 
   function patch(update: Partial<ShopDraft>) {
     setDraft((current) => ({ ...current, ...update }));
@@ -136,6 +155,15 @@ export function ShopEditorPage() {
     setDraft((current) => ({
       ...current,
       items: current.items.map((row) =>
+        row.key === key ? { ...row, ...update } : row,
+      ),
+    }));
+  }
+
+  function patchSkillRow(key: string, update: Partial<ShopSkillDraft>) {
+    setDraft((current) => ({
+      ...current,
+      skills: current.skills.map((row) =>
         row.key === key ? { ...row, ...update } : row,
       ),
     }));
@@ -158,10 +186,34 @@ export function ShopEditorPage() {
     }));
   }
 
+  function addSkillRow() {
+    const used = new Set(draft.skills.map((row) => row.skillId));
+    const next = skillCatalog.find((skill) => !used.has(skill.id));
+    setDraft((current) => ({
+      ...current,
+      skills: [
+        ...current.skills,
+        {
+          key: newRowKey(),
+          skillId: next?.id ?? "",
+          price: undefined,
+          stock: undefined,
+        },
+      ],
+    }));
+  }
+
   function removeRow(key: string) {
     setDraft((current) => ({
       ...current,
       items: current.items.filter((row) => row.key !== key),
+    }));
+  }
+
+  function removeSkillRow(key: string) {
+    setDraft((current) => ({
+      ...current,
+      skills: current.skills.filter((row) => row.key !== key),
     }));
   }
 
@@ -173,6 +225,12 @@ export function ShopEditorPage() {
       background: draft.background.trim(),
       items: draft.items.map((row) => ({
         itemId: row.itemId,
+        price: row.price ?? 0,
+        stock: row.stock,
+      })),
+      // Siempre presente (aunque sea []): el PATCH borra las skills viejas.
+      skills: draft.skills.map((row) => ({
+        skillId: row.skillId,
         price: row.price ?? 0,
         stock: row.stock,
       })),
@@ -197,6 +255,20 @@ export function ShopEditorPage() {
         );
       }
       seen.add(row.itemId);
+    });
+
+    const seenSkills = new Set<string>();
+    draft.skills.forEach((row, index) => {
+      if (!row.skillId) {
+        issues.push(`Skill ${index + 1}: elige una skill.`);
+        return;
+      }
+      if (seenSkills.has(row.skillId)) {
+        issues.push(
+          `La skill «${skillName(row.skillId)}» está repetida en la tienda.`,
+        );
+      }
+      seenSkills.add(row.skillId);
     });
 
     return Array.from(new Set(issues));
@@ -248,12 +320,15 @@ export function ShopEditorPage() {
     }
   }
 
-  const previewTotal = draft.items.reduce(
+  // La vista previa suma objetos y skills: mismo precio/stock en ambos tipos.
+  const previewRows = [...draft.items, ...draft.skills];
+  const previewTotal = previewRows.reduce(
     (sum, row) => sum + (row.stock ?? 0),
     0,
   );
-  const previewUnlimited = draft.items.some((row) => row.stock === undefined);
+  const previewUnlimited = previewRows.some((row) => row.stock === undefined);
   const previewStock = previewUnlimited ? "∞" : String(previewTotal);
+  const previewCount = draft.items.length + draft.skills.length;
   const busy = saving || deleting;
 
   return (
@@ -261,7 +336,7 @@ export function ShopEditorPage() {
       <PageHeader
         eyebrow={shopId ? "Editar tienda" : "Nueva tienda"}
         title={shopId ? draft.name || "Tienda" : "Nueva tienda"}
-        description={`Elige qué objetos vende la tienda y a qué precio en ${CURRENCY_NAME}. Después ábrela en la mesa: la sala verá la escena en vivo y comprará con la bolsa común.`}
+        description={`Elige qué objetos y skills vende la tienda y a qué precio en ${CURRENCY_NAME}. Después ábrela en la mesa: la sala verá la escena en vivo y comprará con la bolsa común.`}
         back={{ to: "/shops", label: "Volver a tiendas" }}
         actions={
           <>
@@ -361,8 +436,8 @@ export function ShopEditorPage() {
 
             {draft.items.length === 0 ? (
               <p className="mb-3 border border-dashed border-ui-line p-3 text-xs text-ui-muted">
-                Esta tienda todavía no vende nada. Añade al menos un objeto con su
-                precio.
+                Esta tienda todavía no vende objetos. Añade al menos uno con su
+                precio, o vende solo skills en la sección siguiente.
               </p>
             ) : (
               <div className="space-y-2">
@@ -384,7 +459,11 @@ export function ShopEditorPage() {
                           {catalog.map((item) => (
                             <option key={item.id} value={item.id}>
                               {item.name}
-                              {item.unlocked === true ? "" : " (bloqueado)"}
+                              {/* El sufijo marca lo que ya está desbloqueado:
+                                  no se puede volver a comprar. */}
+                              {item.unlocked === true
+                                ? " (ya desbloqueado)"
+                                : ""}
                             </option>
                           ))}
                         </Select>
@@ -449,6 +528,127 @@ export function ShopEditorPage() {
               </span>
             </div>
           </section>
+
+          <section className="panel p-4">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-ui-line pb-2">
+              <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                03 · Skills a la venta
+              </h2>
+              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
+                {draft.skills.length} fila{draft.skills.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            {skillCatalog.length === 0 ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border border-dashed border-ui-line p-3">
+                <p className="text-xs text-ui-muted">
+                  La biblioteca de skills está vacía. Crea una skill para poder
+                  venderla.
+                </p>
+                <LinkButton to="/skills/new" variant="ghost" size="sm" icon="plus">
+                  Nueva skill
+                </LinkButton>
+              </div>
+            ) : null}
+
+            {draft.skills.length === 0 ? (
+              <p className="mb-3 border border-dashed border-ui-line p-3 text-xs text-ui-muted">
+                Esta tienda todavía no vende skills. Añade al menos una con su
+                precio.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {draft.skills.map((row, index) => (
+                  <div
+                    key={row.key}
+                    className="border border-ui-line bg-ui-surface-2 p-3"
+                  >
+                    <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_110px_110px_auto]">
+                      <Field label={`Skill ${index + 1}`}>
+                        <Select
+                          value={row.skillId}
+                          onValueChange={(value) =>
+                            patchSkillRow(row.key, { skillId: value })
+                          }
+                          aria-label={`Skill de la fila ${index + 1}`}
+                        >
+                          <option value="">— Elige una skill —</option>
+                          {skillCatalog.map((skill) => (
+                            <option key={skill.id} value={skill.id}>
+                              {skill.name}
+                              {/* Igual que en objetos: el sufijo avisa de lo
+                                  que ya está desbloqueado (no se puede comprar). */}
+                              {skill.unlocked === true
+                                ? " (ya desbloqueada)"
+                                : ""}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Field label="Precio">
+                        <NumberInput
+                          value={row.price}
+                          onValueChange={(value) =>
+                            patchSkillRow(row.key, { price: value })
+                          }
+                          min={0}
+                          max={9_999_999}
+                          placeholder="0"
+                        />
+                      </Field>
+                      <Field label="Stock">
+                        <NumberInput
+                          value={row.stock}
+                          onValueChange={(value) =>
+                            patchSkillRow(row.key, { stock: value })
+                          }
+                          min={0}
+                          max={9999}
+                          placeholder="∞"
+                        />
+                      </Field>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        icon="trash"
+                        aria-label={`Quitar skill de la fila ${index + 1}`}
+                        onClick={() => removeSkillRow(row.key)}
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                    <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
+                      {row.skillId
+                        ? `${skillName(row.skillId)} · ${row.price ?? 0} ${CURRENCY_NAME} · stock ${stockLabel(row.stock)}`
+                        : "Sin skill seleccionada"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                icon="plus"
+                disabled={skillCatalog.length === 0}
+                onClick={addSkillRow}
+              >
+                Añadir skill
+              </Button>
+              <span className="text-[10px] leading-snug text-ui-faint">
+                Stock vacío = infinito · 0 = agotado. No repitas la misma skill en
+                una tienda.
+              </span>
+            </div>
+            <p className="mt-2 text-[10px] leading-snug text-ui-faint">
+              Comprar una skill la desbloquea para la campaña; no se equipa
+              automáticamente.
+            </p>
+          </section>
         </div>
 
         <aside className="space-y-4">
@@ -471,9 +671,9 @@ export function ShopEditorPage() {
                 </p>
 
                 <div className="border-t border-ui-line pt-2">
-                  {draft.items.length === 0 ? (
+                  {previewCount === 0 ? (
                     <p className="py-2 text-center text-[11px] text-ui-faint">
-                      Sin objetos a la venta.
+                      Sin productos a la venta.
                     </p>
                   ) : (
                     <ul className="space-y-1.5">
@@ -492,12 +692,34 @@ export function ShopEditorPage() {
                           </span>
                         </li>
                       ))}
+                      {draft.skills.map((row) => (
+                        <li
+                          key={row.key}
+                          className="flex items-baseline justify-between gap-2 border-b border-ui-line pb-1 last:border-b-0 last:pb-0"
+                        >
+                          <span className="flex min-w-0 items-center gap-1 text-xs font-semibold">
+                            <Icon
+                              name="sword"
+                              size={10}
+                              className="shrink-0 text-ui-faint"
+                            />
+                            <span className="min-w-0 truncate">
+                              {row.skillId
+                                ? skillName(row.skillId)
+                                : "Sin skill seleccionada"}
+                            </span>
+                          </span>
+                          <span className="tnum shrink-0 font-mono text-[10px] text-ui-muted">
+                            {row.price ?? 0} {CURRENCY_NAME} · {stockLabel(row.stock)}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
 
                 <div className="flex items-center justify-between border-t border-ui-line pt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
-                  <span>{draft.items.length} objetos</span>
+                  <span>{previewCount} productos</span>
                   <span className="tnum">Stock total {previewStock}</span>
                 </div>
               </div>
@@ -519,8 +741,10 @@ export function ShopEditorPage() {
                 Recuerda
               </strong>
               <p className="mt-1">
-                Los objetos bloqueados no llegan a los jugadores aunque estén en la
-                tienda. Desbloquéalos en la biblioteca antes de venderlos.
+                Los objetos y skills <strong>ya desbloqueados</strong> no se
+                pueden comprar: aparecen marcados en los selectores. Los
+                bloqueados son los que la party desbloquea al comprarlos. Las
+                skills compradas no se equipan solas.
               </p>
             </div>
           </div>
@@ -533,7 +757,8 @@ export function ShopEditorPage() {
         message={
           <>
             Vas a eliminar <strong>«{draft.name || "esta tienda"}»</strong>. Los
-            objetos que la party ya compró siguen desbloqueados en la campaña.
+            objetos y skills que la party ya compró siguen desbloqueados en la
+            campaña.
           </>
         }
         onCancel={() => setConfirmDelete(false)}

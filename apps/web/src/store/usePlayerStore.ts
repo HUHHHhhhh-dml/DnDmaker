@@ -4,9 +4,11 @@ import type {
   Campaign,
   Character,
   CombatEvent,
+  DungeonStateEvent,
   LootDraft,
   LootUpdatedEvent,
   PublicCombatState,
+  PublicDungeonRun,
   PublicSession,
   PublicSessionPlayer,
   SessionJoinInput,
@@ -75,6 +77,8 @@ export interface PlayerState {
   lootDraft: LootDraft | null;
   /** Escena de tienda abierta por el DM (Fase 4A-3); null = hoja normal. */
   activeShop: ShopScene | null;
+  /** Run de mazmorra activa de la mesa (Fase 4C); null = sin mazmorra. */
+  dungeonRun: PublicDungeonRun | null;
 
   join: (code: string, input: SessionJoinInput) => Promise<boolean>;
   restore: (code: string) => Promise<boolean>;
@@ -93,6 +97,11 @@ export interface PlayerState {
    * toda la campaña. Devuelve `null` o el mensaje de error.
    */
   buyShopItem: (itemId: string) => Promise<string | null>;
+  /**
+   * Compra una skill de la tienda abierta: paga la bolsa y la desbloquea para
+   * la campaña (no se equipa). Devuelve `null` o el mensaje de error.
+   */
+  buyShopSkill: (skillId: string) => Promise<string | null>;
 }
 
 let socket: Socket | null = null;
@@ -123,6 +132,7 @@ const EMPTY_STATE: Pick<
   | "combatError"
   | "lootDraft"
   | "activeShop"
+  | "dungeonRun"
 > = {
   token: null,
   code: null,
@@ -140,6 +150,7 @@ const EMPTY_STATE: Pick<
   combatError: null,
   lootDraft: null,
   activeShop: null,
+  dungeonRun: null,
 };
 
 export function describePlayerError(error: unknown): string {
@@ -191,6 +202,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         combatError: null,
         lootDraft: null,
         activeShop: null,
+        dungeonRun: null,
       });
       connectSocket(normalized, token, set, get);
       return true;
@@ -225,6 +237,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         combatError: null,
         lootDraft: null,
         activeShop: null,
+        dungeonRun: null,
       });
       applyState(state, stored.code, stored.token, set);
       connectSocket(stored.code, stored.token, set, get);
@@ -250,6 +263,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           combatError: null,
           lootDraft: null,
           activeShop: null,
+          dungeonRun: null,
           error: describePlayerError(error),
         });
       } else {
@@ -274,6 +288,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         player: state.player ?? null,
         lootDraft: state.lootDraft ?? null,
         activeShop: state.activeShop ?? null,
+        dungeonRun: state.dungeonRun ?? null,
         error: null,
       });
     } catch (error) {
@@ -425,6 +440,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return describePlayerError(error);
     }
   },
+
+  async buyShopSkill(skillId) {
+    const code = get().code;
+    if (!code) return "No estás conectado a la mesa.";
+    try {
+      const result = await api.buyShopSkill(code, skillId);
+      set({ activeShop: result.shop });
+      // Igual que con los objetos: la bolsa y el desbloqueo se refrescan desde
+      // el servidor; aquí solo se actualiza la escena (stock/estado).
+      return null;
+    } catch (error) {
+      return describePlayerError(error);
+    }
+  },
 }));
 
 function applyState(
@@ -442,6 +471,7 @@ function applyState(
     player: state.player ?? null,
     lootDraft: state.lootDraft ?? null,
     activeShop: state.activeShop ?? null,
+    dungeonRun: state.dungeonRun ?? null,
     closed: false,
   });
 }
@@ -500,6 +530,7 @@ function connectSocket(
       combatError: null,
       lootDraft: payload.lootDraft ?? null,
       activeShop: payload.activeShop ?? null,
+      dungeonRun: payload.dungeonRun ?? null,
       closed: false,
     });
   });
@@ -597,6 +628,10 @@ function connectSocket(
     set({ activeShop: payload?.shop ?? null });
   });
 
+  next.on("dungeon:state", (payload: DungeonStateEvent) => {
+    set({ dungeonRun: payload?.run ?? null });
+  });
+
   next.on("campaign:refresh", () => {
     void get().refresh();
   });
@@ -616,6 +651,7 @@ function connectSocket(
       combatError: null,
       lootDraft: null,
       activeShop: null,
+      dungeonRun: null,
     });
   });
 
@@ -636,6 +672,7 @@ function connectSocket(
         combatError: null,
         lootDraft: null,
         activeShop: null,
+        dungeonRun: null,
       });
       return;
     }

@@ -11,12 +11,19 @@ import {
   shopInputSchema,
   skillInputSchema,
 } from "./schemas";
-import type { CampaignContent, Character, Encounter, Shop } from "./types";
+import type {
+  CampaignContent,
+  Character,
+  Dungeon,
+  Encounter,
+  Shop,
+} from "./types";
 import {
   findReferences,
   validateCampaign,
   validateCharacter,
   validateContent,
+  validateDungeon,
   validateShop,
 } from "./validation";
 
@@ -337,20 +344,67 @@ describe("escena de combate y compatibilidad (3F.5)", () => {
     );
     expect(duplicated.valid).toBe(false);
 
+    // Un objeto bloqueado es comprable: solo avisa si ya está desbloqueado.
     const locked: Shop = {
       ...validShop,
       items: [{ itemId: item.id, price: 1 }],
     };
-    // `sampleContent` trae objetos bloqueados: avisar no invalida la tienda.
     const lockedResult = validateShop(locked, {
       items: [{ ...item, unlocked: false }],
+      skills: content.skills,
     });
     expect(lockedResult.valid).toBe(true);
+    expect(lockedResult.issues).toEqual([]);
+
+    const alreadyUnlocked = validateShop(locked, {
+      items: [{ ...item, unlocked: true }],
+      skills: content.skills,
+    });
+    expect(alreadyUnlocked.valid).toBe(true);
     expect(
-      lockedResult.issues.some(
-        (entry) => entry.severity === "warning" && entry.path.includes(".items"),
+      alreadyUnlocked.issues.some(
+        (entry) =>
+          entry.severity === "warning" && entry.path.includes(".items"),
       ),
     ).toBe(true);
+
+    // Skills a la venta: referencia, duplicados y aviso si ya está abierta.
+    const skill = content.skills[0];
+    if (skill) {
+      const skillShop: Shop = {
+        ...validShop,
+        items: [],
+        skills: [{ skillId: skill.id, price: 3 }],
+      };
+      expect(validateShop(skillShop, content).valid).toBe(true);
+      expect(
+        validateShop(
+          { ...skillShop, skills: [{ skillId: "skl_no_existe", price: 3 }] },
+          content,
+        ).valid,
+      ).toBe(false);
+      expect(
+        validateShop(
+          {
+            ...skillShop,
+            skills: [
+              { skillId: skill.id, price: 3 },
+              { skillId: skill.id, price: 4 },
+            ],
+          },
+          content,
+        ).valid,
+      ).toBe(false);
+      const alreadyOpen = validateShop(skillShop, {
+        ...content,
+        skills: [{ ...skill, unlocked: true }],
+      });
+      expect(
+        alreadyOpen.issues.some(
+          (entry) => entry.severity === "warning" && entry.path.includes(".skills"),
+        ),
+      ).toBe(true);
+    }
 
     expect(
       validateContent({ ...content, shops: [validShop, { ...validShop }] }).valid,
@@ -367,6 +421,103 @@ describe("escena de combate y compatibilidad (3F.5)", () => {
         name: "Tienda",
         items: [{ itemId: item.id, price: 5 }],
       }).success,
+    ).toBe(true);
+  });
+});
+
+describe("validación de mazmorras (4B)", () => {
+  const content = cloneContent();
+  const item = content.items[0];
+  if (!item) throw new Error("El contenido de ejemplo no tiene objetos.");
+  const encounter: Encounter = {
+    id: "enc_prueba",
+    name: "Guardia de prueba",
+    enemies: [],
+  };
+  const refs = {
+    items: content.items,
+    skills: content.skills,
+    encounters: [encounter],
+  };
+  const base: Dungeon = {
+    id: "dgn_prueba",
+    name: "Cripta de prueba",
+    entryRoomId: "room-1",
+    rooms: [
+      { id: "room-1", name: "Entrada", encounterId: encounter.id },
+      { id: "room-2", name: "Fogata", kind: "rest" },
+    ],
+  };
+
+  it("acepta una mazmorra coherente", () => {
+    const result = validateDungeon(base, refs);
+    expect(result.valid).toBe(true);
+    expect(result.issues).toEqual([]);
+  });
+
+  it("avisa sin invalidar de salas sin encuentro y cofres vacíos", () => {
+    const result = validateDungeon(
+      {
+        ...base,
+        rooms: [
+          ...base.rooms,
+          { id: "room-3", name: "Cofre", kind: "treasure" },
+          { id: "room-4", name: "Pasillo" },
+        ],
+      },
+      refs,
+    );
+    expect(result.valid).toBe(true);
+    expect(result.issues).toHaveLength(2);
+    expect(result.issues.every((entry) => entry.severity === "warning")).toBe(
+      true,
+    );
+  });
+
+  it("rechaza entrada, ids, encuentros y recompensas inválidas", () => {
+    const result = validateDungeon(
+      {
+        ...base,
+        entryRoomId: "room-x",
+        rooms: [
+          { id: "room-1", name: "Sala A", encounterId: "enc_no_existe" },
+          { id: "room-1", name: "Sala B" },
+          {
+            id: "room-3",
+            name: "Cofre",
+            kind: "treasure",
+            rewards: {
+              itemIds: ["itm_no_existe"],
+              skillIds: ["skl_no_existe"],
+            },
+          },
+        ],
+      },
+      refs,
+    );
+    expect(result.valid).toBe(false);
+    const messages = result.issues.map((entry) => entry.message).join(" | ");
+    expect(messages).toContain("entrada no existe");
+    expect(messages).toContain("ID de sala duplicado");
+    expect(messages).toContain("encuentro de la sala no existe");
+    expect(messages).toContain("recompensa del cofre no existe");
+    expect(messages).toContain("skill del cofre no existe");
+  });
+
+  it("detecta mazmorras con el mismo id en el contenido", () => {
+    const duplicated: CampaignContent = {
+      ...content,
+      encounters: [encounter],
+      dungeons: [base, { ...base, name: "Otra copia" }],
+    };
+    const result = validateContent(duplicated);
+    expect(result.valid).toBe(false);
+    expect(
+      result.issues.some(
+        (entry) =>
+          entry.path.startsWith("dungeons[dgn_prueba]") &&
+          entry.message.includes("duplicado"),
+      ),
     ).toBe(true);
   });
 });

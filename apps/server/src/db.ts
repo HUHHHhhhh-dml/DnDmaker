@@ -136,9 +136,22 @@ CREATE TABLE IF NOT EXISTS active_shops (
   opened_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS dungeon_runs (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL UNIQUE REFERENCES sessions(id) ON DELETE CASCADE,
+  dungeon_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  state TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_loot_drafts_session ON loot_drafts(session_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_loot_drafts_active
   ON loot_drafts(session_id) WHERE status = 'active';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dungeon_runs_active
+  ON dungeon_runs(session_id) WHERE status = 'active';
 
 CREATE INDEX IF NOT EXISTS idx_items_campaign ON items(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_skills_campaign ON skills(campaign_id);

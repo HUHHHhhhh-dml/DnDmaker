@@ -3,6 +3,7 @@ import type {
   Character,
   LootDraft,
   PublicCombatState,
+  PublicDungeonRun,
   Session,
   SessionPlayer,
   ShopScene,
@@ -59,6 +60,8 @@ export interface SessionStateResponse {
   lootDraft?: LootDraft | null;
   /** Fase 4A-3: escena de tienda abierta por el DM, si la hay. */
   activeShop?: ShopScene | null;
+  /** Fase 4C: run de mazmorra activa de la sala, si la hay. */
+  dungeonRun?: PublicDungeonRun | null;
 }
 
 /**
@@ -88,6 +91,11 @@ export interface LootUpdatedEvent {
 /** Evento `shop:state`: escena de tienda activa (null al cerrarse). */
 export interface ShopSceneEvent {
   shop: ShopScene | null;
+}
+
+/** Evento `dungeon:state`: run activa (null al terminar/cerrarse). */
+export interface DungeonStateEvent {
+  run: PublicDungeonRun | null;
 }
 
 /** Sin caracteres ambiguos (sin I, O, 0, 1). */

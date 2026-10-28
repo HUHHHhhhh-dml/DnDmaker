@@ -367,6 +367,14 @@ export const shopItemSchema = z.object({
   stock: integer(0, 9999).optional(),
 });
 
+/** Skill a la venta: la compra la desbloquea para la campaña. */
+export const shopSkillSchema = z.object({
+  skillId: idSchema,
+  price: integer(0, 9_999_999),
+  /** Ausente = stock infinito; 0 = agotado. */
+  stock: integer(0, 9999).optional(),
+});
+
 const shopFields = {
   name: nameSchema,
   description: descriptionSchema.optional(),
@@ -374,6 +382,8 @@ const shopFields = {
   /** Fondo de la escena: imagen/GIF subido o URL (admite vídeo http). */
   background: imageSchema.optional(),
   items: z.array(shopItemSchema).max(200),
+  /** Opcional para no romper exports anteriores. */
+  skills: z.array(shopSkillSchema).max(200).optional(),
 };
 
 export const shopInputSchema = z.object(shopFields);
@@ -384,9 +394,10 @@ export const shopPatchSchema = shopInputSchema.partial();
  * Compra en la escena de tienda (Fase 4A-3): paga el precio y desbloquea el
  * objeto para toda la campaña. No entra en el inventario.
  */
-export const shopBuyInputSchema = z.object({
-  itemId: idSchema,
-});
+export const shopBuyInputSchema = z.union([
+  z.object({ itemId: idSchema }),
+  z.object({ skillId: idSchema }),
+]);
 
 /** Abrir una tienda en la mesa: solo el DM y solo una a la vez. */
 export const shopOpenInputSchema = z.object({
@@ -404,20 +415,100 @@ export type ShopBuyInput = z.infer<typeof shopBuyInputSchema>;
 export type ShopOpenInput = z.infer<typeof shopOpenInputSchema>;
 export type WalletAdjustInput = z.infer<typeof walletAdjustInputSchema>;
 
-export const dungeonSchema = z.object({
+/* -------------------------------------------------------------------------- */
+/* Mazmorras lineales+ (Fase 4B)                                              */
+/* -------------------------------------------------------------------------- */
+
+export const dungeonRoomKindSchema = z.enum([
+  "encounter",
+  "rest",
+  "treasure",
+  "boss",
+]);
+
+const dungeonRewardsSchema = encounterRewardsSchema.extend({
+  /** Skills que el cofre desbloquea para la campaña. */
+  skillIds: z.array(idSchema).max(100).optional(),
+});
+
+const dungeonRoomFields = {
+  name: nameSchema,
+  /** Texto público de la escena de la sala. */
+  description: descriptionSchema.optional(),
+  /** Notas privadas del DM: nunca llegan al jugador. */
+  notes: z.string().max(4000).optional(),
+  /** Ausente = "encounter". */
+  kind: dungeonRoomKindSchema.optional(),
+  /** Encuentro vinculado; ausente = sala de ambientación. */
+  encounterId: idSchema.optional(),
+  /** Fondo de la escena: imagen/GIF subido o URL (admite vídeo http). */
+  background: imageSchema.optional(),
+  /** Solo `treasure`: objetos, skills y moneda del cofre. */
+  rewards: dungeonRewardsSchema.optional(),
+  /** Solo `treasure`: desbloquea los objetos para la campaña al abrirlo. */
+  unlockRewards: z.boolean().optional(),
+};
+
+/** Sala tal y como la manda el editor; el servidor asigna `id` si falta. */
+export const dungeonRoomInputSchema = z.object({
+  id: idSchema.optional(),
+  ...dungeonRoomFields,
+});
+
+/** Sala persistida: siempre con `id`. */
+export const dungeonRoomSchema = z.object({
   id: idSchema,
+  ...dungeonRoomFields,
+});
+
+const dungeonFields = {
   name: nameSchema,
   description: descriptionSchema.optional(),
+  /** Dónde empieza la run; ausente = primera sala. */
   entryRoomId: idSchema.optional(),
-  rooms: z.array(
-    z.object({
-      id: idSchema,
-      name: nameSchema,
-      encounterId: idSchema.optional(),
-      notes: z.string().max(2000).optional(),
-    }),
-  ),
+  rooms: z.array(dungeonRoomInputSchema).min(1).max(100),
+};
+
+export const dungeonInputSchema = z.object(dungeonFields);
+export const dungeonSchema = dungeonInputSchema.extend({
+  id: idSchema,
+  rooms: z.array(dungeonRoomSchema).min(1).max(100),
 });
+export const dungeonPatchSchema = z.object({
+  ...dungeonFields,
+  name: nameSchema.optional(),
+  rooms: z.array(dungeonRoomInputSchema).min(1).max(100).optional(),
+});
+
+export type DungeonRoomInput = z.infer<typeof dungeonRoomInputSchema>;
+export type DungeonInput = z.infer<typeof dungeonInputSchema>;
+export type DungeonPatchInput = z.infer<typeof dungeonPatchSchema>;
+
+/** Empezar una run desde la mesa (Fase 4C). */
+export const dungeonStartInputSchema = z.object({
+  dungeonId: idSchema,
+  entryRoomId: idSchema.optional(),
+});
+
+export type DungeonStartInput = z.infer<typeof dungeonStartInputSchema>;
+
+/** Estado persistido de la run; se valida antes de guardarlo en `dungeon_runs`. */
+export const dungeonRunSchema = z.object({
+  id: idSchema,
+  campaignId: idSchema,
+  sessionId: idSchema,
+  dungeonId: idSchema,
+  status: z.enum(["active", "ended"]),
+  currentRoomId: idSchema,
+  clearedRoomIds: z.array(idSchema).max(100),
+  openedRoomIds: z.array(idSchema).max(100),
+  restedRoomIds: z.array(idSchema).max(100),
+  combatId: idSchema.optional(),
+  startedAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
+export type DungeonRunState = z.infer<typeof dungeonRunSchema>;
 
 /* -------------------------------------------------------------------------- */
 /* Reparto de botín (Fase 4A-2)                                               */
@@ -692,6 +783,10 @@ export const combatStateSchema = z.object({
       currency: integer(0, 9_999_999).optional(),
       itemIds: z.array(idSchema).max(500).optional(),
       characterIds: z.array(idSchema).max(100).optional(),
+      pendingItemIds: z.array(idSchema).max(500).optional(),
+      lootDraftId: idSchema.optional(),
+      unlockedItemIds: z.array(idSchema).max(500).optional(),
+      unlockedSkillIds: z.array(idSchema).max(500).optional(),
     })
     .optional(),
 });

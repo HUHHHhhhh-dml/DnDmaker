@@ -4,6 +4,7 @@ import type {
   CombatEvent,
   LootDraft,
   PublicCombatState,
+  PublicDungeonRun,
   ShopScene,
   Team,
 } from "@protocol-life/shared";
@@ -37,6 +38,8 @@ export type RealtimeService = {
   emitLoot: (code: string, draft: LootDraft | null) => void;
   /** Fase 4A-3: escena de tienda activa (null al cerrarse). */
   emitShop: (code: string, shop: ShopScene | null) => void;
+  /** Fase 4C: run de mazmorra activa (null al terminar o cerrarse). */
+  emitDungeon: (code: string, run: PublicDungeonRun | null) => void;
   close: () => void;
 };
 
@@ -164,6 +167,12 @@ export function createRealtime(
     io.to(sessionRoom(code.trim().toUpperCase())).emit("shop:state", { shop });
   }
 
+  function emitDungeon(code: string, run: PublicDungeonRun | null): void {
+    io.to(sessionRoom(code.trim().toUpperCase())).emit("dungeon:state", {
+      run,
+    });
+  }
+
   function close(): void {
     io.close();
   }
@@ -179,6 +188,7 @@ export function createRealtime(
     emitCombatEnded,
     emitLoot,
     emitShop,
+    emitDungeon,
     close,
   };
 }

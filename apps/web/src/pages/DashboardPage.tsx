@@ -32,6 +32,7 @@ export function DashboardPage() {
     { key: "effects", label: "Efectos", icon: "flame" as IconName, to: "/effects", value: campaign.content.effects.length },
     { key: "characters", label: "Personajes", icon: "users" as IconName, to: "/characters", value: campaign.content.characters.length },
     { key: "encounters", label: "Encuentros", icon: "skull" as IconName, to: "/encounters", value: campaign.content.encounters.length },
+    { key: "dungeons", label: "Mazmorras", icon: "shield" as IconName, to: "/dungeons", value: campaign.content.dungeons.length },
   ];
 
   const party = campaign.content.characters.filter((character) =>

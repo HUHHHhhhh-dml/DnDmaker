@@ -13,6 +13,7 @@ import type {
   SessionStateResponse,
   Shop,
   ShopScene,
+  Skill,
 } from "@protocol-life/shared";
 import { buildApp, type BuiltApp } from "./app";
 
@@ -58,6 +59,8 @@ interface Fixture {
   lockedItem: Item;
   openItem: Item;
   unsoldItem: Item;
+  lockedSkill: Skill;
+  unsoldSkill: Skill;
   shop: Shop;
 }
 
@@ -92,6 +95,27 @@ async function makeFixture(): Promise<Fixture> {
     slot: "armor",
     unlocked: false,
   }) as Item;
+
+  const lockedSkill = built.repository.createContent("skills", campaignId, {
+    name: "Golpe sellado",
+    coins: 2,
+    baseClash: 5,
+    coinClash: 1,
+    baseDamage: 10,
+    coinDamage: 2,
+    target: "single",
+    unlocked: false,
+  }) as Skill;
+  const unsoldSkill = built.repository.createContent("skills", campaignId, {
+    name: "Skill fuera de la tienda",
+    coins: 1,
+    baseClash: 1,
+    coinClash: 0,
+    baseDamage: 1,
+    coinDamage: 0,
+    target: "single",
+    unlocked: false,
+  }) as Skill;
 
   const character = built.repository.createContent("characters", campaignId, {
     name: "Comprandera",
@@ -136,6 +160,7 @@ async function makeFixture(): Promise<Fixture> {
       { itemId: lockedItem.id, price: 25, stock: 2 },
       { itemId: openItem.id, price: 5 },
     ],
+    skills: [{ skillId: lockedSkill.id, price: 30, stock: 2 }],
   });
 
   return {
@@ -148,6 +173,8 @@ async function makeFixture(): Promise<Fixture> {
     lockedItem,
     openItem,
     unsoldItem,
+    lockedSkill,
+    unsoldSkill,
     shop: created,
   };
 }
@@ -163,6 +190,7 @@ async function createShop(
     name: string;
     background?: string;
     items: { itemId: string; price: number; stock?: number }[];
+    skills?: { skillId: string; price: number; stock?: number }[];
   },
 ): Promise<Shop> {
   const response = await app.inject({
@@ -199,6 +227,19 @@ function buy(fixture: Fixture, tokenValue: string | undefined, itemId: string) {
     url: `/api/sessions/${fixture.sessionCode}/shop/buy`,
     headers: token(tokenValue),
     payload: { itemId },
+  });
+}
+
+function buySkill(
+  fixture: Fixture,
+  tokenValue: string | undefined,
+  skillId: string,
+) {
+  return app.inject({
+    method: "POST",
+    url: `/api/sessions/${fixture.sessionCode}/shop/buy`,
+    headers: token(tokenValue),
+    payload: { skillId },
   });
 }
 
@@ -498,4 +539,140 @@ describe("Fase 4A-3 — comprar desbloquea el objeto", () => {
     ).toBe(true);
     expect(imported.content.shops[0]?.background).toBe("/uploads/mercado.gif");
   });
+
+  it("compra una skill: paga, baja stock y la desbloquea sin equiparla", async () => {
+    const fixture = await makeFixture();
+    await openShop(fixture);
+
+    const response = await buySkill(
+      fixture,
+      fixture.playerToken,
+      fixture.lockedSkill.id,
+    );
+    expect(response.statusCode, response.body).toBe(200);
+    const result = response.json() as {
+      kind: string;
+      shop: ShopScene;
+      wallet: { cleanShards: number };
+      skill: Skill;
+      spent: number;
+    };
+    expect(result.kind).toBe("skill");
+    expect(result.spent).toBe(30);
+    expect(result.wallet.cleanShards).toBe(70);
+    expect(result.skill.unlocked).toBe(true);
+    expect(
+      result.shop.skills?.find(
+        (entry) => entry.skill.id === fixture.lockedSkill.id,
+      )?.unlocked,
+    ).toBe(true);
+    expect(
+      result.shop.skills?.find(
+        (entry) => entry.skill.id === fixture.lockedSkill.id,
+      )?.stock,
+    ).toBe(1);
+
+    const campaign = campaignOf(fixture);
+    expect(
+      campaign.content.skills.find(
+        (skill) => skill.id === fixture.lockedSkill.id,
+      )?.unlocked,
+    ).toBe(true);
+    // No se equipa ni altera la ficha: solo se desbloquea para la campaña.
+    expect(
+      campaign.content.characters.find(
+        (character) => character.id === fixture.characterId,
+      )?.skills,
+    ).toEqual([null, null, null]);
+
+    const state = await getSessionState(fixture);
+    expect(state.activeShop?.skills).toHaveLength(1);
+  });
+
+  it("no permite recomprar, sin stock o una skill fuera de la tienda", async () => {
+    const fixture = await makeFixture();
+    await openShop(fixture);
+    await buySkill(fixture, fixture.playerToken, fixture.lockedSkill.id);
+
+    const again = await buySkill(
+      fixture,
+      fixture.playerToken,
+      fixture.lockedSkill.id,
+    );
+    expectError(again, 409, "skill_already_unlocked");
+    expect(campaignOf(fixture).wallet.cleanShards).toBe(70);
+
+    const noStock = await makeFixture();
+    const emptyShop = await createShop(noStock.campaignId, noStock.dmToken, {
+      name: "Skills agotadas",
+      items: [],
+      skills: [{ skillId: noStock.lockedSkill.id, price: 1, stock: 0 }],
+    });
+    await openShop(noStock, emptyShop.id);
+    expectError(
+      await buySkill(noStock, noStock.playerToken, noStock.lockedSkill.id),
+      409,
+      "out_of_stock",
+    );
+
+    const outside = await makeFixture();
+    await openShop(outside);
+    expectError(
+      await buySkill(outside, outside.playerToken, outside.unsoldSkill.id),
+      404,
+      "shop_skill_not_found",
+    );
+  });
+
+  it("el DM no compra skills", async () => {
+    const fixture = await makeFixture();
+    await openShop(fixture);
+    expectError(
+      await buySkill(fixture, fixture.dmToken, fixture.lockedSkill.id),
+      403,
+      "player_only",
+    );
+  });
+
+
+  it("exporta e importa las skills de la tienda con ids remapeados", async () => {
+    const fixture = await makeFixture();
+    const exported = await app.inject({
+      method: "GET",
+      url: `/api/campaigns/${fixture.campaignId}/export`,
+      headers: token(fixture.dmToken),
+    });
+    expect(exported.statusCode, exported.body).toBe(200);
+    const campaign = exported.json() as Campaign;
+    const exportedShop = campaign.content.shops.find(
+      (shop) => shop.id === fixture.shop.id,
+    );
+    expect(exportedShop?.skills).toHaveLength(1);
+
+    const importedResponse = await app.inject({
+      method: "POST",
+      url: "/api/campaigns/import",
+      payload: { campaign },
+    });
+    expect(importedResponse.statusCode, importedResponse.body).toBe(201);
+    const imported = importedResponse.json() as Campaign;
+    const importedShop = imported.content.shops[0];
+    const importedSkillId = importedShop?.skills?.[0]?.skillId;
+    expect(importedSkillId).toBeDefined();
+    expect(importedSkillId).not.toBe(fixture.lockedSkill.id);
+    expect(
+      imported.content.skills.some((skill) => skill.id === importedSkillId),
+    ).toBe(true);
+  });
+
+  it("no permite borrar una skill que está a la venta", async () => {
+    const fixture = await makeFixture();
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/api/content/skills/${fixture.lockedSkill.id}`,
+      headers: token(fixture.dmToken),
+    });
+    expectError(response, 409, "content_referenced");
+  });
+
 });

@@ -309,6 +309,13 @@ export interface ShopItem {
   stock?: number;
 }
 
+/** Skill a la venta: comprarla la desbloquea para la campaña (no se equipa). */
+export interface ShopSkill {
+  skillId: Id;
+  price: number;
+  stock?: number;
+}
+
 export interface Shop {
   id: Id;
   name: string;
@@ -321,6 +328,8 @@ export interface Shop {
    */
   background?: string;
   items: ShopItem[];
+  /** Skills a la venta (opcional: exports anteriores no la traen). */
+  skills?: ShopSkill[];
 }
 
 /**
@@ -349,6 +358,31 @@ export interface ShopSceneItem {
   unlocked: boolean;
 }
 
+/** Skill lista para pintar en la escena de tienda. */
+export interface ShopSceneSkillInfo {
+  id: Id;
+  name: string;
+  code?: string;
+  description?: string;
+  image?: string;
+  coins: number;
+  baseClash: number;
+  coinClash: number;
+  baseDamage: number;
+  coinDamage: number;
+  fullHeadsMultiplier?: number;
+  tags?: string[];
+}
+
+export interface ShopSceneSkill {
+  skill: ShopSceneSkillInfo;
+  price: number;
+  /** Ausente = stock infinito; 0 = agotado. */
+  stock?: number;
+  /** Ya desbloqueada para la campaña: no se puede volver a comprar. */
+  unlocked: boolean;
+}
+
 export interface ShopScene {
   shopId: Id;
   name: string;
@@ -357,6 +391,8 @@ export interface ShopScene {
   currency?: string;
   openedAt: IsoDate;
   items: ShopSceneItem[];
+  /** Skills a la venta; ausente en escenas de clientes antiguos. */
+  skills?: ShopSceneSkill[];
 }
 
 /** Bolsa común de la party (Fase 4). Nunca dinero real. */
@@ -365,19 +401,118 @@ export interface CampaignWallet {
   cleanShards: number;
 }
 
+/**
+ * Tipo de sala de la dungeon lineal+ (Fase 4B/4C). Ausente = `"encounter"`.
+ * - `encounter`/`boss`: lanzan su encuentro (boss es solo acento visual).
+ * - `rest`: el DM descansa una vez (cura a la party).
+ * - `treasure`: el DM abre el cofre una vez (entrega `rewards`).
+ */
+export type DungeonRoomKind = "encounter" | "rest" | "treasure" | "boss";
+
+/**
+ * Recompensas de una sala de mazmorra: las de encuentro más skills. Las
+ * skills de un cofre siempre se desbloquean para la campaña (no hay inventario
+ * de skills); `unlockRewards` controla solo los objetos.
+ */
+export interface DungeonRewards extends EncounterRewards {
+  skillIds?: Id[];
+}
+
 export interface DungeonRoom {
   id: Id;
   name: string;
-  encounterId?: Id;
+  /** Texto público que se ve en la escena de la sala. */
+  description?: string;
+  /** Notas privadas del DM (nunca llegan al jugador). */
   notes?: string;
+  /** Ausente = "encounter". */
+  kind?: DungeonRoomKind;
+  /** Encuentro vinculado (encounter/boss); ausente = sala de ambientación. */
+  encounterId?: Id;
+  /** Fondo de la escena de la sala: imagen/GIF subido o URL de vídeo. */
+  background?: string;
+  /** Solo `treasure`: recompensa del cofre (objetos, skills y moneda). */
+  rewards?: DungeonRewards;
+  /**
+   * Solo `treasure`: además de entregar la recompensa, desbloquea sus objetos
+   * para toda la campaña (como comprar en una tienda). Ausente = false.
+   */
+  unlockRewards?: boolean;
 }
 
 export interface Dungeon {
   id: Id;
   name: string;
   description?: string;
+  /** Dónde empieza la run; ausente = primera sala. */
   entryRoomId?: Id;
+  /** Salas en orden de recorrido. */
   rooms: DungeonRoom[];
+}
+
+/* ========================================================================== */
+/* Run de mazmorra (Fase 4C)                                                  */
+/* ========================================================================== */
+
+export type DungeonRunStatus = "active" | "ended";
+
+/** Sala pública de la run: nunca incluye notas privadas del DM. */
+export interface PublicDungeonRoom {
+  id: Id;
+  name: string;
+  description?: string;
+  kind: DungeonRoomKind;
+  background?: string;
+  /** encounter/boss con encuentro vinculado. */
+  hasEncounter: boolean;
+  /** treasure con recompensa configurada. */
+  hasRewards: boolean;
+  /** treasure: el cofre también desbloquea sus objetos para la campaña. */
+  unlockRewards?: boolean;
+}
+
+/** Estado persistido de la run. Se valida con Zod al guardar. */
+export interface DungeonRun {
+  id: Id;
+  campaignId: Id;
+  sessionId: Id;
+  dungeonId: Id;
+  status: DungeonRunStatus;
+  currentRoomId: Id;
+  /** Salas resueltas (encuentro ganado, descanso usado, cofre abierto). */
+  clearedRoomIds: Id[];
+  /** Cofres abiertos (idempotencia de recompensas). */
+  openedRoomIds: Id[];
+  /** Salas de descanso usadas (idempotencia del heal). */
+  restedRoomIds: Id[];
+  /** Combate vivo lanzado desde la sala actual, si lo hay. */
+  combatId?: Id;
+  startedAt: IsoDate;
+  updatedAt: IsoDate;
+}
+
+/** Acción que el DM puede ejecutar en la sala actual. */
+export type DungeonRoomAction = "encounter" | "rest" | "chest";
+
+/** Snapshot que reciben DM y jugadores; nunca incluye notas privadas. */
+export interface PublicDungeonRun {
+  id: Id;
+  dungeonId: Id;
+  dungeonName: string;
+  dungeonDescription?: string;
+  status: DungeonRunStatus;
+  currentRoomId: Id;
+  rooms: PublicDungeonRoom[];
+  clearedRoomIds: Id[];
+  openedRoomIds: Id[];
+  restedRoomIds: Id[];
+  combatId?: Id;
+  /** Sala actual resuelta o sin acción: el DM puede avanzar. */
+  canAdvance: boolean;
+  /** Acción pendiente de la sala actual; null si ya está resuelta. */
+  pendingAction: DungeonRoomAction | null;
+  startedAt: IsoDate;
+  updatedAt: IsoDate;
 }
 
 /* ========================================================================== */
@@ -648,6 +783,10 @@ export interface CombatRewardSummary {
   pendingItemIds?: Id[];
   /** Reparto creado para esos objetos pendientes. */
   lootDraftId?: Id;
+  /** Objetos desbloqueados para la campaña por un cofre `unlockRewards`. */
+  unlockedItemIds?: Id[];
+  /** Skills desbloqueadas para la campaña por el cofre. */
+  unlockedSkillIds?: Id[];
 }
 
 /** Vista de combate apta para clientes: mismo estado sin la semilla. */

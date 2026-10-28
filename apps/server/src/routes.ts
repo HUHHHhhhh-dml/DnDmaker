@@ -9,6 +9,7 @@ import {
   campaignCreateSchema,
   campaignPatchSchema,
   campaignSchema,
+  dungeonStartInputSchema,
   hostSessionSchema,
   shopBuyInputSchema,
   shopOpenInputSchema,
@@ -16,6 +17,7 @@ import {
   type ContentType,
 } from "@protocol-life/shared";
 import type { CombatService } from "./combat/service";
+import type { DungeonRunService } from "./dungeon-run";
 import { getLanIps } from "./network";
 import type { LootService } from "./loot";
 import type { ShopSceneService } from "./shop-scene";
@@ -70,13 +72,14 @@ export interface RouteOptions {
   combat: CombatService;
   loot: LootService;
   shopScene: ShopSceneService;
+  dungeonRuns: DungeonRunService;
 }
 
 export async function registerRoutes(
   app: FastifyInstance,
   options: RouteOptions,
 ): Promise<void> {
-  const { repo, uploadsDir, sessions, realtime, combat, loot, shopScene } =
+  const { repo, uploadsDir, sessions, realtime, combat, loot, shopScene, dungeonRuns } =
     options;
 
   /* ---------------------------------------------------------------------- */
@@ -348,6 +351,7 @@ export async function registerRoutes(
         ...state,
         lootDraft: session ? loot.getBySession(session.id) : null,
         activeShop: session ? shopScene.getBySession(session.id) : null,
+        dungeonRun: session ? dungeonRuns.getBySession(session.id) : null,
       };
     },
   );
@@ -558,6 +562,71 @@ export async function registerRoutes(
   );
 
   /* ---------------------------------------------------------------------- */
+  /* Mazmorras lineales+ (Fase 4B)                                          */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Las mazmorras llevan notas privadas del DM: el listado es solo DM cuando
+   * la campaña está en vivo. Sin sala abierta se mantiene el modo local.
+   */
+  app.get<{ Params: { campaignId: string } }>(
+    "/api/campaigns/:campaignId/dungeons",
+    async (request) => {
+      const { campaignId } = request.params;
+      requireDmIfLive(campaignId, request);
+      return repo.listDungeons(campaignId);
+    },
+  );
+
+  app.post<{ Params: { campaignId: string } }>(
+    "/api/campaigns/:campaignId/dungeons",
+    async (request, reply) => {
+      const { campaignId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      const dungeon = repo.createDungeon(campaignId, request.body ?? {});
+      realtime.emitRefresh(campaignId);
+      return reply.code(201).send(dungeon);
+    },
+  );
+
+  app.patch<{ Params: { campaignId: string; dungeonId: string } }>(
+    "/api/campaigns/:campaignId/dungeons/:dungeonId",
+    async (request) => {
+      const { campaignId, dungeonId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      const dungeon = repo.updateDungeon(campaignId, dungeonId, request.body ?? {});
+      realtime.emitRefresh(campaignId);
+      // Si la run activa usaba esta mazmorra, reemite su estado (o la cierra
+      // si la sala actual desapareció).
+      const session = sessions.getByCampaignId(campaignId);
+      if (session) {
+        realtime.emitDungeon(
+          session.code,
+          dungeonRuns.getBySession(session.id),
+        );
+      }
+      return dungeon;
+    },
+  );
+
+  app.delete<{ Params: { campaignId: string; dungeonId: string } }>(
+    "/api/campaigns/:campaignId/dungeons/:dungeonId",
+    async (request, reply) => {
+      const { campaignId, dungeonId } = request.params;
+      requireDmIfLive(campaignId, request);
+      assertNotInCombat(campaignId);
+      repo.deleteDungeon(campaignId, dungeonId);
+      dungeonRuns.closeForDungeon(campaignId, dungeonId);
+      realtime.emitRefresh(campaignId);
+      const session = sessions.getByCampaignId(campaignId);
+      if (session) realtime.emitDungeon(session.code, null);
+      return reply.code(204).send();
+    },
+  );
+
+  /* ---------------------------------------------------------------------- */
   /* Escena de tienda (Fase 4A-3)                                          */
   /* ---------------------------------------------------------------------- */
 
@@ -593,6 +662,12 @@ export async function registerRoutes(
         );
       }
       const scene = shopScene.open(code, getSessionToken(request), input.shopId);
+      // Fase 4C: tienda y mazmorra no conviven en la mesa.
+      const shopSession = sessions.getByCode(code);
+      if (shopSession) {
+        dungeonRuns.closeForSession(shopSession.id);
+        realtime.emitDungeon(code, null);
+      }
       realtime.emitShop(code, scene);
       return scene;
     },
@@ -630,7 +705,7 @@ export async function registerRoutes(
         );
       }
 
-      const result = shopScene.buy(code, getSessionToken(request), input.itemId);
+      const result = shopScene.buy(code, getSessionToken(request), input);
       realtime.emitShop(code, result.shop);
       realtime.emitRefresh(identity.session.campaignId);
       return result;
@@ -647,6 +722,96 @@ export async function registerRoutes(
       const campaign = repo.adjustWallet(campaignId, request.body ?? {});
       realtime.emitRefresh(campaignId);
       return campaign;
+    },
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* Run de mazmorra (Fase 4C)                                             */
+  /* ---------------------------------------------------------------------- */
+
+  app.get<{ Params: { code: string } }>(
+    "/api/sessions/:code/dungeon",
+    async (request) =>
+      dungeonRuns.getByCode(request.params.code, getSessionToken(request)),
+  );
+
+  /** El DM inicia la run; la tienda abierta se cierra. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/dungeon/start",
+    async (request, reply) => {
+      const { code } = request.params;
+      const input = dungeonStartInputSchema.parse(request.body ?? {});
+      const run = dungeonRuns.start(code, getSessionToken(request), input);
+      const session = sessions.getByCode(code);
+      if (session) {
+        shopScene.closeForSession(session.id);
+        realtime.emitShop(code, null);
+        realtime.emitRefresh(session.campaignId);
+      }
+      realtime.emitDungeon(code, run);
+      return reply.code(201).send(run);
+    },
+  );
+
+  /** Lanza el encuentro vinculado a la sala actual. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/dungeon/encounter",
+    async (request) => {
+      const { code } = request.params;
+      const run = dungeonRuns.startRoomEncounter(code, getSessionToken(request));
+      realtime.emitDungeon(code, run);
+      return run;
+    },
+  );
+
+  /** Descansa una vez en la sala actual y cura a la party. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/dungeon/rest",
+    async (request) => {
+      const { code } = request.params;
+      const run = dungeonRuns.rest(code, getSessionToken(request));
+      realtime.emitDungeon(code, run);
+      const session = sessions.getByCode(code);
+      if (session) realtime.emitRefresh(session.campaignId);
+      return run;
+    },
+  );
+
+  /** Abre el cofre de la sala actual una sola vez. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/dungeon/chest",
+    async (request) => {
+      const { code } = request.params;
+      const result = dungeonRuns.openChest(code, getSessionToken(request));
+      realtime.emitDungeon(code, result.run);
+      const session = sessions.getByCode(code);
+      if (session) {
+        realtime.emitRefresh(session.campaignId);
+        realtime.emitLoot(code, loot.getBySession(session.id));
+      }
+      return result;
+    },
+  );
+
+  /** Pasa a la siguiente sala; en la última termina la run. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/dungeon/advance",
+    async (request) => {
+      const { code } = request.params;
+      const run = dungeonRuns.advance(code, getSessionToken(request));
+      realtime.emitDungeon(code, run);
+      return run;
+    },
+  );
+
+  /** Termina la run y devuelve a los jugadores a su hoja. */
+  app.post<{ Params: { code: string } }>(
+    "/api/sessions/:code/dungeon/end",
+    async (request, reply) => {
+      const { code } = request.params;
+      dungeonRuns.end(code, getSessionToken(request));
+      realtime.emitDungeon(code, null);
+      return reply.code(204).send();
     },
   );
 

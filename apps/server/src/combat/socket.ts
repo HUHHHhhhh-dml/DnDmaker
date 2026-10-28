@@ -11,6 +11,7 @@ import {
   type CombatState,
 } from "@protocol-life/shared";
 import { HttpError } from "../repository";
+import type { DungeonRunService } from "../dungeon-run";
 import type { LootService } from "../loot";
 import type { ShopSceneService } from "../shop-scene";
 import type { SessionIdentity, SessionService } from "../sessions";
@@ -38,6 +39,8 @@ export interface CombatSocketDeps {
   loot: LootService;
   /** Fase 4A-3: el snapshot inicial incluye la tienda abierta. */
   shopScene: ShopSceneService;
+  /** Fase 4C: el snapshot inicial incluye la run de mazmorra activa. */
+  dungeonRuns: DungeonRunService;
 }
 
 interface SocketAuth {
@@ -227,6 +230,7 @@ export function registerCombatSocket(deps: CombatSocketDeps): void {
         recentCombat: recent ? toPublicCombatState(recent) : null,
         lootDraft: deps.loot.getBySession(identity.session.id),
         activeShop: deps.shopScene.getBySession(identity.session.id),
+        dungeonRun: deps.dungeonRuns.getBySession(identity.session.id),
       });
     } catch (error) {
       emitError(socket, error);

@@ -12,6 +12,7 @@ import type {
   CombatEvent,
   CombatState,
   Dungeon,
+  DungeonRun,
   EffectDefinition,
   Encounter,
   Item,
@@ -239,6 +240,23 @@ export const lootDrafts = sqliteTable(
     index("idx_loot_drafts_session").on(table.sessionId),
   ],
 );
+
+/** Run de mazmorra por sesión (Fase 4C). Una fila por sesión. */
+export const dungeonRuns = sqliteTable("dungeon_runs", {
+  id: text("id").primaryKey(),
+  campaignId: text("campaign_id")
+    .notNull()
+    .references(() => campaigns.id, { onDelete: "cascade" }),
+  sessionId: text("session_id")
+    .notNull()
+    .unique()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  dungeonId: text("dungeon_id").notNull(),
+  status: text("status").$type<DungeonRun["status"]>().notNull(),
+  state: text("state", { mode: "json" }).$type<DungeonRun>().notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
 
 export const CONTENT_TABLES = {
   items,

@@ -11,6 +11,7 @@ import { registerCombatSocket } from "./combat/socket";
 import { CombatStore } from "./combat/store";
 import { dbPath as defaultDbPath, uploadsDir as defaultUploadsDir, webDistDir as defaultWebDistDir } from "./config";
 import { openDatabase } from "./db";
+import { DungeonRunService } from "./dungeon-run";
 import { LootService } from "./loot";
 import { ShopSceneService } from "./shop-scene";
 import { createRealtime, type RealtimeService } from "./realtime";
@@ -38,6 +39,7 @@ export interface BuiltApp {
   combat: CombatService;
   loot: LootService;
   shopScene: ShopSceneService;
+  dungeonRuns: DungeonRunService;
 }
 
 export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp> {
@@ -67,6 +69,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
   });
 
   const realtime = createRealtime(app, sessions);
+  let dungeonRuns: DungeonRunService | null = null;
   const combat = new CombatService(
     repository,
     sessions,
@@ -83,6 +86,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
         realtime.emitLoot(session.code, loot.getBySession(session.id));
         // Y también la tienda que estuviera abierta.
         realtime.emitShop(session.code, shopScene.getBySession(session.id));
+        // Fase 4C: un combate normal cierra la run; el que lanza una sala la
+        // conserva y se marca con su `combatId` justo después.
+        dungeonRuns?.handleCombatStarted(state, session);
+        realtime.emitDungeon(
+          session.code,
+          dungeonRuns?.getBySession(session.id) ?? null,
+        );
       },
       onCombatEvent: (_state, event, session) => {
         realtime.emitCombatEvent(session.code, event);
@@ -102,12 +112,33 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
         realtime.emitRefresh(session.campaignId);
         // Fase 4A-2: si el botín quedó pendiente, la sala recibe el reparto.
         realtime.emitLoot(session.code, loot.getBySession(session.id));
+        // Fase 4C: la victoria marca la sala actual como superada.
+        dungeonRuns?.handleCombatEnded(state, session);
+        realtime.emitDungeon(
+          session.code,
+          dungeonRuns?.getBySession(session.id) ?? null,
+        );
       },
     },
     loot,
     shopScene,
   );
-  registerCombatSocket({ io: realtime.io, sessions, combat, loot, shopScene });
+  dungeonRuns = new DungeonRunService(
+    db,
+    sqlite,
+    repository,
+    sessions,
+    combat,
+    loot,
+  );
+  registerCombatSocket({
+    io: realtime.io,
+    sessions,
+    combat,
+    loot,
+    shopScene,
+    dungeonRuns,
+  });
 
   await app.register(cors, { origin: true });
   await app.register(multipart, { limits: uploadLimits });
@@ -120,6 +151,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     combat,
     loot,
     shopScene,
+    dungeonRuns,
   });
 
   const webIndex = join(webDist, "index.html");
@@ -199,5 +231,6 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<BuiltApp>
     combat,
     loot,
     shopScene,
+    dungeonRuns,
   };
 }

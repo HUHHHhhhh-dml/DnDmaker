@@ -9,12 +9,15 @@ import {
   calculateStats,
   emptyContent,
   findReferences,
+  dungeonInputSchema,
+  dungeonPatchSchema,
   newId,
   shopInputSchema,
   shopPatchSchema,
   validateCampaign,
   validateCharacter,
   validateContent,
+  validateDungeon,
   validateEffect,
   validateEncounter,
   validateItem,
@@ -31,9 +34,12 @@ import {
   type ContentType,
   type DerivedStats,
   type Dungeon,
+  type DungeonRoom,
+  type DungeonRoomInput,
   type EffectAction,
   type EffectDefinition,
   type Encounter,
+  type EncounterRewards,
   type Item,
   type Ruleset,
   type Shop,
@@ -90,6 +96,14 @@ export interface ShopUnlockResult {
   spent: number;
 }
 
+/** Resultado de desbloquear una skill en la tienda (Fase 4C+). */
+export interface ShopSkillUnlockResult {
+  wallet: CampaignWallet;
+  shop: Shop;
+  skill: Skill;
+  spent: number;
+}
+
 type EntityByType = {
   items: Item;
   skills: Skill;
@@ -116,6 +130,14 @@ const PREFIX: Record<ContentType, string> = {
 };
 
 const nowIso = (): string => new Date().toISOString();
+
+/** Asigna id a las salas nuevas y conserva el de las existentes. */
+function normalizeDungeonRooms(rooms: DungeonRoomInput[]): DungeonRoom[] {
+  return rooms.map((room) => ({
+    ...room,
+    id: room.id ?? newId("drm"),
+  }));
+}
 
 function assertRules(rules: Ruleset): void {
   if (rules.luckFloor > rules.luckCap) {
@@ -668,6 +690,7 @@ export class Repository {
         id: shopId,
         name: parsedPatch.name ?? current.name,
         items: parsedPatch.items ?? current.items,
+        skills: parsedPatch.skills ?? current.skills,
       };
       assertValid(validateShop(next, campaign.content), "la tienda");
       extras.shops[index] = next;
@@ -685,6 +708,95 @@ export class Repository {
         throw new HttpError(404, "shop_not_found", "La tienda no existe.");
       }
       extras.shops.splice(index, 1);
+      this.writeExtras(campaignId, extras, now);
+    })();
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Mazmorras lineales+ (Fase 4B)                                          */
+  /* ---------------------------------------------------------------------- */
+
+  listDungeons(campaignId: string): Dungeon[] {
+    return this.readExtras(campaignId).dungeons;
+  }
+
+  getDungeon(campaignId: string, dungeonId: string): Dungeon {
+    const dungeon = this.readExtras(campaignId).dungeons.find(
+      (entry) => entry.id === dungeonId,
+    );
+    if (!dungeon) {
+      throw new HttpError(404, "dungeon_not_found", "La mazmorra no existe.");
+    }
+    return dungeon;
+  }
+
+  createDungeon(campaignId: string, input: unknown): Dungeon {
+    const campaign = this.getCampaign(campaignId);
+    const parsed = dungeonInputSchema.parse(input);
+    const rooms = normalizeDungeonRooms(parsed.rooms);
+    const dungeon: Dungeon = {
+      ...parsed,
+      id: newId("dgn"),
+      // Una descripción vacía se guarda como ausente (extra limpio).
+      description: parsed.description?.trim() || undefined,
+      entryRoomId: parsed.entryRoomId ?? rooms[0]?.id,
+      rooms,
+    };
+    assertValid(validateDungeon(dungeon, campaign.content), "la mazmorra");
+
+    const now = nowIso();
+    this.sqlite.transaction(() => {
+      const extras = this.readExtras(campaignId);
+      extras.dungeons.push(dungeon);
+      this.writeExtras(campaignId, extras, now);
+    })();
+    return dungeon;
+  }
+
+  updateDungeon(campaignId: string, dungeonId: string, patch: unknown): Dungeon {
+    const parsedPatch = dungeonPatchSchema.parse(patch);
+    const campaign = this.getCampaign(campaignId);
+    const now = nowIso();
+    return this.sqlite.transaction(() => {
+      const extras = this.readExtras(campaignId);
+      const index = extras.dungeons.findIndex((entry) => entry.id === dungeonId);
+      const current = extras.dungeons[index];
+      if (index === -1 || !current) {
+        throw new HttpError(404, "dungeon_not_found", "La mazmorra no existe.");
+      }
+      const rooms = parsedPatch.rooms
+        ? normalizeDungeonRooms(parsedPatch.rooms)
+        : current.rooms;
+      const next: Dungeon = {
+        ...current,
+        ...parsedPatch,
+        id: dungeonId,
+        name: parsedPatch.name ?? current.name,
+        // `description: ""` borra la descripción; omitirla la conserva.
+        description:
+          parsedPatch.description !== undefined
+            ? parsedPatch.description.trim() || undefined
+            : current.description,
+        rooms,
+        entryRoomId:
+          parsedPatch.entryRoomId ?? current.entryRoomId ?? rooms[0]?.id,
+      };
+      assertValid(validateDungeon(next, campaign.content), "la mazmorra");
+      extras.dungeons[index] = next;
+      this.writeExtras(campaignId, extras, now);
+      return next;
+    })();
+  }
+
+  deleteDungeon(campaignId: string, dungeonId: string): void {
+    const now = nowIso();
+    this.sqlite.transaction(() => {
+      const extras = this.readExtras(campaignId);
+      const index = extras.dungeons.findIndex((entry) => entry.id === dungeonId);
+      if (index === -1) {
+        throw new HttpError(404, "dungeon_not_found", "La mazmorra no existe.");
+      }
+      extras.dungeons.splice(index, 1);
       this.writeExtras(campaignId, extras, now);
     })();
   }
@@ -806,6 +918,95 @@ export class Repository {
   }
 
   /**
+   * Compra de una skill en la tienda: paga el precio, baja stock y la
+   * desbloquea para la campaña. No se equipa en ninguna ficha.
+   */
+  buyShopSkillUnlock(input: {
+    campaignId: string;
+    shopId: string;
+    skillId: string;
+  }): ShopSkillUnlockResult {
+    const now = nowIso();
+
+    return this.sqlite.transaction(() => {
+      const extras = this.readExtras(input.campaignId);
+      const shopIndex = extras.shops.findIndex(
+        (entry) => entry.id === input.shopId,
+      );
+      const shop = extras.shops[shopIndex];
+      if (shopIndex === -1 || !shop) {
+        throw new HttpError(404, "shop_not_found", "La tienda no existe.");
+      }
+
+      const skillEntries = shop.skills ?? [];
+      const entryIndex = skillEntries.findIndex(
+        (entry) => entry.skillId === input.skillId,
+      );
+      const entry = skillEntries[entryIndex];
+      if (entryIndex === -1 || !entry) {
+        throw new HttpError(
+          404,
+          "shop_skill_not_found",
+          "Esa skill no está a la venta en esta tienda.",
+        );
+      }
+
+      const campaign = this.getCampaign(input.campaignId);
+      const skill = campaign.content.skills.find(
+        (candidate) => candidate.id === input.skillId,
+      );
+      if (!skill) {
+        throw new HttpError(
+          404,
+          "skill_not_found",
+          "La skill de la tienda ya no existe.",
+        );
+      }
+      if (skill.unlocked === true) {
+        throw new HttpError(
+          409,
+          "skill_already_unlocked",
+          "Esa skill ya está desbloqueada para los jugadores.",
+        );
+      }
+      if (entry.stock !== undefined && entry.stock < 1) {
+        throw new HttpError(409, "out_of_stock", "Esa skill está agotada.");
+      }
+      if (extras.wallet.cleanShards < entry.price) {
+        throw new HttpError(
+          409,
+          "insufficient_funds",
+          "No hay Clean Shards suficientes en la bolsa de la party.",
+        );
+      }
+
+      extras.wallet = {
+        cleanShards: extras.wallet.cleanShards - entry.price,
+      };
+      const nextSkills = [...skillEntries];
+      if (entry.stock !== undefined) {
+        nextSkills[entryIndex] = { ...entry, stock: entry.stock - 1 };
+      }
+      extras.shops[shopIndex] = { ...shop, skills: nextSkills };
+      this.writeExtras(input.campaignId, extras, now);
+
+      const unlockedSkill = CONTENT_SCHEMAS.skills.entity.parse({
+        ...skill,
+        unlocked: true,
+      }) as Skill;
+      this.updateEntity("skills", skill.id, unlockedSkill, now);
+      this.touchCampaign(input.campaignId, now);
+
+      return {
+        wallet: extras.wallet,
+        shop: extras.shops[shopIndex] as Shop,
+        skill: unlockedSkill,
+        spent: entry.price,
+      };
+    })();
+  }
+
+  /**
    * Recompensas de un encuentro ganado por la party (Fase 4). La moneda entra
    * en la bolsa común y cada objeto se entrega a cada personaje jugador
    * indicado (todos los de la party, sin repartir). Debe llamarse dentro de la
@@ -825,13 +1026,49 @@ export class Repository {
     const encounter = campaign.content.encounters.find(
       (entry) => entry.id === input.encounterId,
     );
-    const rewards = encounter?.rewards;
+    return this.grantRewards({
+      campaignId: input.campaignId,
+      rewards: encounter?.rewards,
+      characterIds: input.characterIds,
+      grantItems: input.grantItems,
+    });
+  }
+
+  /**
+   * Entrega unas recompensas (`EncounterRewards`) a la party. Es la pieza
+   * compartida por el botín de encuentro y el cofre de mazmorra (Fase 4C):
+   * moneda a la bolsa común y objetos a cada personaje jugador indicado.
+   * Debe llamarse dentro de la transacción del cierre de combate o del cofre
+   * para que el estado que lo rodea (HP/run) sea atómico.
+   */
+  grantRewards(input: {
+    campaignId: string;
+    /** Las recompensas de mazmorra pueden incluir `skillIds`. */
+    rewards: (EncounterRewards & { skillIds?: string[] }) | undefined;
+    characterIds: string[];
+    grantItems?: boolean;
+    /**
+     * Cofre `unlockRewards` (Fase 4C): además de entregar los objetos, los
+     * desbloquea para toda la campaña (como una compra en la tienda).
+     */
+    unlockItems?: boolean;
+  }): CombatRewardSummary | null {
+    const rewards = input.rewards;
     if (!rewards) return null;
 
     const grantItems = input.grantItems !== false;
     const currency = Math.max(0, Math.round(rewards.currency ?? 0));
     const itemIds = rewards.itemIds ?? [];
-    if (currency === 0 && (!grantItems || itemIds.length === 0)) return null;
+    const skillIds = rewards.skillIds ?? [];
+    const willUnlock = input.unlockItems === true && itemIds.length > 0;
+    if (
+      currency === 0 &&
+      !willUnlock &&
+      skillIds.length === 0 &&
+      (!grantItems || itemIds.length === 0)
+    ) {
+      return null;
+    }
 
     const recipients = [...new Set(input.characterIds)];
     const now = nowIso();
@@ -859,6 +1096,42 @@ export class Repository {
           delivered.push(characterId);
         }
       }
+
+      // Las skills de un cofre no tienen inventario: siempre se desbloquean
+      // para la campaña al abrirlo.
+      const unlockedSkills: string[] = [];
+      for (const skillId of new Set(skillIds)) {
+        const row = this.findContentRow("skills", skillId);
+        if (!row) continue;
+        const skill = row.data as Skill;
+        if (skill.unlocked !== true) {
+          const next = CONTENT_SCHEMAS.skills.entity.parse({
+            ...skill,
+            unlocked: true,
+          }) as Skill;
+          this.updateEntity("skills", skillId, next, now);
+        }
+        unlockedSkills.push(skillId);
+      }
+
+      // Desbloqueo de campaña (cofre A): el objeto pasa a la biblioteca de
+      // todos los jugadores, se entregue al inventario o quede en el reparto.
+      const unlocked: string[] = [];
+      if (input.unlockItems) {
+        for (const itemId of new Set(itemIds)) {
+          const row = this.findContentRow("items", itemId);
+          if (!row) continue;
+          const item = row.data as Item;
+          if (item.unlocked !== true) {
+            const next = CONTENT_SCHEMAS.items.entity.parse({
+              ...item,
+              unlocked: true,
+            }) as Item;
+            this.updateEntity("items", itemId, next, now);
+          }
+          unlocked.push(itemId);
+        }
+      }
       this.touchCampaign(input.campaignId, now);
 
       return {
@@ -869,6 +1142,9 @@ export class Repository {
             : undefined,
         characterIds:
           grantItems && delivered.length > 0 ? delivered : undefined,
+        unlockedItemIds: unlocked.length > 0 ? unlocked : undefined,
+        unlockedSkillIds:
+          unlockedSkills.length > 0 ? unlockedSkills : undefined,
       } satisfies CombatRewardSummary;
     })();
   }
@@ -1306,6 +1582,12 @@ function remapContent(content: CampaignContent): CampaignContent {
   register(content.encounters, "enc");
   register(content.specials, "spc");
   register(content.shops, "shp");
+  register(content.dungeons, "dgn");
+  // Las salas viven anidadas en la mazmorra: se remapean una a una para que
+  // `entryRoomId` y las referencias no colisionen al importar dos veces.
+  for (const dungeon of content.dungeons) {
+    for (const room of dungeon.rooms) map.set(room.id, newId("drm"));
+  }
 
   const mapId = (id: string | null | undefined): string | null => {
     if (!id) return null;
@@ -1427,13 +1709,30 @@ function remapContent(content: CampaignContent): CampaignContent {
         ...entry,
         itemId: mapIdRequired(entry.itemId),
       })),
+      skills: shop.skills?.map((entry) => ({
+        ...entry,
+        skillId: mapIdRequired(entry.skillId),
+      })),
     })),
     dungeons: content.dungeons.map((dungeon) => ({
       ...dungeon,
-      entryRoomId: dungeon.entryRoomId,
+      id: mapIdRequired(dungeon.id),
+      entryRoomId: dungeon.entryRoomId
+        ? mapIdRequired(dungeon.entryRoomId)
+        : undefined,
       rooms: dungeon.rooms.map((room) => ({
         ...room,
-        encounterId: room.encounterId ? mapIdRequired(room.encounterId) : undefined,
+        id: mapIdRequired(room.id),
+        encounterId: room.encounterId
+          ? mapIdRequired(room.encounterId)
+          : undefined,
+        rewards: room.rewards
+          ? {
+              ...room.rewards,
+              itemIds: room.rewards.itemIds?.map(mapIdRequired),
+              skillIds: room.rewards.skillIds?.map(mapIdRequired),
+            }
+          : undefined,
       })),
     })),
   };

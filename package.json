@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "PROTOCOL LIFE — estudio del DM y mesa de rol local-first",
+  "description": "PROTOCOL LIFE \u2014 estudio del DM y mesa de rol local-first",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -17,7 +17,9 @@
     "seed": "npm run seed -w @protocol-life/server",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "npm run typecheck -w @protocol-life/shared && npm run typecheck -w @protocol-life/server && npm run typecheck -w @protocol-life/web"
+    "typecheck": "npm run typecheck -w @protocol-life/shared && npm run typecheck -w @protocol-life/server && npm run typecheck -w @protocol-life/web",
+    "backup": "npm run backup -w @protocol-life/server",
+    "restore": "npm run restore -w @protocol-life/server --"
   },
   "devDependencies": {
     "concurrently": "^10.0.6",

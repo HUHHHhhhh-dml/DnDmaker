@@ -15,10 +15,14 @@ import {
   cx,
 } from "../components/ui";
 
-/** Stock total de la tienda: `∞` si algún objeto no tiene stock limitado. */
+/**
+ * Stock total de la tienda (objetos + skills): `∞` si algún producto no tiene
+ * stock limitado.
+ */
 function totalStock(shop: Shop): number | "∞" {
-  if (shop.items.some((entry) => entry.stock === undefined)) return "∞";
-  return shop.items.reduce((sum, entry) => sum + (entry.stock ?? 0), 0);
+  const entries = [...shop.items, ...(shop.skills ?? [])];
+  if (entries.some((entry) => entry.stock === undefined)) return "∞";
+  return entries.reduce((sum, entry) => sum + (entry.stock ?? 0), 0);
 }
 
 function ShopCard({ shop }: { shop: Shop }) {
@@ -35,6 +39,8 @@ function ShopCard({ shop }: { shop: Shop }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const stock = totalStock(shop);
+  const skills = shop.skills ?? [];
+  const products = shop.items.length + skills.length;
   const onThisCampaign =
     Boolean(liveSession) && liveCampaignId === campaignId;
   const openedHere = activeShop?.shopId === shop.id;
@@ -94,10 +100,16 @@ function ShopCard({ shop }: { shop: Shop }) {
 
       <div className="grid grid-cols-2 gap-px border-b border-ui-line bg-ui-surface-1">
         <div className="bg-ui-surface-2 px-3 py-2">
-          <div className="mono-label">Objetos</div>
+          <div className="mono-label">Productos</div>
           <div className="mt-0.5 font-display text-xl leading-none text-ui">
-            {String(shop.items.length).padStart(2, "0")}
+            {String(products).padStart(2, "0")}
           </div>
+          {skills.length > 0 ? (
+            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
+              {shop.items.length} objeto{shop.items.length === 1 ? "" : "s"} ·{" "}
+              {skills.length} skill{skills.length === 1 ? "" : "s"}
+            </div>
+          ) : null}
         </div>
         <div className="bg-ui-surface-2 px-3 py-2">
           <div className="mono-label">Stock total</div>
@@ -152,8 +164,8 @@ function ShopCard({ shop }: { shop: Shop }) {
         title="Eliminar tienda"
         message={
           <>
-            Vas a eliminar <strong>«{shop.name}»</strong>. Los objetos que la party
-            ya compró siguen desbloqueados en la campaña.
+            Vas a eliminar <strong>«{shop.name}»</strong>. Los objetos y skills
+            que la party ya compró siguen desbloqueados en la campaña.
           </>
         }
         onCancel={() => setConfirmDelete(false)}
@@ -184,7 +196,14 @@ export function ShopsPage() {
 
   if (!campaign) return null;
 
-  const totalItems = shops.reduce((sum, shop) => sum + shop.items.length, 0);
+  const totalProducts = shops.reduce(
+    (sum, shop) => sum + shop.items.length + (shop.skills?.length ?? 0),
+    0,
+  );
+  const totalSkills = shops.reduce(
+    (sum, shop) => sum + (shop.skills?.length ?? 0),
+    0,
+  );
   const totalStockAll = shops.reduce((sum, shop) => {
     const stock = totalStock(shop);
     return sum + (stock === "∞" ? 0 : stock);
@@ -196,7 +215,7 @@ export function ShopsPage() {
       <PageHeader
         eyebrow="Economía · Tiendas"
         title="Tiendas"
-        description={`El DM abre una tienda en la mesa y la sala entera ve la escena en vivo. La party compra con ${CURRENCY_NAME} de la bolsa común: pagar el precio desbloquea el objeto para toda la campaña, no lo mete en el inventario.`}
+        description={`El DM abre una tienda en la mesa y la sala entera ve la escena en vivo. La party compra con ${CURRENCY_NAME} de la bolsa común: pagar el precio desbloquea el objeto o la skill para toda la campaña. Las skills compradas no se equipan solas ni entran en el inventario.`}
         actions={
           <LinkButton to="/shops/new" variant="accent" size="sm" icon="plus">
             Nueva tienda
@@ -211,9 +230,15 @@ export function ShopsPage() {
             <span className="tnum font-bold text-ui">{shops.length}</span>
           </span>
           <span className="chip">
-            <span className="text-ui-faint">Objetos a la venta</span>
-            <span className="tnum font-bold text-ui">{totalItems}</span>
+            <span className="text-ui-faint">Productos a la venta</span>
+            <span className="tnum font-bold text-ui">{totalProducts}</span>
           </span>
+          {totalSkills > 0 ? (
+            <span className="chip">
+              <span className="text-ui-faint">Skills</span>
+              <span className="tnum font-bold text-ui">{totalSkills}</span>
+            </span>
+          ) : null}
           <span className="chip">
             <span className="text-ui-faint">Stock total</span>
             <span className="tnum font-bold text-ui">
@@ -259,7 +284,7 @@ export function ShopsPage() {
           title={shops.length === 0 ? "Todavía no hay tiendas" : "Ninguna tienda coincide"}
           description={
             shops.length === 0
-              ? `Crea la primera tienda, elige sus objetos y ponles precio en ${CURRENCY_NAME}. Después ábrela en la mesa para que la party compre en vivo.`
+              ? `Crea la primera tienda, elige sus objetos y skills y ponles precio en ${CURRENCY_NAME}. Después ábrela en la mesa para que la party compre en vivo.`
               : "Prueba con otro nombre o descripción."
           }
           action={

@@ -2,7 +2,7 @@
 
 Aplicación para que un **DM** cree y dirija su campaña de rol con contenido personalizado, y para que su mesa se conecte desde el navegador por la WiFi local. El combate está inspirado en *Limbus Company*: skills con monedas, clash, DEF y status effects.
 
-> **Estado actual: Fase 2 completada** — estudio del DM + mesa en vivo LAN (link/QR + PIN, sesiones con tokens, fichas compartidas en tiempo real y presencia). El combate llega en la Fase 3.
+> **Estado actual: Fase 4 completada** — estudio del DM, mesa LAN, combate por rondas, economía de Clean Shards con tiendas, mazmorras lineales con escenas y backup/restore del SQLite. La Fase 5 (crawler 2D con tilemap) queda como futuro.
 
 ![Mesa del DM con una jugadora conectada](./docs/screenshots/fase-2-mesa-dm.png)
 
@@ -45,6 +45,8 @@ Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislami
 | `npm run build` | Build de producción de la web (`apps/web/dist`). |
 | `npm start` | Arranca el servidor; si existe `apps/web/dist`, también sirve la web y el socket. |
 | `npm run seed` | Garantiza que exista la campaña inicial (no borra ni duplica). |
+| `npm run backup` | Copia manual del SQLite en `data/backups/` (segura con el servidor abierto). |
+| `npm run restore -- <archivo>` | Restaura una copia; exige el servidor parado y guarda antes la base actual. |
 
 ## Qué incluye
 
@@ -109,6 +111,48 @@ Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislami
 7. Se repiten las rondas hasta la victoria o la derrota. Al terminar, el HP de
    la party se guarda; fuera de combate, **Rest party** cura a la party.
 
+### Fase 4 — Economía, mazmorras y operación
+
+- **Clean Shards** como bolsa común de la party, persistida en
+  `campaigns.extras.wallet`. Las recompensas de encuentro pagan moneda una vez y
+  entregan los objetos a cada jugador; con `shareLoot` desactivado y 2+
+  jugadores se reparte por turnos en orden serpiente.
+- **Tiendas en vivo**: el DM elige objetos y skills, precio y stock; abre la
+  tienda en la mesa y la sala ve una escena a pantalla completa. Comprar paga la
+  bolsa y **desbloquea para la campaña** el objeto o la skill; no los mete en el
+  inventario ni equipa la skill. Stock vacío = infinito, `0` = agotado.
+- **Mazmorras lineales+**: salas ordenadas con tipo (`encounter`, `boss`, `rest`,
+  `treasure`), escena propia (imagen/GIF/URL de vídeo), texto público y notas
+  privadas del DM. La entrada se elige en el editor. El DM inicia la run, lanza
+  el encuentro, descansa, abre cofres, avanza y termina; los jugadores ven la
+  escena y la ruta sin notas.
+- **Cofres**: la moneda va a la bolsa; los objetos se entregan (o van a un loot
+  draft) y las skills se desbloquean para la campaña. Con
+  **Desbloquear para la campaña** activo, los objetos también quedan
+  desbloqueados para todos, no solo en el inventario del que los recibe.
+- **Backup/restore**: copia diaria y manual del SQLite, retención configurable,
+  restore por CLI con el servidor parado, validación de integridad y copia previa
+  de la base actual.
+- **Permisos**: solo el DM abre tiendas y dirige mazmorras; solo los jugadores
+  compran. Tienda y mazmorra no conviven en la mesa; un combate normal cierra la
+  run y la victoria en una sala de encuentro la marca como superada.
+
+#### Cómo jugar una mazmorra
+
+1. Crea las salas en **Mazmorras**: orden, tipo, escena, notas privadas y, en los
+   tesoros, su recompensa (objetos, skills, moneda y modo de desbloqueo).
+2. Abre la sala en **Mesa** y comparte el link. En el panel **Mazmorra en la
+   mesa**, elige la mazmorra y la sala de entrada y pulsa **Iniciar mazmorra**.
+3. La escena sustituye la hoja del jugador. Si la sala es de encuentro, pulsa
+   **Iniciar encuentro**; se juega como un combate normal. Al ganar, la sala
+   queda superada y la escena de la mazmorra vuelve al cerrar el resultado.
+4. En una sala de descanso, **Descansar** cura a la party una vez. En un tesoro,
+   **Abrir cofre** entrega la recompensa una sola vez.
+5. **Avanzar de sala** solo está disponible cuando la sala actual está resuelta
+   o no tiene acción (ambientación). En la última sala, avanzar termina la run.
+6. **Terminar mazmorra** cierra la run y devuelve a todos a su hoja. La tienda se
+   cierra al iniciar la mazmorra y abrir una tienda cierra la run.
+
 ### Capturas
 
 | Mesa del jugador | Entrada a la sala |
@@ -153,7 +197,7 @@ protocol-life/
   packages/
     shared/              # tipos, Zod, stats, validación, contrato de sesión
   docs/                  # diseño, contrato, notas y capturas
-  data/                  # SQLite/uploads (git-ignored)
+  data/                  # SQLite/uploads/backups (git-ignored)
 ```
 
 ## Stack
@@ -209,6 +253,16 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 | POST | `/api/sessions/:code/close` | Cerrar la sala (solo DM). |
 | GET | `/api/campaigns/:id/export` | Exportar campaña (solo DM si hay sala). |
 | POST | `/api/campaigns/import` | Importar JSON y remapear referencias. |
+| GET/POST | `/api/campaigns/:id/shops` | Listar / crear tiendas (objetos y skills a la venta). |
+| PATCH/DELETE | `/api/campaigns/:id/shops/:shopId` | Editar / borrar tienda. |
+| POST | `/api/campaigns/:id/wallet` | Ajustar la bolsa común (delta, nunca negativa). |
+| GET/POST | `/api/campaigns/:id/dungeons` | Listar / crear mazmorras (DM si hay sala). |
+| PATCH/DELETE | `/api/campaigns/:id/dungeons/:dungeonId` | Editar / borrar mazmorra. |
+| GET | `/api/sessions/:code/shop` | Escena de tienda abierta (o `null`). |
+| POST | `/api/sessions/:code/shop/open\|close` | Abrir / cerrar la tienda en la mesa (DM). |
+| POST | `/api/sessions/:code/shop/buy` | Comprar `{ itemId }` o `{ skillId }`; desbloquea para la campaña. |
+| GET | `/api/sessions/:code/dungeon` | Run de mazmorra activa saneada (o `null`). |
+| POST | `/api/sessions/:code/dungeon/start\|encounter\|rest\|chest\|advance\|end` | Acciones del DM sobre la run. |
 | GET/POST | `/api/campaigns/:id/:type` | Listar / crear contenido (`items`, `skills`, `effects`, `characters`, `encounters`). |
 | GET/PATCH/DELETE | `/api/content/:type/:id` | Leer / editar / borrar; el jugador solo puede editar su ficha. |
 | GET | `/api/campaigns/:id/characters/:charId/sheet` | Ficha con equipo y stats derivados. |
@@ -217,7 +271,8 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 
 **Socket.IO** (mismo origen, path `/socket.io`; auth `{ code, token }`):
 
-- Servidor → cliente: `session:state`, `session:players`, `campaign:refresh`, `session:closed`, `session:error`.
+- Servidor → cliente: `session:state`, `session:players`, `campaign:refresh`, `session:closed`, `session:error`, `combat:*`, `loot:updated`, `shop:state`, `dungeon:state`.
+- `state:full` incluye el combate vivo, `lootDraft`, `activeShop` y `dungeonRun` para reconexiones.
 - El cliente no muta por socket: las escrituras van por HTTP y se validan en el servidor.
 
 ### Permisos
@@ -228,8 +283,17 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 
 ## Import / export
 
-- Export: JSON con `schemaVersion: 1`, reglas, settings y todo el contenido.
-- Import: valida con Zod, comprueba referencias, genera IDs nuevos para campaña y contenido, y remapea equipo, skills, efectos, inventarios, encuentros y recompensas. Se puede importar el mismo archivo varias veces sin colisiones.
+- Export: JSON con `schemaVersion: 1`, reglas, settings, bolsa, contenido, tiendas y mazmorras.
+- Import: valida con Zod, comprueba referencias, genera IDs nuevos para campaña y contenido, y remapea equipo, skills, efectos, inventarios, encuentros, recompensas, tiendas (incluidas sus skills), mazmorras, salas y recompensas de cofre. Se puede importar el mismo archivo varias veces sin colisiones.
+
+## Backup y restore
+
+- **Copia automática diaria:** al arrancar el servidor y cada 6 horas se comprueba si ya hay una copia del día; si no, se crea en `data/backups/` con nombre `protocol-life-YYYYMMDD-HHmmss.sqlite`. No bloquea la mesa ni el arranque.
+- **Copia manual:** `npm run backup`. Usa `Database#backup` de SQLite, así que produce un snapshot consistente **aunque el servidor esté en marcha** y con WAL activo. Se puede cambiar la retención con `PROTOCOL_BACKUP_RETENTION` (default 7) o `npm run backup -- --keep 14`.
+- **Restauración:** `npm run restore -- data/backups/protocol-life-....sqlite`. Antes comprueba que el servidor esté parado (lock con PID), valida el archivo (`integrity_check` y tabla `campaigns`), guarda una copia `pre-restore-*.sqlite` de la base actual y sustituye el SQLite. Si el archivo no existe o no es válido, la base actual no se toca. **No hay endpoint HTTP de restore.**
+- **Imágenes:** el backup es solo del SQLite. `data/uploads/` (imágenes subidas) hay que copiarlo aparte para no perderlas.
+- **Si el servidor se cae:** puede quedar un lock obsoleto en `data/protocol-life.sqlite.lock`; el siguiente arranque o el restore lo detectan por PID y lo retiran solos.
+- Flujo recomendado: `npm run backup` antes de una sesión importante; para restaurar, parar el servidor (`Ctrl+C`), ejecutar `npm run restore -- <copia>` y volver a arrancar.
 
 ## Variables de entorno
 
@@ -241,6 +305,8 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 | `PROTOCOL_DB` | `./data/protocol-life.sqlite` | Ruta del SQLite. |
 | `PROTOCOL_UPLOADS_DIR` | `./data/uploads` | Carpeta de imágenes. |
 | `PROTOCOL_WEB_DIST` | `./apps/web/dist` | Build web que sirve el servidor (si existe). |
+| `PROTOCOL_BACKUPS_DIR` | `./data/backups` | Carpeta de copias de seguridad. |
+| `PROTOCOL_BACKUP_RETENTION` | `7` | Copias diarias que se conservan (mínimo 1). |
 | `PROTOCOL_API_URL` | `http://127.0.0.1:3001` | Destino del proxy de Vite (API + Socket.IO). |
 | `VITE_API_URL` | vacío (same-origin) | API base del cliente si se sirve por separado. |
 
@@ -257,6 +323,13 @@ npm test
 - `apps/server/src/combat.test.ts`: snapshot, escena, presencia/auto-lock, HP persistente, Rest party, export/import visual y bloqueo de edición en combate.
 - `apps/server/src/combat-round.test.ts`: declaraciones, slots, redirección, efectos, determinismo con seed y resolución de rondas.
 - `apps/server/src/combat-socket.test.ts`: consola DM/jugador por Socket.IO, permisos, reconexión y fin de combate.
+- `apps/server/src/economy.test.ts`: bolsa, CRUD/validación de tiendas, export/import, saneado y recompensas.
+- `apps/server/src/shop-scene.test.ts`: abrir/cerrar tienda, compra de objetos y skills, stock, fondos, desbloqueo y permisos.
+- `apps/server/src/loot.test.ts` y `packages/shared/src/loot.test.ts`: reparto por turnos, serpiente, entrega y cierre.
+- `apps/server/src/dungeon.test.ts`: CRUD/validación de mazmorras, recompensas de cofre y export/import con remapeo.
+- `apps/server/src/dungeon-run.test.ts`: run, combate/victoria/derrota, descanso, cofre, skills, avance, fin, permisos y exclusividad con tienda.
+- `apps/server/src/backup.test.ts`: copia con el servidor abierto, retención, copia diaria, restore en base temporal, copia previa de seguridad, archivo inválido/ausente y lock del servidor.
+- `apps/server/src/fase4-qa.test.ts`: sesión completa de Fase 4 con 2 jugadores (tienda, mazmorra, combate, cofre, skills, backup/restore y reconexión).
 - `apps/web/src/lib/combat.test.ts` y `clash.test.ts`: contrato de `targetSlot` y lectura de la cinemática de clash.
 
 ## Roadmap
@@ -264,7 +337,8 @@ npm test
 - **Fase 1 — Estudio del DM:** completada.
 - **Fase 2 — Mesa en vivo:** completada.
 - **Fase 3 — Encuentros y combate:** completada (`CombatState`, declaraciones, clash, monedas, DEF, efectos, utilidad, log animado, consola del DM y side-view híbrido).
-- **Fase 4 — Contenido avanzado:** tiendas con Clean Shards, mazmorras, balance, animaciones, backup/restore.
+- **Fase 4 — Contenido avanzado:** completada (economía con Clean Shards, tiendas con objetos y skills, mazmorras lineales con escenas, reparto de botín, backup/restore y QA de sesión completa).
+- **Fase 5 — Crawler 2D:** futuro (tilemap, movimiento, niebla y editor de mapas); no incluido en v0.1.
 
 ## Documentos
 

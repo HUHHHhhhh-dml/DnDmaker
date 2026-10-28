@@ -4,6 +4,8 @@ import { CharacterSheetPage } from "./pages/CharacterSheetPage";
 import { CharactersPage } from "./pages/CharactersPage";
 import { CombatScenePrototype } from "./pages/CombatScenePrototype";
 import { DashboardPage } from "./pages/DashboardPage";
+import { DungeonEditorPage } from "./pages/DungeonEditorPage";
+import { DungeonsPage } from "./pages/DungeonsPage";
 import { EffectEditorPage } from "./pages/EffectEditorPage";
 import { EffectsPage } from "./pages/EffectsPage";
 import { EncounterEditorPage } from "./pages/EncounterEditorPage";
@@ -74,6 +76,9 @@ export function App() {
         <Route path="encounters" element={<EncountersPage />} />
         <Route path="encounters/new" element={<EncounterEditorPage />} />
         <Route path="encounters/:encounterId" element={<EncounterEditorPage />} />
+        <Route path="dungeons" element={<DungeonsPage />} />
+        <Route path="dungeons/new" element={<DungeonEditorPage />} />
+        <Route path="dungeons/:dungeonId" element={<DungeonEditorPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

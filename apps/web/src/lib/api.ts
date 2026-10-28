@@ -4,13 +4,19 @@ import type {
   CampaignSettings,
   CampaignWallet,
   Character,
+  CombatRewardSummary,
   ContentType,
+  Dungeon,
+  DungeonInput,
+  DungeonPatchInput,
+  DungeonStartInput,
   EffectDefinition,
   Encounter,
   HostSessionResponse,
   Item,
   JoinSessionResponse,
   LootDraft,
+  PublicDungeonRun,
   PublicSession,
   SessionInfo,
   SessionJoinInput,
@@ -47,12 +53,31 @@ export type CampaignSummary = {
   counts: CampaignCounts;
 };
 
-/** Resultado de comprar en la escena de tienda (Fase 4A-3). */
-export interface ShopBuyResult {
-  shop: ShopScene;
-  wallet: CampaignWallet;
-  item: Item;
-  spent: number;
+/**
+ * Resultado de comprar en la escena de tienda (Fase 4A-3): `kind` distingue
+ * la compra de un objeto de la de una skill (comprar una skill solo la
+ * desbloquea para la campaña, no la equipa).
+ */
+export type ShopBuyResult =
+  | {
+      kind: "item";
+      shop: ShopScene;
+      wallet: CampaignWallet;
+      item: Item;
+      spent: number;
+    }
+  | {
+      kind: "skill";
+      shop: ShopScene;
+      wallet: CampaignWallet;
+      skill: Skill;
+      spent: number;
+    };
+
+/** Abrir un cofre de la run (Fase 4C): run actualizada + lo entregado. */
+export interface DungeonChestResult {
+  run: PublicDungeonRun;
+  rewards: CombatRewardSummary | null;
 }
 
 export interface CharacterSheet {
@@ -193,6 +218,38 @@ export const api = {
   },
 
   /* -------------------------------------------------------------------- */
+  /* Fase 4B — mazmorras lineales                                         */
+  /* -------------------------------------------------------------------- */
+
+  listDungeons(campaignId: string): Promise<Dungeon[]> {
+    return request(`/api/campaigns/${campaignId}/dungeons`);
+  },
+
+  createDungeon(campaignId: string, input: DungeonInput): Promise<Dungeon> {
+    return request(`/api/campaigns/${campaignId}/dungeons`, {
+      method: "POST",
+      body: body(input),
+    });
+  },
+
+  updateDungeon(
+    campaignId: string,
+    dungeonId: string,
+    patch: DungeonPatchInput,
+  ): Promise<Dungeon> {
+    return request(`/api/campaigns/${campaignId}/dungeons/${dungeonId}`, {
+      method: "PATCH",
+      body: body(patch),
+    });
+  },
+
+  deleteDungeon(campaignId: string, dungeonId: string): Promise<void> {
+    return request(`/api/campaigns/${campaignId}/dungeons/${dungeonId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /* -------------------------------------------------------------------- */
   /* Fase 4A-3 — escena de tienda en vivo                                 */
   /* -------------------------------------------------------------------- */
 
@@ -219,6 +276,75 @@ export const api = {
     return request(`/api/sessions/${encodeURIComponent(code)}/shop/buy`, {
       method: "POST",
       body: body({ itemId }),
+    });
+  },
+
+  buyShopSkill(code: string, skillId: string): Promise<ShopBuyResult> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/shop/buy`, {
+      method: "POST",
+      body: body({ skillId }),
+    });
+  },
+
+  /* -------------------------------------------------------------------- */
+  /* Fase 4C — run de mazmorra en vivo                                    */
+  /* -------------------------------------------------------------------- */
+
+  /** Run activa de la mesa, o `null` si no hay ninguna. */
+  getDungeon(code: string): Promise<PublicDungeonRun | null> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/dungeon`);
+  },
+
+  /** Solo DM: inicia (o reinicia) la run; el servidor cierra la tienda. */
+  startDungeon(
+    code: string,
+    dungeonId: string,
+    entryRoomId?: string,
+  ): Promise<PublicDungeonRun> {
+    const input: DungeonStartInput = {
+      dungeonId,
+      ...(entryRoomId ? { entryRoomId } : {}),
+    };
+    return request(`/api/sessions/${encodeURIComponent(code)}/dungeon/start`, {
+      method: "POST",
+      body: body(input),
+    });
+  },
+
+  /** Solo DM: lanza el encuentro vinculado a la sala actual. */
+  startDungeonEncounter(code: string): Promise<PublicDungeonRun> {
+    return request(
+      `/api/sessions/${encodeURIComponent(code)}/dungeon/encounter`,
+      { method: "POST" },
+    );
+  },
+
+  /** Solo DM: descansa una vez y cura a la party. */
+  restDungeon(code: string): Promise<PublicDungeonRun> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/dungeon/rest`, {
+      method: "POST",
+    });
+  },
+
+  /** Solo DM: abre el cofre de la sala actual (puede crear un reparto). */
+  openDungeonChest(code: string): Promise<DungeonChestResult> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/dungeon/chest`, {
+      method: "POST",
+    });
+  },
+
+  /** Solo DM: pasa a la sala siguiente; `null` si era la última. */
+  advanceDungeon(code: string): Promise<PublicDungeonRun | null> {
+    return request(
+      `/api/sessions/${encodeURIComponent(code)}/dungeon/advance`,
+      { method: "POST" },
+    );
+  },
+
+  /** Solo DM: termina la run y devuelve a los jugadores a su hoja. */
+  endDungeon(code: string): Promise<void> {
+    return request(`/api/sessions/${encodeURIComponent(code)}/dungeon/end`, {
+      method: "POST",
     });
   },
 

@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/effects", label: "Efectos", icon: "flame", countKey: "effects" },
   { to: "/characters", label: "Personajes", icon: "users", countKey: "characters" },
   { to: "/encounters", label: "Encuentros", icon: "skull", countKey: "encounters" },
+  { to: "/dungeons", label: "Mazmorras", icon: "shield", countKey: "dungeons" },
 ];
 
 export function Layout() {

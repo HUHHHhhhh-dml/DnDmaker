@@ -356,10 +356,11 @@ export function validateEncounter(
  */
 export function validateShop(
   shop: Shop,
-  content: Pick<CampaignContent, "items">,
+  content: Pick<CampaignContent, "items" | "skills">,
 ): ValidationResult {
   const issues: ValidationIssue[] = [];
   const items = groupById(content.items);
+  const skills = groupById(content.skills);
   const path = `shops[${shop.id}]`;
   const seen = new Set<string>();
 
@@ -378,16 +379,132 @@ export function validateShop(
       );
       return;
     }
-    if (item.unlocked !== true) {
+    if (item.unlocked === true) {
       issues.push(
         issue(
           `${path}.items[${index}].itemId`,
-          `"${item.name}" está bloqueado para jugadores: no se podrá comprar.`,
+          `"${item.name}" ya está desbloqueado para la campaña: no se podrá comprar.`,
           "warning",
         ),
       );
     }
   });
+
+  const seenSkills = new Set<string>();
+  (shop.skills ?? []).forEach((entry, index) => {
+    if (seenSkills.has(entry.skillId)) {
+      issues.push(
+        issue(
+          `${path}.skills[${index}]`,
+          "La skill está repetida en la tienda.",
+        ),
+      );
+    }
+    seenSkills.add(entry.skillId);
+
+    const skill = skills.get(entry.skillId);
+    if (!skill) {
+      issues.push(
+        issue(
+          `${path}.skills[${index}].skillId`,
+          "La skill de la tienda no existe.",
+        ),
+      );
+      return;
+    }
+    if (skill.unlocked === true) {
+      issues.push(
+        issue(
+          `${path}.skills[${index}].skillId`,
+          `"${skill.name}" ya está desbloqueada para la campaña: no se podrá comprar.`,
+          "warning",
+        ),
+      );
+    }
+  });
+
+  return result(issues);
+}
+
+/**
+ * Fase 4B — coherencia de una mazmorra frente al contenido de la campaña.
+ * Zod ya acota la forma (kinds, ids); aquí se comprueban las referencias que
+ * pueden romper la run: entrada inexistente, encuentros u objetos borrados.
+ * Las salas sin encuentro y los cofres vacíos son avisos, no errores.
+ */
+export function validateDungeon(
+  dungeon: Dungeon,
+  content: Pick<CampaignContent, "items" | "skills" | "encounters">,
+): ValidationResult {
+  const issues: ValidationIssue[] = [];
+  const path = `dungeons[${dungeon.id}]`;
+  const encounters = groupById(content.encounters);
+  const items = groupById(content.items);
+  const skills = groupById(content.skills);
+  const roomIds = new Set<string>();
+
+  if (dungeon.rooms.length === 0) {
+    issues.push(issue(`${path}.rooms`, "La mazmorra necesita al menos una sala."));
+  }
+
+  dungeon.rooms.forEach((room, index) => {
+    const roomPath = `${path}.rooms[${index}]`;
+
+    if (roomIds.has(room.id)) {
+      issues.push(issue(`${roomPath}.id`, "ID de sala duplicado en la mazmorra."));
+    }
+    roomIds.add(room.id);
+
+    if (room.encounterId) {
+      if (!encounters.has(room.encounterId)) {
+        issues.push(
+          issue(`${roomPath}.encounterId`, "El encuentro de la sala no existe."),
+        );
+      }
+    } else if (room.kind !== "rest" && room.kind !== "treasure") {
+      issues.push(
+        issue(
+          roomPath,
+          `"${room.name}" no tiene encuentro vinculado: será una sala de ambientación.`,
+          "warning",
+        ),
+      );
+    }
+
+    if (room.kind === "treasure" && !room.rewards) {
+      issues.push(
+        issue(roomPath, `"${room.name}" no tiene recompensa de cofre.`, "warning"),
+      );
+    }
+
+    (room.rewards?.itemIds ?? []).forEach((itemId, itemIndex) => {
+      if (!items.has(itemId)) {
+        issues.push(
+          issue(
+            `${roomPath}.rewards.itemIds[${itemIndex}]`,
+            "La recompensa del cofre no existe.",
+          ),
+        );
+      }
+    });
+
+    (room.rewards?.skillIds ?? []).forEach((skillId, skillIndex) => {
+      if (!skills.has(skillId)) {
+        issues.push(
+          issue(
+            `${roomPath}.rewards.skillIds[${skillIndex}]`,
+            "La skill del cofre no existe.",
+          ),
+        );
+      }
+    });
+  });
+
+  if (dungeon.entryRoomId && !roomIds.has(dungeon.entryRoomId)) {
+    issues.push(
+      issue(`${path}.entryRoomId`, "La sala de entrada no existe en la mazmorra."),
+    );
+  }
 
   return result(issues);
 }
@@ -408,6 +525,7 @@ export function validateContent(
     ...findDuplicateIds(content.encounters, "encounters"),
     ...findDuplicateIds(content.specials, "specials"),
     ...findDuplicateIds(content.shops, "shops"),
+    ...findDuplicateIds(content.dungeons, "dungeons"),
   ];
 
   for (const item of content.items) {
@@ -427,6 +545,9 @@ export function validateContent(
   }
   for (const shop of content.shops) {
     issues.push(...validateShop(shop, content).issues);
+  }
+  for (const dungeon of content.dungeons) {
+    issues.push(...validateDungeon(dungeon, content).issues);
   }
   for (const special of content.specials) {
     issues.push(
@@ -550,11 +671,26 @@ export function findReferences(id: string, content: CampaignContent): ReferenceI
     if (shop.items.some((entry) => entry.itemId === id)) {
       refs.push({ label: `tienda "${shop.name}"`, id: shop.id });
     }
+    if (shop.skills?.some((entry) => entry.skillId === id)) {
+      refs.push({ label: `tienda "${shop.name}"`, id: shop.id });
+    }
   }
 
   for (const dungeon of content.dungeons) {
     if (dungeon.rooms.some((room) => room.encounterId === id)) {
       refs.push({ label: `mazmorra "${dungeon.name}"`, id: dungeon.id });
+    }
+    if (dungeon.rooms.some((room) => room.rewards?.itemIds?.includes(id))) {
+      refs.push({
+        label: `recompensa de la mazmorra "${dungeon.name}"`,
+        id: dungeon.id,
+      });
+    }
+    if (dungeon.rooms.some((room) => room.rewards?.skillIds?.includes(id))) {
+      refs.push({
+        label: `recompensa de la mazmorra "${dungeon.name}"`,
+        id: dungeon.id,
+      });
     }
   }
 
