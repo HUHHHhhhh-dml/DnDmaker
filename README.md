@@ -34,6 +34,86 @@ Los datos viven en `data/protocol-life.sqlite` (ignorado por git). Las imágenes
 
 Si el link no abre, revisa el firewall del equipo del DM y desactiva el *aislamiento de clientes* del router. En desarrollo la web escucha en `0.0.0.0:5173` y la API en `0.0.0.0:3001`; en producción `npm run build && npm start` sirve ambos en el puerto de la API.
 
+### Jugar en Windows (portátil del DM)
+
+Recomendado: **Windows nativo** y el build de producción. No copies `node_modules`
+desde Linux: `better-sqlite3` lleva un binario nativo distinto y hay que instalarlo
+en Windows. WSL2 también funciona, pero su red LAN necesita configuración extra;
+para la mesa es más simple Windows nativo.
+
+1. Instala **Node.js 22 LTS** (o 24 LTS) desde <https://nodejs.org> o con
+   `winget install OpenJS.NodeJS.LTS`. Comprueba `node -v` y `npm -v`.
+2. Copia el proyecto a una carpeta local, por ejemplo `C:\ProtocolLife`.
+   Evita `Program Files` y, si puedes, una carpeta sincronizada con OneDrive
+   (SQLite + WAL no se llevan bien con la sincronización).
+3. En PowerShell:
+
+   ```powershell
+   cd C:\ProtocolLife
+   npm install
+   npm run build
+   npm start
+   ```
+
+4. Abre <http://localhost:3001>. `npm start` sirve la web, la API y Socket.IO en
+   el mismo puerto. Para tu campaña usa este modo; `npm run dev` (3001 + 5173)
+   es solo para desarrollar.
+
+Si `npm install` falla al compilar `better-sqlite3`, instala **Visual Studio
+Build Tools** con la carga «Desktop development with C++» y **Python 3**, y
+vuelve a ejecutar `npm install` (o `npm rebuild better-sqlite3`). Usar Node 22
+LTS reduce mucho la probabilidad de ese problema.
+
+#### Pasar la campaña de Linux a Windows
+
+La base de datos es `data/protocol-life.sqlite` y las imágenes subidas están en
+`data/uploads/` (no van dentro del SQLite).
+
+1. En Linux, con el servidor parado o en marcha (el backup es seguro):
+   `npm run backup`.
+2. Copia el archivo más reciente de `data/backups/protocol-life-....sqlite` y la
+   carpeta `data/uploads/` al portátil.
+3. En Windows, con el servidor **parado**, tras `npm install`:
+
+   ```powershell
+   npm run restore -- "C:\ruta\al\protocol-life-2026....sqlite"
+   ```
+
+   Restaura en `data/protocol-life.sqlite`, valida la copia y guarda antes una
+   copia `pre-restore-*`.
+4. Copia `uploads` a `C:\ProtocolLife\data\uploads\` y arranca con
+   `npm run build` + `npm start`.
+
+Alternativa: exportar la campaña como JSON desde la UI e importarla en Windows.
+Es cómodo, pero no conserva sesiones/combates activos y las imágenes subidas
+siguen necesitando copiar `data/uploads/`. Para conservarlo todo, usa
+backup/restore (ver [Backup y restore](#backup-y-restore)).
+
+#### LAN y firewall en Windows
+
+- Todos en la misma WiFi. La primera vez, Defender preguntará por Node.js:
+  permite **Redes privadas**. Si no, añade una regla de entrada TCP **3001**.
+- Obtén la IPv4 con `ipconfig` y comparte `http://192.168.x.x:3001` (no
+  `localhost`, que solo funciona en el portátil del DM).
+- Si los móviles no conectan, desactiva el *aislamiento de clientes/AP isolation*
+  del router y evita que el portátil se suspenda.
+- El PIN es una barrera de conveniencia: no expongas el puerto a internet.
+
+#### Arranque con doble clic
+
+Puedes crear `start.bat` en la raíz del proyecto:
+
+```bat
+@echo off
+cd /d "%~dp0"
+npm start
+pause
+```
+
+`npm start` no recompila la web: ejecuta `npm run build` después de actualizar
+el código. Los backups diarios siguen viviendo en `data/backups/`; el restore
+exige el servidor parado, igual que en Linux.
+
 ## Scripts
 
 | Comando | Qué hace |
