@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { d100TensLabel, d100UnitsLabel, type DiceRoll } from "@protocol-life/shared";
 import { uniformBounces } from "../../lib/dice3d/roll";
+import { playPopDiceSound } from "../../lib/diceSound";
 import {
   isHeld,
   useDiceCinematicVersion,
@@ -34,6 +35,7 @@ export function DiceRollToast({ rolls }: { rolls: DiceRoll[] }) {
     if (next) {
       seenDiceRollIds.add(next.id);
       setCurrent(next);
+      playPopDiceSound(next.id, next.sides, next.count);
     }
   }, [rolls, current, cinematicVersion]);
 

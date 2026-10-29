@@ -27,7 +27,9 @@ export type IconName =
   | "alert"
   | "broadcast"
   | "lock"
-  | "unlock";
+  | "unlock"
+  | "volume"
+  | "volume-off";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -249,6 +251,21 @@ export function Icon({ name, size = 18, ...props }: IconProps) {
           <rect x="4" y="10" width="16" height="11" rx="1" />
           <path d="M8 10V7a4 4 0 0 1 7.5-2" />
           <path d="M12 14v3" />
+        </svg>
+      );
+    case "volume":
+      return (
+        <svg {...common}>
+          <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+          <path d="M16 9a4 4 0 0 1 0 6" />
+          <path d="M19 6a8 8 0 0 1 0 12" />
+        </svg>
+      );
+    case "volume-off":
+      return (
+        <svg {...common}>
+          <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+          <path d="m16 9 5 6M21 9l-5 6" />
         </svg>
       );
   }

@@ -39,6 +39,10 @@ import {
 } from "../../../lib/dice3d/dieAtlas";
 import { rollTrajectories } from "../../../lib/dice3d/roll";
 import {
+  scheduleDiceRollSound,
+  stopDiceSounds,
+} from "../../../lib/diceSound";
+import {
   DICE_SKINS,
   DEFAULT_DICE_SKIN,
   type DiceSkin,
@@ -124,6 +128,16 @@ export default function DiceScene({
   useEffect(() => {
     if (trajectories.length === 0) errorRef.current();
   }, [trajectories]);
+
+  useEffect(() => {
+    if (trajectories.length === 0) return;
+    scheduleDiceRollSound(roll.id, trajectories, roll.sides, roll.count);
+    return () => stopDiceSounds(roll.id);
+  }, [roll.count, roll.id, roll.sides, trajectories]);
+
+  useEffect(() => {
+    if (skipped) stopDiceSounds(roll.id);
+  }, [skipped, roll.id]);
 
   if (
     trajectories.length === 0 ||

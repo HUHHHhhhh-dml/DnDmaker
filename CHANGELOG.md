@@ -1,5 +1,28 @@
 # Changelog
 
+## Fase 4E+ — sonido de dados (2026-10-29)
+
+### Añadido
+
+- **Sonido sintetizado con Web Audio**, sin ficheros ni dependencias: roce de
+  lanzamiento y chasquido por cada impacto de la trayectoria, con tono según el
+  dado (d4 más agudo, d20 más grave) y paneo estéreo según el punto de la mesa.
+  En multi-dado se acotan los impactos y se usa un compresor para no saturar.
+- **Botón de altavoz** en la cabecera de la bandeja con estado persistido en
+  `localStorage` (`protocol-life-dice-sound`, activo por defecto). Al reactivar
+  suena una pequeña prueba; al silenciar se paran los sonidos programados.
+- **Fallback con sonido**: las tiradas que caen al pop (sin 3D, WebGL o
+  reduced-motion) reproducen un breve rattle; las que usa la escena 3D
+  sincronizan los impactos con el reloj de audio.
+- El `AudioContext` se crea y desbloquea dentro del clic/arrastre del usuario y
+  se reanuda de forma perezosa; si el navegador lo impide, la tirada sigue sin
+  sonido.
+
+### Tests
+
+- Preferencia persistida, estado del store, perfil de impacto, paneo, orden,
+  acotado de impactos y tono por tipo de dado.
+
 ## Fase 4E+ — física para todos los dados (2026-10-29)
 
 ### Añadido

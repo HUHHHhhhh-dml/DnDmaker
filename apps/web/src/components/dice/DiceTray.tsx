@@ -14,7 +14,12 @@ import {
 import { usePlayerStore } from "../../store/usePlayerStore";
 import { useLiveStore } from "../../store/useLiveStore";
 import { useDiceSkinStore } from "../../store/useDiceSkinStore";
+import { useDiceSoundStore } from "../../store/useDiceSoundStore";
 import { DRAG_THRESHOLD_PX, throwFromDrag } from "../../lib/diceThrow";
+import {
+  playDicePreviewSound,
+  unlockDiceAudio,
+} from "../../lib/diceSound";
 import { uniformBounces } from "../../lib/dice3d/roll";
 import {
   DICE_SKINS,
@@ -22,6 +27,7 @@ import {
   type DiceSkinId,
 } from "../../lib/diceSkin";
 import { DiceIcon } from "./DiceIcon";
+import { Icon } from "../Icons";
 import { cx } from "../ui";
 import "./DiceTray.css";
 
@@ -61,6 +67,8 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
   const dmRolls = useLiveStore((state) => state.diceRolls);
   const skin = useDiceSkinStore((state) => state.skin);
   const setSkin = useDiceSkinStore((state) => state.setSkin);
+  const soundEnabled = useDiceSoundStore((state) => state.enabled);
+  const toggleSound = useDiceSoundStore((state) => state.toggle);
 
   const rollDice = viewer === "player" ? playerRoll : dmRoll;
   const rolls = viewer === "player" ? playerRolls : dmRolls;
@@ -104,6 +112,8 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
 
   async function handleRoll(throwInput?: DiceThrowInput) {
     if (rolling) return;
+    // El clic/arrastre es el gesto que desbloquea el AudioContext.
+    void unlockDiceAudio();
     setRolling(true);
     setError(null);
     const result = await rollDice(sides, count, throwInput);
@@ -210,6 +220,15 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
     void handleRoll();
   }
 
+  function handleSoundToggle() {
+    const enabling = !soundEnabled;
+    toggleSound();
+    if (enabling) {
+      void unlockDiceAudio();
+      playDicePreviewSound();
+    }
+  }
+
   const dragStyle: CSSProperties | undefined = drag
     ? {
         transform: `translate(${clamp(drag.dx, -44, 44)}px, ${clamp(
@@ -233,7 +252,27 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
           <div className="mono-label">{viewer === "dm" ? "Mesa" : "Jugador"}</div>
           <h2 className="dice-tray-title">Dados</h2>
         </div>
-        <span className="dice-tray-hint">d&nbsp;20 · d&nbsp;100 · d&nbsp;12…</span>
+        <div className="dice-tray-head-actions">
+          <span className="dice-tray-hint">d&nbsp;20 · d&nbsp;100 · d&nbsp;12…</span>
+          <button
+            type="button"
+            className={cx("dice-sound-toggle", soundEnabled && "is-on")}
+            onClick={handleSoundToggle}
+            aria-pressed={soundEnabled}
+            aria-label={
+              soundEnabled
+                ? "Silenciar los sonidos de dados"
+                : "Activar los sonidos de dados"
+            }
+            title={
+              soundEnabled
+                ? "Sonido de dados activo"
+                : "Sonido de dados silenciado"
+            }
+          >
+            <Icon name={soundEnabled ? "volume" : "volume-off"} size={14} />
+          </button>
+        </div>
       </div>
 
       <button
