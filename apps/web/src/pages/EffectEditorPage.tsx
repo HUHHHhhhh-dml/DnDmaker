@@ -347,7 +347,9 @@ export function EffectEditorPage() {
               pasivos mientras el efecto está activo. En «Aplicar efecto» puedes elegir
               <strong> Rival</strong> para aplicar el efecto al enemigo; solo funciona en
               triggers que tienen un rival (al golpear, al ganar/perder clash, al usar
-              skill o al recibir daño).
+              skill o al recibir daño). En «Daño» puedes elegir <strong>Portador</strong>,
+              <strong> Rival</strong> o <strong>Todos los demás</strong> (aliados y
+              enemigos vivos por igual).
             </p>
 
             <div className="space-y-3">

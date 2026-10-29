@@ -1112,6 +1112,76 @@ describe("3B — estados, utilidad y dominios", () => {
     ).toBe(true);
   });
 
+  it("al morir, daña a todos los aliados y enemigos con allOthers", () => {
+    const deathBurst = makeEffect("death_burst", {
+      triggers: [
+        {
+          when: "onDefeat",
+          actions: [
+            {
+              type: "damage",
+              base: 50,
+              perStack: 0,
+              damageType: "pure",
+              target: "allOthers",
+            },
+          ],
+        },
+      ],
+    });
+    const kill = makeSkill("skl_kill", {
+      baseClash: 9999,
+      baseDamage: 999,
+      coinDamage: 0,
+    });
+    const content = makeContent({
+      effects: [deathBurst],
+      skills: [kill],
+    });
+
+    const fallen = makeUnit({
+      id: "fallen",
+      baseStats: { hpMax: 10, def: 0 },
+      hpCurrent: 10,
+      effects: [
+        {
+          effectId: deathBurst.id,
+          stacks: 1,
+          passive: true,
+        },
+      ],
+    });
+    const ally = makeUnit({
+      id: "ally",
+      baseStats: { hpMax: 100, def: 0 },
+      hpCurrent: 100,
+    });
+    const enemy = makeUnit({
+      id: "enemy",
+      team: "enemies",
+      baseStats: { hpMax: 100, def: 0 },
+      hpCurrent: 100,
+      skills: [kill.id, null, null],
+    });
+    const state = makeState([fallen, ally, enemy], {
+      enemy: [act("enemy", 1, { skillId: kill.id, targetId: fallen.id })],
+    });
+
+    const result = resolveRound(state, state.actions, content, DEFAULT_RULES);
+
+    expect(unitFromState(result.state, fallen.id).hpCurrent).toBe(0);
+    // El daño puro de 50 alcanza por igual a aliado y enemigo.
+    expect(unitFromState(result.state, ally.id).hpCurrent).toBe(50);
+    expect(unitFromState(result.state, enemy.id).hpCurrent).toBe(50);
+    expect(
+      result.events.filter(
+        (event) =>
+          event.type === "damage" &&
+          (event.targetId === ally.id || event.targetId === enemy.id),
+      ),
+    ).toHaveLength(2);
+  });
+
   it("un dominio se aplica al equipo una sola vez por combate", () => {
     const domain = makeSpecial("spc_domain", {
       name: "Dominio",

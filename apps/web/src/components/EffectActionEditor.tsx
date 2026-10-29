@@ -19,7 +19,7 @@ const ACTION_LABELS: Record<EffectAction["type"], string> = {
 };
 
 const ACTION_HINTS: Record<EffectAction["type"], string> = {
-  damage: "Daño fijo + daño por stack.",
+  damage: "Daño fijo + daño por stack; puede ser al portador, al rival o a todos los demás.",
   heal: "Cura HP fijo + cura por stack.",
   modifyStat: "Modifica un stat mientras el efecto esté activo.",
   applyEffect: "Aplica otro efecto al portador o al rival del trigger.",
@@ -29,7 +29,13 @@ const ACTION_HINTS: Record<EffectAction["type"], string> = {
 export function defaultAction(type: EffectAction["type"], effects: EffectDefinition[]): EffectAction {
   switch (type) {
     case "damage":
-      return { type: "damage", base: 1, perStack: 0, damageType: "physical" };
+      return {
+        type: "damage",
+        base: 1,
+        perStack: 0,
+        damageType: "physical",
+        target: "self",
+      };
     case "heal":
       return { type: "heal", base: 1, perStack: 0 };
     case "modifyStat":
@@ -108,7 +114,7 @@ export function EffectActionEditor({
 
           <div className="p-2">
             {action.type === "damage" ? (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Field label="Base">
                   <NumberInput
                     value={action.base ?? 0}
@@ -137,6 +143,26 @@ export function EffectActionEditor({
                         {label}
                       </option>
                     ))}
+                  </Select>
+                </Field>
+                <Field
+                  label="Objetivo"
+                  hint="Todos los demás incluye aliados y enemigos."
+                >
+                  <Select
+                    value={action.target ?? "self"}
+                    onValueChange={(value) =>
+                      update(index, {
+                        target: value as
+                          | "self"
+                          | "opponent"
+                          | "allOthers",
+                      })
+                    }
+                  >
+                    <option value="self">Portador</option>
+                    <option value="opponent">Rival</option>
+                    <option value="allOthers">Todos los demás</option>
                   </Select>
                 </Field>
               </div>

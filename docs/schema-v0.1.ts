@@ -70,6 +70,8 @@ export interface EffectActionDamage {
   /** Daño por stack. */
   perStack?: number;
   damageType?: DamageType;
+  /** `allOthers` daña a todas las demás unidades vivas, aliadas y enemigas. */
+  target?: "self" | "opponent" | "allOthers";
 }
 
 export interface EffectActionHeal {

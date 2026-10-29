@@ -1,5 +1,23 @@
 # Changelog
 
+## Daño dirigido y en área desde efectos (2026-10-28)
+
+### Añadido
+
+- La acción **Daño** ahora tiene selector de objetivo:
+  - **Portador**: el que lleva el efecto (default).
+  - **Rival**: la unidad rival del trigger, si existe.
+  - **Todos los demás**: todas las unidades vivas, aliadas y enemigas por
+    igual, excluyendo al portador.
+- `Damage.target: "allOthers"` resuelve el daño objetivo por objetivo, con su
+  propia DEF y estado OVERCHARGED, y dispara `Al recibir daño` en cada unidad
+  golpeada.
+- Un efecto con `Al ser derrotado → Daño → Todos los demás` funciona como una
+  explosión final que puede encadenar otras derrotas (respetando el límite de
+  profundidad de triggers).
+- Validación: `Rival` en un trigger sin rival avisa de que se ignorará.
+- Tests de explosión al morir que daña por igual a un aliado y a un enemigo.
+
 ## Efectos activos al iniciar combate (2026-10-28)
 
 ### Añadido

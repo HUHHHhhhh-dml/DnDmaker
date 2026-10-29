@@ -110,6 +110,8 @@ export const effectActionSchema = z.discriminatedUnion("type", [
     base: integer(-9999, 9999).optional(),
     perStack: integer(-9999, 9999).optional(),
     damageType: damageTypeSchema.optional(),
+    /** `allOthers` golpea a todas las demás unidades vivas. */
+    target: z.enum(["self", "opponent", "allOthers"]).optional(),
   }),
   z.object({
     type: z.literal("heal"),

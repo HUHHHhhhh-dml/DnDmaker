@@ -193,8 +193,7 @@ export function validateEffect(
     `effects[${effect.id}]`,
   );
 
-  // `applyEffect.target: "opponent"` solo tiene sentido si el trigger tiene
-  // un rival asociado en combate.
+  // `target: "opponent"` solo tiene sentido si el trigger tiene un rival.
   const targetableTriggers = new Set([
     "onUseSkill",
     "onDealDamage",
@@ -205,14 +204,14 @@ export function validateEffect(
   effect.triggers.forEach((trigger, triggerIndex) => {
     trigger.actions.forEach((action, actionIndex) => {
       if (
-        action.type === "applyEffect" &&
+        (action.type === "applyEffect" || action.type === "damage") &&
         action.target === "opponent" &&
         !targetableTriggers.has(trigger.when)
       ) {
         issues.push(
           issue(
             `effects[${effect.id}].triggers[${triggerIndex}].actions[${actionIndex}]`,
-            "Este trigger no tiene un rival: la acción «Aplicar efecto al rival» se ignorará.",
+            "Este trigger no tiene un rival: la acción al rival se ignorará.",
             "warning",
           ),
         );

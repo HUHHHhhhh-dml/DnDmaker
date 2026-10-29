@@ -64,11 +64,18 @@ export type EffectTrigger =
   | "onClashLose"
   | "onDefeat";
 
+export type EffectDamageTarget = "self" | "opponent" | "allOthers";
+
 export interface EffectActionDamage {
   type: "damage";
   base?: number;
   perStack?: number;
   damageType?: DamageType;
+  /**
+   * A quién se aplica el daño: al portador (default), al rival del trigger o
+   * a todas las demás unidades vivas, aliadas y enemigas por igual.
+   */
+  target?: EffectDamageTarget;
 }
 
 export interface EffectActionHeal {

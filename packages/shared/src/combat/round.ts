@@ -164,6 +164,7 @@ export function resolveRound(
     if (!unit) return;
 
     // El rival del trigger permite acciones `applyEffect.target: "opponent"`.
+    // `allUnits` permite que `damage.target: "allOthers"` alcance a todos.
     for (const group of collectTriggers(unit, when, content)) {
       const latest = current(unitId);
       if (!latest) break;
@@ -179,23 +180,42 @@ export function resolveRound(
           actorId: group.effect.sourceId ?? unitId,
         },
         triggerTarget,
+        [...units.values()],
       );
       setUnit(result.unit);
-      if (result.target) setUnit(result.target);
+      for (const target of result.targets ?? []) setUnit(target);
       for (const event of result.events) emit(event);
       for (const event of result.events) {
         if (event.type === "defeated" && event.targetId) {
           defeatedAnnounced.add(event.targetId);
         }
       }
-      if (result.damageApplied) runTriggers(unitId, "onTakeDamage", depth + 1);
-      const after = current(unitId);
-      if (after && after.hpCurrent <= 0) markDefeated(unitId, depth + 1);
-      if (result.target) {
-        const afterTarget = current(result.target.id);
-        if (afterTarget && afterTarget.hpCurrent <= 0) {
-          markDefeated(result.target.id, depth + 1);
-        }
+
+      // Cada unidad dañada (incluido el portador) resuelve su onTakeDamage.
+      const damagedIds =
+        result.damagedIds ??
+        (result.damageApplied ? [unitId] : []);
+      for (const damagedId of damagedIds) {
+        const sourceUnit = current(unitId);
+        const damagedUnit = current(damagedId);
+        const rivalId =
+          damagedId !== unitId &&
+          sourceUnit &&
+          damagedUnit &&
+          sourceUnit.team !== damagedUnit.team
+            ? unitId
+            : undefined;
+        runTriggers(damagedId, "onTakeDamage", depth + 1, rivalId);
+      }
+
+      // Tras los triggers, resuelve derrotas de todo lo que cambió.
+      const changedIds = new Set<Id>([
+        unitId,
+        ...(result.targets ?? []).map((target) => target.id),
+      ]);
+      for (const id of changedIds) {
+        const after = current(id);
+        if (after && after.hpCurrent <= 0) markDefeated(id, depth + 1);
       }
     }
   };

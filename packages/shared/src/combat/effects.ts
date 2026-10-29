@@ -351,15 +351,15 @@ export function collectTriggers(
 
 /**
  * Ejecuta las acciones de un trigger sobre la propia unidad y, opcionalmente,
- * sobre el rival del trigger.
+ * sobre el rival o todas las demás unidades.
  *
  * `modifyStat` no se aplica aquí: `effectiveStats` lo calcula de forma
  * continua mientras el efecto exista. Así Protection/Haste no se acumulan una
  * vez por ronda ni hace falta revertir deltas al caducar.
  *
- * Solo `applyEffect` admite `target: "opponent"`; el resto de acciones siguen
- * afectando al portador. Si no hay rival asociado, las acciones al rival se
- * ignoran.
+ * `applyEffect` admite `target: "opponent"` y `damage` admite además
+ * `"allOthers"` (todas las demás unidades vivas, aliadas y enemigas). Si una
+ * acción apunta a un rival que no existe, se ignora.
  */
 export function executeEffectActions(
   unit: CombatUnit,
@@ -368,14 +368,36 @@ export function executeEffectActions(
   context: EffectContext,
   source: ActionSource = {},
   targetUnit?: CombatUnit,
+  allUnits?: readonly CombatUnit[],
 ): EffectResult {
   let current = refreshUnitStats(unit, context);
-  let targetCurrent =
-    targetUnit && targetUnit.id !== unit.id
-      ? refreshUnitStats(targetUnit, context)
-      : undefined;
+  const others = new Map<Id, CombatUnit>();
+  for (const entry of allUnits ?? []) {
+    if (entry.id !== unit.id) {
+      others.set(entry.id, refreshUnitStats(entry, context));
+    }
+  }
+  const opponentId =
+    targetUnit && targetUnit.id !== unit.id ? targetUnit.id : undefined;
+  if (opponentId && !others.has(opponentId)) {
+    others.set(opponentId, refreshUnitStats(targetUnit!, context));
+  }
+  const changedOthers = new Set<Id>();
+  const damagedIds = new Set<Id>();
   const events: EngineEvent[] = [];
   let damageApplied = false;
+
+  const getCombatUnit = (id: Id): CombatUnit | undefined =>
+    id === unit.id ? current : others.get(id);
+
+  const setCombatUnit = (id: Id, next: CombatUnit): void => {
+    if (id === unit.id) {
+      current = next;
+      return;
+    }
+    others.set(id, next);
+    changedOthers.add(id);
+  };
 
   for (const action of actions) {
     if (action.type === "modifyStat") continue;
@@ -384,46 +406,62 @@ export function executeEffectActions(
       const raw = (action.base ?? 0) + (action.perStack ?? 0) * stacks;
       if (raw <= 0) continue;
       const damageType = action.damageType ?? "physical";
-      const final = computeDamage(
-        raw,
-        current.stats.def,
-        context.rules,
-        damageType,
-        { overcharged: current.overcharged },
-      );
-      if (final <= 0) continue;
-      const hpBefore = current.hpCurrent;
-      const hpAfter = Math.max(0, hpBefore - final);
-      const wasDefeated = current.defeated;
-      current = {
-        ...current,
-        hpCurrent: hpAfter,
-        defeated: current.defeated || hpAfter <= 0,
-      };
-      damageApplied = true;
-      events.push({
-        type: "damage",
-        actorId: source.actorId ?? source.effectId,
-        targetId: unit.id,
-        message: `${unit.name} recibe ${final} de daño (${damageType}).`,
-        data: {
+
+      let damageTargets: CombatUnit[];
+      if (action.target === "allOthers") {
+        damageTargets = [...others.values()];
+      } else if (action.target === "opponent") {
+        const opponent = opponentId ? others.get(opponentId) : undefined;
+        damageTargets = opponent ? [opponent] : [];
+      } else {
+        damageTargets = [current];
+      }
+
+      for (const target of damageTargets) {
+        const latest = getCombatUnit(target.id);
+        if (!latest || latest.defeated || latest.hpCurrent <= 0) continue;
+        const final = computeDamage(
           raw,
-          final,
-          def: current.stats.def,
+          latest.stats.def,
+          context.rules,
           damageType,
-          hpBefore,
-          hpAfter,
-          overcharged: current.overcharged === true,
-          ...source,
-        },
-      });
-      if (!wasDefeated && current.hpCurrent <= 0) {
-        events.push({
-          type: "defeated",
-          targetId: unit.id,
-          message: `${unit.name} cae.`,
-          data: { ...source },
+          { overcharged: latest.overcharged },
+        );
+        if (final <= 0) continue;
+        const hpBefore = latest.hpCurrent;
+        const hpAfter = Math.max(0, hpBefore - final);
+        const wasDefeated = latest.defeated;
+        setCombatUnit(latest.id, {
+          ...latest,
+          hpCurrent: hpAfter,
+          defeated: latest.defeated || hpAfter <= 0,
         });
+        damagedIds.add(latest.id);
+        damageApplied = true;
+        events.push({
+          type: "damage",
+          actorId: source.actorId ?? source.effectId,
+          targetId: latest.id,
+          message: `${latest.name} recibe ${final} de daño (${damageType}).`,
+          data: {
+            raw,
+            final,
+            def: latest.stats.def,
+            damageType,
+            hpBefore,
+            hpAfter,
+            overcharged: latest.overcharged === true,
+            ...source,
+          },
+        });
+        if (!wasDefeated && hpAfter <= 0) {
+          events.push({
+            type: "defeated",
+            targetId: latest.id,
+            message: `${latest.name} cae.`,
+            data: { ...source },
+          });
+        }
       }
     } else if (action.type === "heal") {
       if (current.defeated) continue;
@@ -442,7 +480,11 @@ export function executeEffectActions(
       });
     } else if (action.type === "applyEffect") {
       const applyToOpponent = action.target === "opponent";
-      const destination = applyToOpponent ? targetCurrent : current;
+      const destination = applyToOpponent
+        ? opponentId
+          ? getCombatUnit(opponentId)
+          : undefined
+        : current;
       // Sin rival asociado al trigger, una acción al rival no tiene destino.
       if (!destination || (applyToOpponent && destination.defeated)) continue;
       const applied = applyEffect(
@@ -452,7 +494,7 @@ export function executeEffectActions(
         context,
         source.actorId ?? source.effectId,
       );
-      if (applyToOpponent) targetCurrent = applied.unit;
+      if (applyToOpponent) setCombatUnit(destination.id, applied.unit);
       else current = applied.unit;
       events.push(...applied.events);
     } else if (action.type === "consumeStacks") {
@@ -465,10 +507,18 @@ export function executeEffectActions(
   }
 
   current = refreshUnitStats(current, context);
-  if (targetCurrent) targetCurrent = refreshUnitStats(targetCurrent, context);
+  const targets: CombatUnit[] = [];
+  for (const id of changedOthers) {
+    const entry = others.get(id);
+    if (!entry) continue;
+    const refreshed = refreshUnitStats(entry, context);
+    others.set(id, refreshed);
+    targets.push(refreshed);
+  }
   return {
     unit: current,
-    ...(targetCurrent ? { target: targetCurrent } : {}),
+    ...(targets.length > 0 ? { targets } : {}),
+    ...(damagedIds.size > 0 ? { damagedIds: [...damagedIds] } : {}),
     events,
     damageApplied,
   };
