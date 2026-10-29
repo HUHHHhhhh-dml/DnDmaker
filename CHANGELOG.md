@@ -1,5 +1,18 @@
 # Changelog
 
+## Icono de la skill en los pentágonos del combate (2026-10-29)
+
+### Añadido
+
+- Los **SkillSlots** de la escena de combate muestran la **imagen de la skill
+  declarada** en ese slot, recortada con la silueta pentagonal del slot.
+- El glifo (letra inicial) o el número de slot siguen apareciendo cuando no hay
+  skill declarada, así que un slot vacío o una utilidad no cambian.
+- El borde del pentágono, el tono de la línea de intención, el estado
+  seleccionado y el atenuado de "unidad lista" se dibujan por encima del icono.
+- Helper `declaredSkillForSlot` con tests: skill por slot, slot sin skill, otras
+  acciones y skill borrada del contenido.
+
 ## Acción «Aumentar stacks» (2026-10-28)
 
 ### Añadido

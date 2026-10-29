@@ -778,6 +778,32 @@
   transform: translateX(-50%);
 }
 
+/* Icono de la skill declarada en ese slot: sustituye al glifo y se recorta
+   con la silueta pentagonal. El borde del SVG se queda por encima. */
+.sv-slot-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(50% 3%, 97% 38%, 79% 97%, 21% 97%, 3% 38%);
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.sv-slot[data-has-art] .sv-slot-shape {
+  z-index: 1;
+}
+
+.sv-slot[data-has-art] .sv-slot-shape polygon,
+.sv-slot[data-tone][data-has-art] .sv-slot-shape polygon,
+.sv-slot[data-incoming][data-has-art] .sv-slot-shape polygon,
+.sv-slot[data-targetable="true"][data-has-art] .sv-slot-shape polygon {
+  fill: transparent;
+}
+
 .sv-unit-sprite-wrap {
   position: relative;
   display: flex;

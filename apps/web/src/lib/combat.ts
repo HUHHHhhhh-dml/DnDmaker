@@ -416,6 +416,19 @@ export function declaredSkillId(
   return action?.skillId ?? null;
 }
 
+/**
+ * Skill declarada en un slot concreto (1..skillSlots). La usan los pentágonos
+ * de la escena para mostrar el icono de la skill en lugar del glifo.
+ */
+export function declaredSkillForSlot(
+  content: Pick<CampaignContent, "skills">,
+  actions: DeclaredAction[] | undefined,
+  slot: number,
+) {
+  const action = (actions ?? []).find((entry) => entry.slot === slot);
+  return action?.skillId ? findSkill(content, action.skillId) : null;
+}
+
 export function unitName(
   combat: Pick<CombatState, "units">,
   unitId: string | undefined,

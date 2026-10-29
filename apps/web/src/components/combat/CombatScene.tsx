@@ -20,6 +20,7 @@ import { Icon } from "../Icons";
 import { ClashCinematic } from "./ClashCinematic";
 import {
   declaredActionsForUnit,
+  declaredSkillForSlot,
   declaredSkillId,
   effectLabel,
   equippedSkillIds,
@@ -697,6 +698,11 @@ export function CombatScene({
             const incoming = targetTone.get(key);
             const glyph = sourceGlyph.get(key) ?? String(slot);
             const label = sourceLabel.get(key);
+            const skill = declaredSkillForSlot(
+              content,
+              combat.actions[unit.id],
+              slot,
+            );
             return (
               <SlotButton
                 key={key}
@@ -706,6 +712,7 @@ export function CombatScene({
                 incoming={incoming}
                 glyph={glyph}
                 label={label}
+                image={skill?.image}
                 active={activeSlot === slot}
                 locked={locked}
                 targetable={targetable}
@@ -1683,6 +1690,7 @@ function SlotButton({
   incoming,
   glyph,
   label,
+  image,
   active,
   locked,
   targetable,
@@ -1695,6 +1703,7 @@ function SlotButton({
   incoming?: LineTone;
   glyph: string;
   label?: string;
+  image?: string;
   active: boolean;
   locked: boolean;
   targetable: boolean;
@@ -1716,6 +1725,7 @@ function SlotButton({
       data-active={active ? "true" : undefined}
       data-targetable={targetable ? "true" : undefined}
       data-locked={locked ? "true" : undefined}
+      data-has-art={image ? "true" : undefined}
       onClick={onClick}
       aria-label={`SkillSlot ${slot} de ${unit.name}${
         label ? `: ${label}` : ""
@@ -1725,10 +1735,20 @@ function SlotButton({
       aria-pressed={active}
       style={style}
     >
+      {/* La imagen de la skill sustituye al glifo cuando hay acción declarada. */}
+      {image ? (
+        <img
+          className="sv-slot-art"
+          src={image}
+          alt=""
+          draggable={false}
+          loading="lazy"
+        />
+      ) : null}
       <svg viewBox="0 0 100 100" className="sv-slot-shape" aria-hidden>
         <polygon points="50,3 97,38 79,97 21,97 3,38" />
       </svg>
-      <span className="sv-slot-glyph">{glyph}</span>
+      {image ? null : <span className="sv-slot-glyph">{glyph}</span>}
       {tone ? <span className="sv-slot-pip" /> : null}
     </button>
   );

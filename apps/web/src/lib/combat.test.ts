@@ -5,6 +5,7 @@ import type {
   Skill,
 } from "@protocol-life/shared";
 import {
+  declaredSkillForSlot,
   draftToPayload,
   payloadToDraft,
   validateDraft,
@@ -102,5 +103,54 @@ describe("targetSlot en el cliente (3F.5)", () => {
       content,
     });
     expect(error).toContain("no existe");
+  });
+});
+
+describe("icono de la skill en los pentágonos de la escena", () => {
+  const artSkill: Skill = {
+    ...skill,
+    id: "skl_art",
+    name: "Con arte",
+    image: "/uploads/skill-art.png",
+  };
+
+  it("devuelve la skill declarada en ese slot con su imagen", () => {
+    const found = declaredSkillForSlot(
+      { skills: [skill, artSkill] },
+      [{ unitId: "p1", slot: 2, skillId: artSkill.id, locked: false }],
+      2,
+    );
+    expect(found?.image).toBe("/uploads/skill-art.png");
+  });
+
+  it("devuelve null si el slot no tiene skill declarada", () => {
+    expect(
+      declaredSkillForSlot(
+        { skills: [skill] },
+        [{ unitId: "p1", slot: 1, locked: false }],
+        1,
+      ),
+    ).toBeNull();
+    expect(declaredSkillForSlot({ skills: [skill] }, undefined, 1)).toBeNull();
+  });
+
+  it("ignora las acciones de otros slots", () => {
+    expect(
+      declaredSkillForSlot(
+        { skills: [skill] },
+        [{ unitId: "p1", slot: 1, skillId: skill.id, locked: false }],
+        2,
+      ),
+    ).toBeNull();
+  });
+
+  it("no inventa icono si la skill declarada ya no existe en el contenido", () => {
+    expect(
+      declaredSkillForSlot(
+        { skills: [] },
+        [{ unitId: "p1", slot: 1, skillId: "skl_borrada", locked: false }],
+        1,
+      ),
+    ).toBeNull();
   });
 });
