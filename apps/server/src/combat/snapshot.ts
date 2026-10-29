@@ -118,7 +118,12 @@ export function snapshotUnit(
   options: SnapshotOptions,
 ): CombatUnit {
   const { campaign, team, speedRoll } = options;
-  const derived = calculateStats(character, campaign.content, campaign.rules);
+  const derived = calculateStats(
+    character,
+    campaign.content,
+    campaign.rules,
+    campaign.settings,
+  );
   const hpMax = derived.stats.hpMax;
   const hp = currentHp(character, hpMax);
   // La SPD total incluye la tirada del combate; `baseStats` no cambia. El
@@ -153,8 +158,12 @@ export function snapshotUnit(
     ...(bossPhase ? { bossPhase, bossPhaseActive: false } : {}),
     stats,
     ...(spdRoll === undefined ? {} : { spdRoll }),
-    baseStats: { ...character.baseStats },
+    // Incluye las ganancias de nivel: el motor recalcula stats durante el
+    // combate a partir de esta base y no debe perderlas.
+    baseStats: { ...derived.base },
     hpCurrent: hp,
+    soulPoints: { ...derived.soulPoints },
+    overcharged: derived.soulPoints.overcharged,
     equipment: { ...character.equipment },
     skills: [...character.skills],
     special: character.special ? { ...character.special } : undefined,

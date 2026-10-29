@@ -56,6 +56,7 @@ function makeUnit(params: {
   effects?: AppliedEffect[];
   utilityUses?: number;
   special?: CombatUnit["special"];
+  overcharged?: boolean;
 }): CombatUnit {
   const baseStats: Stats = {
     ...DEFAULT_STATS,
@@ -78,6 +79,7 @@ function makeUnit(params: {
     special: params.special,
     effects: params.effects ?? [],
     utilityUses: params.utilityUses ?? 0,
+    overcharged: params.overcharged,
     defeated: hpCurrent <= 0,
   };
 }
@@ -268,6 +270,47 @@ describe("3B — monedas, full heads y daño", () => {
     expect(computeDamage(100, -50, DEFAULT_RULES)).toBe(100);
     expect(computeDamage(1, 200, DEFAULT_RULES)).toBe(1);
     expect(computeDamage(100, 200, DEFAULT_RULES, "pure")).toBe(100);
+  });
+
+  it("un objetivo OVERCHARGED recibe 1.5× daño en combate", () => {
+    const skill = makeSkill("skl_overcharge", {
+      coins: 1,
+      baseClash: 10,
+      coinClash: 0,
+      baseDamage: 100,
+      coinDamage: 0,
+    });
+    const content = makeContent({ skills: [skill] });
+
+    function hpAfterAttack(overcharged: boolean): number {
+      const attacker = makeUnit({
+        id: "attacker",
+        baseStats: { hpMax: 1000, atk: 0, def: 0 },
+        skills: [skill.id, null, null],
+      });
+      const target = makeUnit({
+        id: "target",
+        team: "enemies",
+        baseStats: { hpMax: 1000, def: 0 },
+        hpCurrent: 1000,
+        overcharged,
+      });
+      const state = makeState([attacker, target], {
+        attacker: [
+          act("attacker", 1, { skillId: skill.id, targetId: target.id }),
+        ],
+      });
+      const result = resolveRound(
+        state,
+        state.actions,
+        content,
+        DEFAULT_RULES,
+      );
+      return unitFromState(result.state, target.id).hpCurrent;
+    }
+
+    expect(hpAfterAttack(false)).toBe(900);
+    expect(hpAfterAttack(true)).toBe(850);
   });
 });
 

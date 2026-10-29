@@ -374,7 +374,13 @@ export function executeEffectActions(
       const raw = (action.base ?? 0) + (action.perStack ?? 0) * stacks;
       if (raw <= 0) continue;
       const damageType = action.damageType ?? "physical";
-      const final = computeDamage(raw, current.stats.def, context.rules, damageType);
+      const final = computeDamage(
+        raw,
+        current.stats.def,
+        context.rules,
+        damageType,
+        { overcharged: current.overcharged },
+      );
       if (final <= 0) continue;
       const hpBefore = current.hpCurrent;
       const hpAfter = Math.max(0, hpBefore - final);
@@ -397,6 +403,7 @@ export function executeEffectActions(
           damageType,
           hpBefore,
           hpAfter,
+          overcharged: current.overcharged === true,
           ...source,
         },
       });

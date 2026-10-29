@@ -335,6 +335,7 @@ export function TablePage() {
       character,
       activeCampaign.content,
       activeCampaign.rules,
+      activeCampaign.settings,
     );
     return { character, stats: derived.stats };
   }

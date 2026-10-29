@@ -841,6 +841,7 @@ export function CombatScene({
           <span
             className="sv-unit-state"
             data-masked={exact ? undefined : "true"}
+            data-overcharged={unit.overcharged ? "true" : undefined}
           >
             {unit.defeated
               ? "CAÍDO"
@@ -848,6 +849,7 @@ export function CombatScene({
                 ? `${unit.hpCurrent} HP`
                 : `≈${hp}% HP`}
             {locked ? " · LISTO" : ""}
+            {unit.overcharged ? " · OVERCHARGED" : ""}
           </span>
         </div>
         <div className="sv-hpbar sv-hpbar--unit">
@@ -1837,6 +1839,16 @@ function SheetPanel({
 
       <div className="sv-sheet-meta">
         <span className="sv-sheet-tag">{roleLabel(unit)}</span>
+        {unit.soulPoints ? (
+          <span
+            className="sv-sheet-tag"
+            data-overcharged={unit.overcharged ? "true" : undefined}
+            title="Soul Points usados / máximo"
+          >
+            SP {unit.soulPoints.used}/{unit.soulPoints.max}
+            {unit.overcharged ? " · OVERCHARGED" : ""}
+          </span>
+        ) : null}
         {utility ? (
           <span className="sv-sheet-tag" title="Utilidad equipada">
             {utility.name} ×{unit.utilityUses}

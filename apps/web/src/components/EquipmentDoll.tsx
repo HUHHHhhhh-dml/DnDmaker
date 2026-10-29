@@ -9,6 +9,7 @@ import {
   type EquipmentSlot,
   type Item,
   type Skill,
+  type SoulPointsSummary,
   type Stats,
 } from "@protocol-life/shared";
 import { Icon } from "./Icons";
@@ -36,6 +37,8 @@ export interface EquipmentDollProps {
   effects?: EffectDefinition[];
   baseImage?: string;
   derived: Stats;
+  /** Soul Points usados/máximo; se muestra bajo «Equipado N/5». */
+  soulPoints?: SoulPointsSummary;
   editable?: boolean;
   onEquip?: (slot: EquipmentSlot, itemId: string | null) => void;
   onSkillChange?: (index: number, skillId: string | null) => void;
@@ -53,6 +56,7 @@ export function EquipmentDoll({
   effects = [],
   baseImage,
   derived,
+  soulPoints,
   editable = false,
   onEquip,
   onSkillChange,
@@ -216,6 +220,29 @@ export function EquipmentDoll({
                 {equippedItems.length}
                 <span className="text-sm text-ui-faint">/5</span>
               </div>
+              {soulPoints ? (
+                <div
+                  className={cx(
+                    "mt-1 border-t border-ui-line pt-1",
+                    soulPoints.overcharged && "text-ui-danger",
+                  )}
+                >
+                  <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-ui-faint">
+                    Soul Points
+                  </div>
+                  <div className="font-display text-lg leading-tight">
+                    {soulPoints.used}
+                    <span className="text-xs text-ui-faint">
+                      /{soulPoints.max}
+                    </span>
+                  </div>
+                  {soulPoints.overcharged ? (
+                    <div className="font-mono text-[8px] font-bold uppercase tracking-[0.12em]">
+                      OVERCHARGED
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -517,6 +544,12 @@ function ItemPickerModal({
                     ) : (
                       <span className="chip opacity-60">Sin stats</span>
                     )}
+                    {item.soulCost ? (
+                      <span className="chip chip-rust">
+                        <span className="text-ui-faint">Soul Points</span>
+                        <span className="font-bold">{item.soulCost}</span>
+                      </span>
+                    ) : null}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {item.effects?.map((ref) => {

@@ -552,8 +552,12 @@ export class DungeonRunService {
       if (!character) continue;
       units.push({
         characterId,
-        spd: calculateStats(character, campaign.content, campaign.rules).stats
-          .spd,
+        spd: calculateStats(
+          character,
+          campaign.content,
+          campaign.rules,
+          campaign.settings,
+        ).stats.spd,
       });
     }
     return units;

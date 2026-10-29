@@ -15,11 +15,17 @@ export function damageMitigation(
   return safeDef / (safeDef + constant);
 }
 
+export interface DamageOptions {
+  /** El objetivo está OVERCHARGED: recibe 1.5× el daño final. */
+  overcharged?: boolean;
+}
+
 /**
  * Daño final de un golpe.
  *
  * - `physical` y `mystic` mitigan con DEF.
  * - `pure` ignora DEF.
+ * - Un objetivo OVERCHARGED recibe 1.5× el daño final.
  * - Siempre respeta `rules.minDamage`.
  */
 export function computeDamage(
@@ -27,7 +33,9 @@ export function computeDamage(
   def: number,
   rules: Ruleset = DEFAULT_RULES,
   damageType: DamageType = "physical",
+  options: DamageOptions = {},
 ): number {
   const value = damageType === "pure" ? raw : raw * (1 - damageMitigation(def, rules));
-  return Math.max(rules.minDamage, Math.floor(value));
+  const multiplier = options.overcharged ? 1.5 : 1;
+  return Math.max(rules.minDamage, Math.floor(value * multiplier));
 }

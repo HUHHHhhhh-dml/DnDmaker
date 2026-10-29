@@ -1,5 +1,28 @@
 # Changelog
 
+## Niveles, Soul Points y OVERCHARGED (2026-10-28)
+
+### Añadido
+
+- **Nivel de personaje** (`Character.level`, base 1) y botón «Subir nivel» en
+  la ficha del DM. Las ganancias se calculan desde los ajustes de campaña, no
+  se hornean en `baseStats`.
+- **Progresión configurable por campaña** (`CampaignSettings.leveling`): tres
+  opciones independientes para que el nivel suba **HP máximo**, **DEF** y/o
+  **Soul Points**, cada una con su cantidad por nivel. Se configura al crear la
+  campaña y también en los ajustes.
+- **Coste en Soul Points por objeto** (`Item.soulCost`, 0 por defecto).
+- Capacidad base de **10 Soul Points**; el nivel puede ampliarla. Los Soul
+  Points usados son la suma del coste del equipo.
+- **OVERCHARGED**: si el equipo supera la capacidad, el personaje recibe
+  **1.5× daño** y se marca en la ficha, el muñeco de equipo, la hoja de combate
+  y el log.
+- El muñeco de equipo muestra `Soul Points usados/máximo` justo debajo de
+  «Equipado N/5», con aviso OVERCHARGED cuando corresponde.
+- El editor de objetos permite configurar el coste SP; las tarjetas y el
+  selector de equipo lo muestran.
+- Tests de stats/nivel, multiplicador de daño y snapshot de combate.
+
 ## Capas de skill delante y detrás del personaje (2026-10-28)
 
 ### Añadido

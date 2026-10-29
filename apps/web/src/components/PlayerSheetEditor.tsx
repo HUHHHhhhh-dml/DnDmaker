@@ -47,7 +47,12 @@ export function PlayerSheetEditor({
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const derived = calculateStats(draft, campaign.content, campaign.rules);
+  const derived = calculateStats(
+    draft,
+    campaign.content,
+    campaign.rules,
+    campaign.settings,
+  );
   const itemsById = new Map(campaign.content.items.map((item) => [item.id, item]));
   // El estado del jugador incluye lo bloqueado que lleva la party para que los
   // stats de todos se calculen bien. El editor solo ofrece lo desbloqueado más
@@ -332,6 +337,7 @@ export function PlayerSheetEditor({
           effects={campaign.content.effects}
           baseImage={campaign.settings.baseCharacterImage}
           derived={derived.stats}
+          soulPoints={derived.soulPoints}
           editable
           onEquip={(slot, itemId) => patchEquipment(slot, itemId)}
           onSkillChange={(index, skillId) => patchSkill(index, skillId)}

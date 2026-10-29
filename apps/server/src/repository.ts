@@ -172,6 +172,7 @@ function validateEntity(
   entity: ContentEntity,
   content: CampaignContent,
   rules: Ruleset,
+  settings: CampaignSettings,
 ): ValidationResult {
   switch (type) {
     case "items":
@@ -181,7 +182,7 @@ function validateEntity(
     case "effects":
       return validateEffect(entity as EffectDefinition, content);
     case "characters":
-      return validateCharacter(entity as Character, content, rules);
+      return validateCharacter(entity as Character, content, rules, settings);
     case "encounters":
       return validateEncounter(entity as Encounter, content);
   }
@@ -439,7 +440,13 @@ export class Repository {
     } as unknown as EntityByType[T];
 
     assertValid(
-      validateEntity(type, entity as ContentEntity, campaign.content, campaign.rules),
+      validateEntity(
+        type,
+        entity as ContentEntity,
+        campaign.content,
+        campaign.rules,
+        campaign.settings,
+      ),
       "el contenido",
     );
 
@@ -483,7 +490,13 @@ export class Repository {
 
     const entity = CONTENT_SCHEMAS[type].entity.parse(merged) as unknown as EntityByType[T];
     assertValid(
-      validateEntity(type, entity as ContentEntity, campaign.content, campaign.rules),
+      validateEntity(
+        type,
+        entity as ContentEntity,
+        campaign.content,
+        campaign.rules,
+        campaign.settings,
+      ),
       "el contenido",
     );
 
@@ -606,6 +619,7 @@ export class Repository {
           character,
           campaign.content,
           campaign.rules,
+          campaign.settings,
         );
         const next = CONTENT_SCHEMAS.characters.entity.parse({
           ...character,
@@ -635,7 +649,12 @@ export class Repository {
       campaign.content.specials.map((special) => [special.id, special]),
     );
 
-    const derived = calculateStats(character, campaign.content, campaign.rules);
+    const derived = calculateStats(
+      character,
+      campaign.content,
+      campaign.rules,
+      campaign.settings,
+    );
     return { character, derived, items: itemMap, skills: skillMap, specials: specialMap };
   }
 
@@ -1197,7 +1216,10 @@ export class Repository {
     const rules = imported.rules;
     const settings = imported.settings;
 
-    assertValid(validateContent(content, rules), "la campaña importada");
+    assertValid(
+      validateContent(content, rules, settings),
+      "la campaña importada",
+    );
 
     this.sqlite.transaction(() => {
       this.db

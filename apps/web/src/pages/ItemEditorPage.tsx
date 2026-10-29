@@ -48,6 +48,7 @@ interface ItemDraft {
   useEffect: EffectAction[];
   tags: string;
   price: number | undefined;
+  soulCost: number;
 }
 
 function emptyDraft(): ItemDraft {
@@ -65,6 +66,7 @@ function emptyDraft(): ItemDraft {
     useEffect: [],
     tags: "",
     price: undefined,
+    soulCost: 0,
   };
 }
 
@@ -83,6 +85,7 @@ function draftFromItem(item: Item): ItemDraft {
     useEffect: item.useEffect ? structuredClone(item.useEffect) : [],
     tags: (item.tags ?? []).join(", "),
     price: item.price,
+    soulCost: item.soulCost ?? 0,
   };
 }
 
@@ -166,6 +169,7 @@ export function ItemEditorPage() {
         .map((tag) => tag.trim())
         .filter(Boolean),
       price: draft.price,
+      soulCost: draft.soulCost,
     };
   }
 
@@ -315,6 +319,17 @@ export function ItemEditorPage() {
                   onValueChange={(value) => patch({ price: value })}
                   min={0}
                   max={9_999_999}
+                />
+              </Field>
+              <Field
+                label="Coste en Soul Points"
+                hint="Se suma al equipo del personaje. Si supera su límite, queda OVERCHARGED."
+              >
+                <NumberInput
+                  value={draft.soulCost}
+                  onValueChange={(value) => patch({ soulCost: value ?? 0 })}
+                  min={0}
+                  max={999}
                 />
               </Field>
               <Field label="Descripción" className="sm:col-span-2">

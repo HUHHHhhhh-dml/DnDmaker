@@ -164,11 +164,11 @@ export async function registerRoutes(
         "Solo puedes editar tu propio personaje.",
       );
     }
-    if ("kind" in patch || "ownerId" in patch) {
+    if ("kind" in patch || "ownerId" in patch || "level" in patch) {
       throw new HttpError(
         403,
         "forbidden_fields",
-        "No puedes cambiar el tipo ni el dueño de la ficha.",
+        "No puedes cambiar el tipo, el nivel ni el dueño de la ficha.",
       );
     }
     if ("hpCurrent" in patch) {

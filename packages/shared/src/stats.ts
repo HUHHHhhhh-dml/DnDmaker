@@ -1,17 +1,22 @@
 import {
+  BASE_SOUL_POINTS,
   DEFAULT_RULES,
   EQUIPMENT_SLOTS,
   STAT_KEYS,
+  characterLevel,
   clamp,
+  resolveLeveling,
 } from "./defaults";
 import type {
   CampaignContent,
+  CampaignSettings,
   Character,
   EffectDefinition,
   EquipmentSlot,
   Item,
   Ruleset,
   Skill,
+  SoulPointsSummary,
   StatKey,
   Stats,
 } from "./types";
@@ -55,8 +60,13 @@ export interface EquippedItem {
 }
 
 export interface DerivedStats {
+  /** Base efectiva antes de equipo/efectos, ya con las ganancias de nivel. */
   base: Stats;
   stats: Stats;
+  /** Nivel efectivo de la ficha (1 si no tiene). */
+  level: number;
+  /** Soul Points usados por el equipo, capacidad y sobrecarga. */
+  soulPoints: SoulPointsSummary;
   contributions: StatContribution[];
   activeEffects: ActiveEffectSummary[];
   equipment: EquippedItem[];
@@ -68,10 +78,23 @@ export function calculateStats(
   character: Character,
   content: Pick<CampaignContent, "items" | "skills" | "effects">,
   rules: Ruleset = DEFAULT_RULES,
+  settings?: Pick<CampaignSettings, "leveling">,
 ): DerivedStats {
   const itemById = new Map(content.items.map((item) => [item.id, item]));
   const effectById = new Map(content.effects.map((effect) => [effect.id, effect]));
   const skillById = new Map(content.skills.map((skill) => [skill.id, skill]));
+
+  const level = characterLevel(character);
+  const leveling = resolveLeveling(settings?.leveling);
+  const base: Stats = { ...character.baseStats };
+  if (level > 1) {
+    if (leveling.hp) {
+      base.hpMax += (level - 1) * leveling.hpPerLevel;
+    }
+    if (leveling.def) {
+      base.def += (level - 1) * leveling.defPerLevel;
+    }
+  }
 
   const contributions: StatContribution[] = [];
   const activeEffects: ActiveEffectSummary[] = [];
@@ -165,7 +188,7 @@ export function calculateStats(
     }
   }
 
-  const stats = { ...character.baseStats };
+  const stats = { ...base };
 
   for (const stat of STAT_KEYS) {
     const relevant = contributions.filter((entry) => entry.stat === stat);
@@ -176,7 +199,7 @@ export function calculateStats(
       .filter((entry) => entry.kind === "percent")
       .reduce((total, entry) => total + entry.amount, 0);
 
-    const beforePercent = character.baseStats[stat] + flat;
+    const beforePercent = base[stat] + flat;
     let value = Math.round(beforePercent * (1 + percent / 100));
 
     if (stat === "skillSlots") {
@@ -204,9 +227,25 @@ export function calculateStats(
     return skill;
   });
 
+  const soulUsed = equipment.reduce(
+    (total, entry) => total + Math.max(0, entry.item?.soulCost ?? 0),
+    0,
+  );
+  const soulMax =
+    BASE_SOUL_POINTS +
+    (leveling.soulPoints ? (level - 1) * leveling.soulPointsPerLevel : 0);
+  const overcharged = soulUsed > soulMax;
+  if (overcharged) {
+    warnings.push(
+      `Soul Points ${soulUsed}/${soulMax}: OVERCHARGED. El personaje recibe 1.5× daño.`,
+    );
+  }
+
   return {
-    base: { ...character.baseStats },
+    base,
     stats,
+    level,
+    soulPoints: { used: soulUsed, max: soulMax, overcharged },
     contributions,
     activeEffects,
     equipment,

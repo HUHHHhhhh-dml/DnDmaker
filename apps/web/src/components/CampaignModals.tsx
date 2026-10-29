@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DEFAULT_BASE_CHARACTER_IMAGE,
+  DEFAULT_LEVELING,
   HP_PERSISTENCE_LABELS,
   TIE_RULE_LABELS,
+  resolveLeveling,
   type Campaign,
   type CampaignSettings,
+  type LevelingSettings,
   type Ruleset,
 } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
@@ -22,6 +25,97 @@ import {
 } from "./ui";
 import { ImageField } from "./ImageField";
 import { Icon } from "./Icons";
+
+/**
+ * Configuración de subida de nivel. Cada opción es independiente y tiene su
+ * propia cantidad; los Soul Points parten de una base fija de 10.
+ */
+function LevelingFields({
+  value,
+  onChange,
+}: {
+  value: LevelingSettings;
+  onChange: (next: LevelingSettings) => void;
+}) {
+  function patch(update: Partial<LevelingSettings>) {
+    onChange({ ...value, ...update });
+  }
+
+  return (
+    <div className="border border-ui-line bg-ui-surface-2 p-3">
+      <div className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-ui-muted">
+        Progresión por nivel
+      </div>
+      <p className="mb-3 text-[11px] leading-relaxed text-ui-faint">
+        Soul Points base: 10. Activa qué stats suben al subir de nivel y cuánto
+        recibe el personaje por nivel. Puedes activar varias opciones a la vez.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="border border-ui-line bg-ui-surface-3 p-2.5">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={value.hp}
+              onChange={(event) => patch({ hp: event.target.checked })}
+              className="h-4 w-4 accent-rust"
+            />
+            HP máximo
+          </label>
+          <Field label="Por nivel" className="mt-2">
+            <NumberInput
+              value={value.hpPerLevel}
+              onValueChange={(amount) => patch({ hpPerLevel: amount ?? 0 })}
+              min={0}
+              max={9999}
+            />
+          </Field>
+        </div>
+        <div className="border border-ui-line bg-ui-surface-3 p-2.5">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={value.def}
+              onChange={(event) => patch({ def: event.target.checked })}
+              className="h-4 w-4 accent-rust"
+            />
+            DEF
+          </label>
+          <Field label="Por nivel" className="mt-2">
+            <NumberInput
+              value={value.defPerLevel}
+              onValueChange={(amount) => patch({ defPerLevel: amount ?? 0 })}
+              min={0}
+              max={999}
+            />
+          </Field>
+        </div>
+        <div className="border border-ui-line bg-ui-surface-3 p-2.5">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={value.soulPoints}
+              onChange={(event) =>
+                patch({ soulPoints: event.target.checked })
+              }
+              className="h-4 w-4 accent-rust"
+            />
+            Soul Points
+          </label>
+          <Field label="Por nivel" className="mt-2">
+            <NumberInput
+              value={value.soulPointsPerLevel}
+              onValueChange={(amount) =>
+                patch({ soulPointsPerLevel: amount ?? 0 })
+              }
+              min={0}
+              max={999}
+            />
+          </Field>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /* Nueva campaña                                                              */
@@ -40,6 +134,9 @@ export function NewCampaignModal({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [seed, setSeed] = useState(true);
+  const [leveling, setLeveling] = useState<LevelingSettings>({
+    ...DEFAULT_LEVELING,
+  });
   const [baseCharacterImage, setBaseCharacterImage] = useState<string | undefined>(
     DEFAULT_BASE_CHARACTER_IMAGE,
   );
@@ -50,6 +147,7 @@ export function NewCampaignModal({
     setName("");
     setDescription("");
     setSeed(true);
+    setLeveling({ ...DEFAULT_LEVELING });
     setBaseCharacterImage(DEFAULT_BASE_CHARACTER_IMAGE);
     setError(null);
   }, [open]);
@@ -64,7 +162,10 @@ export function NewCampaignModal({
         name: name.trim(),
         description: description.trim() || undefined,
         seed,
-        settings: { baseCharacterImage: baseCharacterImage ?? "" },
+        settings: {
+          baseCharacterImage: baseCharacterImage ?? "",
+          leveling,
+        },
       });
       onClose();
       navigate("/");
@@ -127,6 +228,7 @@ export function NewCampaignModal({
             hint="7 objetos, 5 skills, 4 efectos, 4 personajes y 1 encuentro de ejemplo, todo editable."
           />
         </div>
+        <LevelingFields value={leveling} onChange={setLeveling} />
       </div>
     </Modal>
   );
@@ -399,6 +501,10 @@ export function EditCampaignModal({
                 </Select>
               </Field>
             </div>
+            <LevelingFields
+              value={resolveLeveling(settings.leveling)}
+              onChange={(leveling) => patchSettings({ leveling })}
+            />
           </div>
         ) : null}
 

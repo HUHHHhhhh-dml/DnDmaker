@@ -40,6 +40,8 @@ export function resolveClash(
         defenderRoll.rawDamage,
         attacker.unit.stats.def,
         rules,
+        "physical",
+        { overcharged: attacker.unit.overcharged },
       );
       return {
         winner: "defender",
@@ -61,6 +63,8 @@ export function resolveClash(
             defenderRoll.rawDamage,
             attacker.unit.stats.def,
             rules,
+            "physical",
+            { overcharged: attacker.unit.overcharged },
           ) / 2,
         ),
       );
@@ -71,6 +75,8 @@ export function resolveClash(
             attackerRoll.rawDamage,
             defender.unit.stats.def,
             rules,
+            "physical",
+            { overcharged: defender.unit.overcharged },
           ) / 2,
         ),
       );
@@ -103,6 +109,8 @@ export function resolveClash(
       attackerRoll.rawDamage,
       defender.unit.stats.def,
       rules,
+      "physical",
+      { overcharged: defender.unit.overcharged },
     );
     return {
       winner: "attacker",
@@ -120,6 +128,8 @@ export function resolveClash(
     defenderRoll.rawDamage,
     attacker.unit.stats.def,
     rules,
+    "physical",
+    { overcharged: attacker.unit.overcharged },
   );
   return {
     winner: "defender",

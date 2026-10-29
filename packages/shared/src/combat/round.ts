@@ -210,6 +210,7 @@ export function resolveRound(
         hpBefore,
         hpAfter,
         def: target.stats.def,
+        overcharged: target.overcharged === true,
         ...source,
       },
     });
@@ -543,6 +544,8 @@ export function resolveRound(
       roll.rawDamage,
       target.stats.def,
       rules,
+      "physical",
+      { overcharged: target.overcharged },
     );
     emit({
       type: "clash",

@@ -88,6 +88,19 @@ export function ItemCard({
             {statEntries(item.stats).map((entry) => (
               <StatChip key={entry.key} label={entry.label} value={entry.value} />
             ))}
+            {item.soulCost ? (
+              <span className="chip chip-rust">
+                <span className="text-ui-faint">Soul Points</span>
+                <span className="font-bold">{item.soulCost}</span>
+              </span>
+            ) : null}
+          </div>
+        ) : item.soulCost ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            <span className="chip chip-rust">
+              <span className="text-ui-faint">Soul Points</span>
+              <span className="font-bold">{item.soulCost}</span>
+            </span>
           </div>
         ) : null}
         {effectNames.length > 0 ? (
@@ -314,7 +327,8 @@ export function CharacterCard({
             {character.name}
           </h3>
           <p className="truncate font-mono text-[9px] text-ui-faint">
-            {equipped} objetos · {skillNames.length}/3 skills
+            {equipped} objetos · {skillNames.length}/3 skills · Nv.{" "}
+            {character.level ?? 1}
           </p>
         </div>
       </div>

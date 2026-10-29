@@ -41,6 +41,14 @@ export interface Stats {
 
 export type StatKey = keyof Stats;
 
+/** Soul Points usados por el equipo, capacidad y sobrecarga. */
+export interface SoulPointsSummary {
+  used: number;
+  max: number;
+  /** true si `used > max`: recibe 1.5× daño y se marca OVERCHARGED. */
+  overcharged: boolean;
+}
+
 /* ========================================================================== */
 /* Efectos de estado                                                          */
 /* ========================================================================== */
@@ -161,6 +169,8 @@ export interface Item {
   useEffect?: EffectAction[];
   tags?: string[];
   price?: number;
+  /** Coste en Soul Points al equipar; ausente/0 = gratis. */
+  soulCost?: number;
 }
 
 /* ========================================================================== */
@@ -276,6 +286,9 @@ export interface Character {
    */
   hpCurrent?: number;
 
+  /** Nivel de la ficha; ausente = 1. Las ganancias salen de los settings. */
+  level?: number;
+
   /** Slots de equipo; `utility` es el ítem de utilidad. */
   equipment: Record<EquipmentSlot, Id | null>;
 
@@ -390,6 +403,18 @@ export interface Ruleset {
   hpPersistence: "persist" | "restore";
 }
 
+export interface LevelingSettings {
+  /** El nivel aumenta el HP máximo. */
+  hp: boolean;
+  /** El nivel aumenta la DEF. */
+  def: boolean;
+  /** El nivel aumenta la capacidad de Soul Points. */
+  soulPoints: boolean;
+  hpPerLevel: number;
+  defPerLevel: number;
+  soulPointsPerLevel: number;
+}
+
 export interface CampaignSettings {
   maxPlayers: number;
   /** ¿El jugador puede editar su ficha fuera de combate? */
@@ -401,6 +426,8 @@ export interface CampaignSettings {
   pin?: string;
   /** Imagen base para el muñeco de equipo de los jugadores. */
   baseCharacterImage?: string;
+  /** Progresión por nivel; ausente = defaults para campañas antiguas. */
+  leveling?: LevelingSettings;
 }
 
 export interface CampaignContent {
@@ -474,9 +501,13 @@ export interface CombatUnit {
   bossPhaseActive?: boolean;
   /** Stats ya calculados con equipo/efectos al iniciar (snapshot). */
   stats: Stats;
-  /** Stats base para recalcular con efectos activos durante el combate. */
+  /** Stats base (con nivel) para recalcular con efectos durante el combate. */
   baseStats?: Stats;
   hpCurrent: number;
+  /** Soul Points usados/máximo y sobrecarga al iniciar el combate. */
+  soulPoints?: SoulPointsSummary;
+  /** Atajo de `soulPoints.overcharged`; con true recibe 1.5× daño. */
+  overcharged?: boolean;
   equipment: Record<EquipmentSlot, Id | null>;
   skills: (Id | null)[];
   special?: {

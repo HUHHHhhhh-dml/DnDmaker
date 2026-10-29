@@ -184,6 +184,8 @@ const itemFields = {
   useEffect: z.array(effectActionSchema).max(20).optional(),
   tags: tagsSchema.optional(),
   price: integer(0, 9_999_999).optional(),
+  /** Coste de Soul Points al equipar; ausente = 0. */
+  soulCost: integer(0, 999).optional(),
 };
 
 export const itemInputSchema = z.object(itemFields);
@@ -308,6 +310,8 @@ const characterFields = {
   baseStats: characterStatsSchema,
   /** HP actual; ausente = HP máximo derivado. */
   hpCurrent: integer(0, 99_999).optional(),
+  /** Nivel de la ficha; ausente = 1. */
+  level: integer(1, 9999).optional(),
   equipment: equipmentSchema,
   skills: characterSkillsSchema,
   special: characterSpecialSchema.optional(),
@@ -340,6 +344,7 @@ const characterOverridesSchema = z.object({
   bossPhase: bossPhaseSchema.optional(),
   baseStats: characterStatsSchema.partial().optional(),
   hpCurrent: integer(0, 99_999).optional(),
+  level: integer(1, 9999).optional(),
   equipment: equipmentSchema.partial().optional(),
   skills: characterSkillsSchema.optional(),
   special: characterSpecialSchema.partial().optional(),
@@ -630,6 +635,16 @@ export const rulesetSchema = z.object({
   hpPersistence: z.enum(["persist", "restore"]),
 });
 
+/** Configuración de ganancias por nivel. Las tres opciones son independientes. */
+export const levelingSchema = z.object({
+  hp: z.boolean(),
+  def: z.boolean(),
+  soulPoints: z.boolean(),
+  hpPerLevel: integer(0, 9999),
+  defPerLevel: integer(0, 999),
+  soulPointsPerLevel: integer(0, 999),
+});
+
 export const campaignSettingsSchema = z.object({
   maxPlayers: integer(1, 6),
   allowPlayerEdit: z.boolean(),
@@ -639,6 +654,8 @@ export const campaignSettingsSchema = z.object({
   baseCharacterImage: imageSchema.optional(),
   /** Fase 4A-2: reparto de objetos; ausente = todos reciben cada objeto. */
   shareLoot: z.boolean().optional(),
+  /** Progresión por nivel; ausente = defaults para campañas antiguas. */
+  leveling: levelingSchema.optional(),
 });
 
 export const campaignContentSchema = z.object({
@@ -720,6 +737,13 @@ export const combatStatsSchema = z.object({
   skillSlots: integer(1, 6),
 });
 
+/** Resumen de Soul Points copiado al snapshot de combate. */
+export const soulPointsSchema = z.object({
+  used: integer(0, 99_999),
+  max: integer(0, 99_999),
+  overcharged: z.boolean(),
+});
+
 export const appliedEffectSchema = z.object({
   effectId: idSchema,
   stacks: integer(1, 99),
@@ -781,6 +805,10 @@ export const combatUnitSchema = z.object({
   /** Base para recalcular stats con efectos; opcional en estados antiguos. */
   baseStats: combatStatsSchema.optional(),
   hpCurrent: integer(0, 99_999),
+  /** Soul Points usados/máximo; ausente en estados antiguos. */
+  soulPoints: soulPointsSchema.optional(),
+  /** Atajo de `soulPoints.overcharged` para el motor. */
+  overcharged: z.boolean().optional(),
   equipment: equipmentSchema,
   skills: characterSkillsSchema,
   special: characterSpecialSchema.optional(),

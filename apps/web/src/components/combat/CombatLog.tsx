@@ -112,6 +112,9 @@ function eventDetails(
   if (typeof data.final === "number") {
     details.push(`${data.final} de daño final`);
   }
+  if (data.overcharged === true) {
+    details.push("OVERCHARGED ×1.5");
+  }
   if (typeof data.amount === "number") {
     details.push(`+${data.amount} HP`);
   }

@@ -7,6 +7,7 @@ import {
   STAT_LABELS,
   calculateStats,
   type CampaignContent,
+  type CampaignSettings,
   type PublicSession,
   type PublicSessionPlayer,
   type Ruleset,
@@ -119,7 +120,12 @@ export function PlayerTablePage() {
   const derived = useMemo(
     () =>
       character && campaign
-        ? calculateStats(character, campaign.content, campaign.rules)
+        ? calculateStats(
+        character,
+        campaign.content,
+        campaign.rules,
+        campaign.settings,
+      )
         : null,
     [character, campaign],
   );
@@ -429,9 +435,14 @@ export function PlayerTablePage() {
                       <div className="mono-label">
                         {player.name} · jugador
                       </div>
-                      <h1 className="display mt-1 text-3xl sm:text-4xl">
-                        {character.name}
-                      </h1>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <h1 className="display text-3xl sm:text-4xl">
+                          {character.name}
+                        </h1>
+                        <span className="chip chip-accent">
+                          Nivel {derived.level}
+                        </span>
+                      </div>
                     </div>
                     {editing ? (
                       <span className="chip chip-accent">Borrador abierto</span>
@@ -519,6 +530,7 @@ export function PlayerTablePage() {
                     effects={campaign.content.effects}
                     baseImage={campaign.settings.baseCharacterImage}
                     derived={derived.stats}
+                    soulPoints={derived.soulPoints}
                     editable={false}
                   />
                 </section>
@@ -641,6 +653,7 @@ export function PlayerTablePage() {
             session={session}
             content={campaign.content}
             rules={campaign.rules}
+            settings={campaign.settings}
             selfId={player.id}
             wallet={campaign.wallet.cleanShards}
           />
@@ -756,12 +769,14 @@ function PartyColumn({
   session,
   content,
   rules,
+  settings,
   selfId,
   wallet,
 }: {
   session: PublicSession;
   content: CampaignContent;
   rules: Ruleset;
+  settings: CampaignSettings;
   selfId: string;
   wallet: number;
 }) {
@@ -779,6 +794,7 @@ function PartyColumn({
                 player={entry}
                 content={content}
                 rules={rules}
+                settings={settings}
                 isSelf={entry.id === selfId}
               />
             ))
@@ -851,17 +867,19 @@ function PartyCard({
   player,
   content,
   rules,
+  settings,
   isSelf,
 }: {
   player: PublicSessionPlayer;
   content: CampaignContent;
   rules: Ruleset;
+  settings: CampaignSettings;
   isSelf: boolean;
 }) {
   const character = player.characterId
     ? (content.characters.find((entry) => entry.id === player.characterId) ?? null)
     : null;
-  const derived = character ? calculateStats(character, content, rules) : null;
+  const derived = character ? calculateStats(character, content, rules, settings) : null;
 
   return (
     <div
@@ -900,6 +918,7 @@ function PartyCard({
             />
             {player.connected ? "En línea" : "Desconectado"}
             {!isSelf ? " · jugador" : ""}
+            {derived ? ` · Nv. ${derived.level}` : ""}
           </div>
         </div>
       </div>

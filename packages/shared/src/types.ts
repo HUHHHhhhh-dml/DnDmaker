@@ -39,6 +39,17 @@ export interface Stats {
 
 export type StatKey = keyof Stats;
 
+/**
+ * Resumen de Soul Points de una ficha. `used` es la suma de `Item.soulCost`
+ * del equipo; `max` es la capacidad base 10 más las ganancias por nivel.
+ */
+export interface SoulPointsSummary {
+  used: number;
+  max: number;
+  /** true si `used > max`: recibe 1.5× daño y se marca OVERCHARGED. */
+  overcharged: boolean;
+}
+
 /* ========================================================================== */
 /* Efectos de estado                                                          */
 /* ========================================================================== */
@@ -148,6 +159,8 @@ export interface Item {
   useEffect?: EffectAction[];
   tags?: string[];
   price?: number;
+  /** Coste en Soul Points al equiparlo. Ausente/0 = gratis. */
+  soulCost?: number;
 }
 
 /* ========================================================================== */
@@ -275,6 +288,11 @@ export interface Character {
    * Solo lo modifica el motor de combate o “Rest party” fuera de combate.
    */
   hpCurrent?: number;
+  /**
+   * Nivel de la ficha (1 por defecto). Las ganancias por nivel salen de
+   * `CampaignSettings.leveling`; no se hornean en `baseStats`.
+   */
+  level?: number;
   equipment: Record<EquipmentSlot, Id | null>;
   /** Exactamente 3 slots en v0.1. */
   skills: (Id | null)[];
@@ -696,6 +714,24 @@ export interface Ruleset {
   hpPersistence: "persist" | "restore";
 }
 
+/**
+ * Configuración de progresión por nivel de la campaña.
+ *
+ * Cada opción activa una ganancia por nivel; las tres pueden estar activas a
+ * la vez. Los Soul Points parten de una base fija de 10.
+ */
+export interface LevelingSettings {
+  /** El nivel aumenta el HP máximo. */
+  hp: boolean;
+  /** El nivel aumenta la DEF. */
+  def: boolean;
+  /** El nivel aumenta la capacidad de Soul Points. */
+  soulPoints: boolean;
+  hpPerLevel: number;
+  defPerLevel: number;
+  soulPointsPerLevel: number;
+}
+
 export interface CampaignSettings {
   maxPlayers: number;
   allowPlayerEdit: boolean;
@@ -709,6 +745,8 @@ export interface CampaignSettings {
    * (true, por defecto) o se reparte por turnos (false)?
    */
   shareLoot?: boolean;
+  /** Progresión por nivel. Ausente = defaults de la campaña. */
+  leveling?: LevelingSettings;
 }
 
 export interface CampaignContent {
@@ -793,12 +831,19 @@ export interface CombatUnit {
    */
   spdRoll?: number;
   /**
-   * Stats base de la ficha antes de equipo/efectos. El motor los usa para
-   * recalcular `stats` cuando entran o salen efectos. Ausente en estados
-   * antiguos: en ese caso se usa `stats` como base.
+   * Stats base de la ficha antes de equipo/efectos, ya con las ganancias de
+   * nivel. El motor los usa para recalcular `stats` cuando entran o salen
+   * efectos. Ausente en estados antiguos: en ese caso se usa `stats` como base.
    */
   baseStats?: Stats;
   hpCurrent: number;
+  /**
+   * Soul Points usados por el equipo y capacidad de la ficha. Se copian del
+   * cálculo derivado al iniciar el combate.
+   */
+  soulPoints?: SoulPointsSummary;
+  /** Atajo de `soulPoints.overcharged`; con true recibe 1.5× daño. */
+  overcharged?: boolean;
   equipment: Record<EquipmentSlot, Id | null>;
   skills: (Id | null)[];
   /** Dominio/hábitat equipados, copiados para el motor. */

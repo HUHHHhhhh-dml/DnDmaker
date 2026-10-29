@@ -239,6 +239,7 @@ export class SessionService {
         {
           name: input.name,
           kind: "player",
+          level: 1,
           baseStats: { ...DEFAULT_STATS },
           equipment: {
             horns: null,

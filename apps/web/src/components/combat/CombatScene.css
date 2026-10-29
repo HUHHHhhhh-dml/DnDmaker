@@ -3039,6 +3039,12 @@
   text-transform: uppercase;
 }
 
+.sv-sheet-tag[data-overcharged="true"],
+.sv-unit-state[data-overcharged="true"] {
+  border-color: var(--sv-rust);
+  color: #e05b4d;
+}
+
 .sv-sheet-actions {
   display: flex;
   flex-direction: column;

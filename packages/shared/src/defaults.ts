@@ -6,6 +6,7 @@ import type {
   EffectDefinition,
   EffectTrigger,
   EquipmentSlot,
+  LevelingSettings,
   Ruleset,
   StatKey,
   Stats,
@@ -45,6 +46,36 @@ export const DEFAULT_RULES: Ruleset = {
 
 export const DEFAULT_BASE_CHARACTER_IMAGE = "/assets/base-character.png";
 
+/** Capacidad inicial de Soul Points de cualquier personaje. */
+export const BASE_SOUL_POINTS = 10;
+
+/**
+ * Progresión por nivel por defecto. Las campañas antiguas sin `leveling`
+ * usan estos valores; los personajes sin nivel cuentan como nivel 1.
+ */
+export const DEFAULT_LEVELING: LevelingSettings = {
+  hp: true,
+  def: true,
+  soulPoints: true,
+  hpPerLevel: 5,
+  defPerLevel: 1,
+  soulPointsPerLevel: 2,
+};
+
+/** Mezcla la configuración guardada con los defaults (campañas viejas). */
+export function resolveLeveling(
+  leveling?: Partial<LevelingSettings> | null,
+): LevelingSettings {
+  return { ...DEFAULT_LEVELING, ...(leveling ?? {}) };
+}
+
+/** Nivel efectivo de una ficha: ausente/inválido = 1. */
+export function characterLevel(
+  character: Pick<Character, "level">,
+): number {
+  return Math.max(1, Math.trunc(character.level ?? 1));
+}
+
 export const DEFAULT_SETTINGS: CampaignSettings = {
   maxPlayers: 6,
   allowPlayerEdit: true,
@@ -52,6 +83,7 @@ export const DEFAULT_SETTINGS: CampaignSettings = {
   requirePin: false,
   baseCharacterImage: DEFAULT_BASE_CHARACTER_IMAGE,
   shareLoot: true,
+  leveling: { ...DEFAULT_LEVELING },
 };
 
 /**
@@ -213,6 +245,7 @@ export function newCharacter(partial?: Partial<Character>): Character {
     id: newId("chr"),
     name: "Nuevo personaje",
     kind: "player",
+    level: 1,
     baseStats: { ...DEFAULT_STATS },
     equipment: {
       horns: null,

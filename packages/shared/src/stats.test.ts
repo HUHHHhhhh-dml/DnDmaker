@@ -51,6 +51,92 @@ describe("calculateStats", () => {
     expect(derived.contributions).toHaveLength(6);
   });
 
+  it("aplica ganancias por nivel y calcula Soul Points/OVERCHARGED", () => {
+    const item: Item = {
+      id: "itm_heavy",
+      name: "Armadura pesada",
+      slot: "armor",
+      soulCost: 12,
+    };
+    const content = { ...sampleContent(), items: [item], effects: [] };
+    const settings = {
+      leveling: {
+        hp: true,
+        def: true,
+        soulPoints: true,
+        hpPerLevel: 5,
+        defPerLevel: 2,
+        soulPointsPerLevel: 1,
+      },
+    };
+    const character = characterWith({
+      level: 3,
+      equipment: {
+        horns: null,
+        hand: null,
+        armor: item.id,
+        leg: null,
+        utility: null,
+      },
+    });
+
+    const derived = calculateStats(character, content, DEFAULT_RULES, settings);
+    expect(derived.level).toBe(3);
+    expect(derived.base.hpMax).toBe(60); // 50 + 2 niveles × 5
+    expect(derived.base.def).toBe(4); // 0 + 2 niveles × 2
+    expect(derived.stats).toEqual({
+      hpMax: 60,
+      def: 4,
+      atk: 0,
+      spd: 10,
+      luck: 0,
+      skillSlots: 2,
+    });
+    expect(derived.soulPoints).toEqual({
+      used: 12,
+      max: 12, // base 10 + 2 niveles × 1
+      overcharged: false,
+    });
+
+    const charged = calculateStats(
+      characterWith({
+        level: 1,
+        equipment: {
+          horns: null,
+          hand: null,
+          armor: item.id,
+          leg: null,
+          utility: null,
+        },
+      }),
+      content,
+    );
+    expect(charged.soulPoints).toEqual({
+      used: 12,
+      max: 10,
+      overcharged: true,
+    });
+    expect(charged.warnings.join(" ")).toContain("OVERCHARGED");
+  });
+
+  it("puede desactivar las tres ganancias de nivel", () => {
+    const content = sampleContent();
+    const character = characterWith({ level: 5 });
+    const derived = calculateStats(character, content, DEFAULT_RULES, {
+      leveling: {
+        hp: false,
+        def: false,
+        soulPoints: false,
+        hpPerLevel: 5,
+        defPerLevel: 2,
+        soulPointsPerLevel: 1,
+      },
+    });
+    expect(derived.base.hpMax).toBe(50);
+    expect(derived.base.def).toBe(0);
+    expect(derived.soulPoints.max).toBe(10);
+  });
+
   it("aplica porcentajes después de los planos y redondea", () => {
     const item: Item = {
       id: "itm_boots",

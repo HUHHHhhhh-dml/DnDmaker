@@ -129,7 +129,12 @@ export function CharacterSheetPage() {
 
   const view = editing || !existing ? draft : existing;
   const content = campaign.content;
-  const derived = calculateStats(view, content, campaign.rules);
+  const derived = calculateStats(
+    view,
+    content,
+    campaign.rules,
+    campaign.settings,
+  );
   const itemsById = new Map(campaign.content.items.map((item) => [item.id, item]));
   const skillsById = new Map(campaign.content.skills.map((skill) => [skill.id, skill]));
   const specialsById = new Map(
@@ -154,6 +159,13 @@ export function CharacterSheetPage() {
     setDraft((current) => ({
       ...current,
       baseStats: { ...current.baseStats, [key]: value ?? (key === "hpMax" ? 1 : 0) },
+    }));
+  }
+
+  function handleLevelUp() {
+    setDraft((current) => ({
+      ...current,
+      level: Math.min(9999, Math.max(1, Math.trunc(current.level ?? 1)) + 1),
     }));
   }
 
@@ -289,6 +301,7 @@ export function CharacterSheetPage() {
       battleSprite: draft.battleSprite,
       bodyImage: draft.bodyImage,
       bossPhase,
+      level: Math.max(1, Math.min(9999, Math.trunc(draft.level ?? 1))),
       baseStats: draft.baseStats,
       equipment: draft.equipment,
       skills: draft.skills,
@@ -450,6 +463,7 @@ export function CharacterSheetPage() {
                     <h2 className="display mt-1 text-3xl">{view.name || "Sin nombre"}</h2>
                   </div>
                   <div className="flex flex-wrap gap-1">
+                    <span className="chip chip-accent">Nivel {derived.level}</span>
                     {view.tags?.slice(0, 4).map((tag) => (
                       <span key={tag} className="chip">
                         {tag}
@@ -531,6 +545,52 @@ export function CharacterSheetPage() {
                   Sin equipo ni efectos. El total derivado aparece a la derecha en tiempo
                   real.
                 </p>
+                <div className="mb-4 grid gap-3 border border-ui-line bg-ui-surface-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field
+                      label="Nivel"
+                      hint="Los aumentos por nivel salen de los ajustes de la campaña."
+                    >
+                      <NumberInput
+                        value={draft.level ?? 1}
+                        onValueChange={(value) =>
+                          patch({
+                            level: Math.max(
+                              1,
+                              Math.min(9999, Math.trunc(value ?? 1)),
+                            ),
+                          })
+                        }
+                        min={1}
+                        max={9999}
+                      />
+                    </Field>
+                    <div className="flex flex-col justify-end gap-1 text-[10px] leading-snug text-ui-faint">
+                      <span>
+                        Soul Points:{" "}
+                        <b className="font-mono text-ui">
+                          {derived.soulPoints.used}/{derived.soulPoints.max}
+                        </b>
+                      </span>
+                      {derived.soulPoints.overcharged ? (
+                        <span className="font-mono font-bold uppercase tracking-[0.1em] text-ui-danger">
+                          OVERCHARGED · 1.5× daño
+                        </span>
+                      ) : (
+                        <span>Equipo dentro del límite.</span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    icon="plus"
+                    onClick={handleLevelUp}
+                  >
+                    Subir nivel
+                  </Button>
+                </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {STAT_KEYS.map((key) => (
                     <Field
@@ -1018,6 +1078,27 @@ export function CharacterSheetPage() {
                 <h2 className="mb-3 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
                   Equipo
                 </h2>
+                <div
+                  className={cx(
+                    "mb-3 flex flex-wrap items-center justify-between gap-2 border border-ui-line bg-ui-surface-2 px-2.5 py-2",
+                    derived.soulPoints.overcharged && "border-rust/60 text-ui-danger",
+                  )}
+                >
+                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ui-faint">
+                    Soul Points
+                  </span>
+                  <span className="font-display text-lg leading-none">
+                    {derived.soulPoints.used}
+                    <span className="text-xs text-ui-faint">
+                      /{derived.soulPoints.max}
+                    </span>
+                    {derived.soulPoints.overcharged ? (
+                      <span className="ml-2 font-mono text-[9px] font-bold uppercase tracking-[0.1em]">
+                        OVERCHARGED
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {EQUIPMENT_SLOTS.map((slot) => {
                     const itemId = view.equipment[slot];

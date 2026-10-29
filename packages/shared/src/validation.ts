@@ -7,6 +7,7 @@ import { calculateStats } from "./stats";
 import type {
   Campaign,
   CampaignContent,
+  CampaignSettings,
   Character,
   Dungeon,
   EffectAction,
@@ -198,6 +199,7 @@ export function validateCharacter(
   character: Character,
   content: Pick<CampaignContent, "items" | "skills" | "effects" | "specials">,
   rules: Ruleset = DEFAULT_RULES,
+  settings?: Pick<CampaignSettings, "leveling">,
 ): ValidationResult {
   const issues: ValidationIssue[] = [];
   const items = groupById(content.items);
@@ -330,7 +332,7 @@ export function validateCharacter(
     issues.push(issue(`${path}.name`, "El personaje necesita un nombre."));
   }
 
-  const derived = calculateStats(character, content, rules);
+  const derived = calculateStats(character, content, rules, settings);
   if (
     character.hpCurrent !== undefined &&
     character.hpCurrent > derived.stats.hpMax
@@ -565,6 +567,7 @@ export function validateDungeon(
 export function validateContent(
   content: CampaignContent,
   rules: Ruleset = DEFAULT_RULES,
+  settings?: Pick<CampaignSettings, "leveling">,
 ): ValidationResult {
   const issues: ValidationIssue[] = [
     ...findDuplicateIds(content.items, "items"),
@@ -587,7 +590,7 @@ export function validateContent(
     issues.push(...validateEffect(effect, content).issues);
   }
   for (const character of content.characters) {
-    issues.push(...validateCharacter(character, content, rules).issues);
+    issues.push(...validateCharacter(character, content, rules, settings).issues);
   }
   for (const encounter of content.encounters) {
     issues.push(...validateEncounter(encounter, content).issues);
@@ -638,7 +641,9 @@ export function validateCampaign(campaign: Campaign): ValidationResult {
     );
   }
 
-  issues.push(...validateContent(campaign.content, rules).issues);
+  issues.push(
+    ...validateContent(campaign.content, rules, campaign.settings).issues,
+  );
   return result(issues);
 }
 
