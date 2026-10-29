@@ -207,6 +207,10 @@ const skillFields = {
   image: imageSchema.optional(),
   /** Capa de arma que sustituye a la mano mientras se usa esta skill. */
   weaponImage: imageSchema.optional(),
+  /** Capa de combate detrás del personaje mientras se usa la skill. */
+  backImage: imageSchema.optional(),
+  /** Capa de combate delante del personaje mientras se usa la skill. */
+  frontImage: imageSchema.optional(),
   coins: integer(1, 20),
   baseClash: integer(-9999, 9999),
   coinClash: integer(-9999, 9999),

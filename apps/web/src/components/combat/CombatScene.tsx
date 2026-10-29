@@ -422,13 +422,12 @@ export function CombatScene({
     theme,
   ]);
 
-  function weaponImageFor(unit: CombatUnit): string | undefined {
+  function activeSkillFor(unit: CombatUnit) {
     const skillId =
-      combat.phase === "resolving"
+      (combat.phase === "resolving"
         ? latestSkillIdForUnit(eventsForLog, unit.id)
-        : declaredSkillId(combat.actions[unit.id]);
-    if (!skillId) return undefined;
-    return content.skills.find((skill) => skill.id === skillId)?.weaponImage;
+        : declaredSkillId(combat.actions[unit.id])) ?? undefined;
+    return findSkill(content, skillId);
   }
 
   function focusUnit(unit: CombatUnit, nextMode: DrawerMode = "sheet") {
@@ -661,8 +660,11 @@ export function CombatScene({
     const selected = selectedSlot?.unitId === unit.id;
     const activeSlot =
       selectedSlot?.unitId === unit.id ? selectedSlot.slot : undefined;
+    const activeSkill = activeSkillFor(unit);
     const plan = planCombatVisual(unit, content, {
-      weaponImage: weaponImageFor(unit),
+      weaponImage: activeSkill?.weaponImage,
+      backImage: activeSkill?.backImage,
+      frontImage: activeSkill?.frontImage,
     });
     const count = slotsFor(unit);
     const hp = hpPercent(unit);
@@ -762,6 +764,15 @@ export function CombatScene({
             data-mirror={mirrored ? "true" : undefined}
           >
             <span className="sv-unit-sprite-stack">
+              {plan.backImage ? (
+                <img
+                  className="sv-unit-sprite"
+                  src={plan.backImage}
+                  alt=""
+                  draggable={false}
+                  data-skill-layer="back"
+                />
+              ) : null}
               {plan.kind === "layered" ? (
                 <>
                   <img
@@ -799,6 +810,15 @@ export function CombatScene({
                   <span className="sv-unit-placeholder-label">SIN SPRITE</span>
                 </span>
               )}
+              {plan.frontImage ? (
+                <img
+                  className="sv-unit-sprite"
+                  src={plan.frontImage}
+                  alt=""
+                  draggable={false}
+                  data-skill-layer="front"
+                />
+              ) : null}
             </span>
           </span>
 

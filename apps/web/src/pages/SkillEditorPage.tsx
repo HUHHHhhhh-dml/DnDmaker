@@ -27,6 +27,10 @@ interface SkillDraft {
   code: string;
   description: string;
   image: string | undefined;
+  backImage: string | undefined;
+  frontImage: string | undefined;
+  /** Campo heredado de capa de mano; se conserva al editar. */
+  weaponImage: string | undefined;
   coins: number;
   baseClash: number;
   coinClash: number;
@@ -44,6 +48,9 @@ function emptyDraft(): SkillDraft {
     code: "",
     description: "",
     image: undefined,
+    backImage: undefined,
+    frontImage: undefined,
+    weaponImage: undefined,
     coins: 2,
     baseClash: 5,
     coinClash: 5,
@@ -62,6 +69,9 @@ function draftFromSkill(skill: Skill): SkillDraft {
     code: skill.code ?? "",
     description: skill.description ?? "",
     image: skill.image,
+    backImage: skill.backImage,
+    frontImage: skill.frontImage,
+    weaponImage: skill.weaponImage,
     coins: skill.coins,
     baseClash: skill.baseClash,
     coinClash: skill.coinClash,
@@ -157,6 +167,9 @@ export function SkillEditorPage() {
       code: draft.code.trim() || undefined,
       description: draft.description.trim() || undefined,
       image: draft.image,
+      backImage: draft.backImage,
+      frontImage: draft.frontImage,
+      weaponImage: draft.weaponImage,
       coins: draft.coins,
       baseClash: draft.baseClash,
       coinClash: draft.coinClash,
@@ -289,10 +302,51 @@ export function SkillEditorPage() {
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-4 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-              02 · Imagen
+            <h2 className="mb-1 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+              02 · Imágenes y capas
             </h2>
-            <ImageField value={draft.image} onChange={(value) => patch({ image: value })} />
+            <p className="mb-4 mt-2 text-[11px] leading-relaxed text-ui-faint">
+              La imagen principal es la de la biblioteca. Las capas de combate se
+              dibujan alrededor del personaje mientras usa esta skill, por encima
+              de su equipo y en cualquier modo visual.
+            </p>
+            <ImageField
+              value={draft.image}
+              onChange={(value) => patch({ image: value })}
+              label="Imagen de la skill"
+            />
+
+            <div className="mt-5 border-t border-ui-line pt-4">
+              <h3 className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
+                Capas de combate
+              </h3>
+              <p className="mb-3 text-[11px] leading-relaxed text-ui-faint">
+                Puedes poner solo la trasera, solo la delantera, o las dos. Se
+                muestran únicamente mientras la skill está activa; no sustituyen
+                el cuerpo ni el equipo.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ImageField
+                  value={draft.backImage}
+                  onChange={(value) => patch({ backImage: value })}
+                  label="Capa trasera"
+                  hint="Se dibuja detrás del personaje y de su equipo. Opcional."
+                />
+                <ImageField
+                  value={draft.frontImage}
+                  onChange={(value) => patch({ frontImage: value })}
+                  label="Capa delantera"
+                  hint="Se dibuja delante del personaje y de su equipo. Opcional."
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-ui-faint">
+                <span className="chip">Trasera</span>
+                <span>→</span>
+                <span className="chip chip-accent">Personaje + equipo</span>
+                <span>→</span>
+                <span className="chip">Delantera</span>
+              </div>
+            </div>
           </section>
 
           <section className="panel p-4">

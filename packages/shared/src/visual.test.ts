@@ -51,7 +51,7 @@ describe("contrato visual y HP (3A)", () => {
     expect(currentHp({ hpCurrent: -5 }, 55)).toBe(0);
   });
 
-  it("parsea visualMode, battleSprite, bodyImage, hpCurrent y weaponImage", () => {
+  it("parsea visualMode, sprites de combate y capas de skill", () => {
     const character = characterSchema.parse({
       ...baseCharacter,
       visualMode: "layered",
@@ -73,8 +73,12 @@ describe("contrato visual y HP (3A)", () => {
       baseDamage: 1,
       coinDamage: 1,
       weaponImage: "/assets/weapon.png",
+      backImage: "/assets/skill-back.png",
+      frontImage: "/assets/skill-front.png",
     });
     expect(skill.weaponImage).toBe("/assets/weapon.png");
+    expect(skill.backImage).toBe("/assets/skill-back.png");
+    expect(skill.frontImage).toBe("/assets/skill-front.png");
   });
 
   it("rechaza hpCurrent negativo y modos visuales desconocidos", () => {
@@ -136,6 +140,44 @@ describe("plan de composición visual (3F)", () => {
     const hand = plan.layers.find((layer) => layer.slot === "hand");
     expect(hand?.image).toBe("/skill-blade.png");
     expect(plan.layers.filter((layer) => layer.slot === "hand")).toHaveLength(1);
+  });
+
+  it("añade capa trasera, delantera o ambas alrededor del personaje", () => {
+    const both = planCombatVisual(party, content, {
+      backImage: "/skill-back.png",
+      frontImage: "/skill-front.png",
+    });
+    if (both.kind !== "layered") throw new Error("Se esperaba modo capas.");
+    expect(both.backImage).toBe("/skill-back.png");
+    expect(both.frontImage).toBe("/skill-front.png");
+
+    const onlyBack = planCombatVisual(party, content, {
+      backImage: "/skill-back.png",
+    });
+    expect(onlyBack.backImage).toBe("/skill-back.png");
+    expect(onlyBack.frontImage).toBeUndefined();
+
+    const onlyFront = planCombatVisual(party, content, {
+      frontImage: "/skill-front.png",
+    });
+    expect(onlyFront.frontImage).toBe("/skill-front.png");
+    expect(onlyFront.backImage).toBeUndefined();
+  });
+
+  it("las capas de skill también se aplican al sprite único", () => {
+    const plan = planCombatVisual(
+      { ...party, bodyImage: undefined },
+      content,
+      {
+        backImage: "/skill-back.png",
+        frontImage: "/skill-front.png",
+      },
+    );
+    expect(plan.kind).toBe("single");
+    if (plan.kind !== "single") return;
+    expect(plan.image).toBe("/battle.png");
+    expect(plan.backImage).toBe("/skill-back.png");
+    expect(plan.frontImage).toBe("/skill-front.png");
   });
 
   it("aplica fallbacks: capas sin cuerpo → sprite → retrato → placeholder", () => {

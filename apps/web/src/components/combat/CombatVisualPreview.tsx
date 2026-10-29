@@ -25,6 +25,10 @@ export interface CombatVisualPreviewProps {
   >;
   content: Pick<CampaignContent, "items">;
   weaponImage?: string;
+  /** Capa de la skill activa que va detrás del personaje. */
+  backImage?: string;
+  /** Capa de la skill activa que va delante del personaje. */
+  frontImage?: string;
   className?: string;
 }
 
@@ -32,9 +36,15 @@ export function CombatVisualPreview({
   character,
   content,
   weaponImage,
+  backImage,
+  frontImage,
   className,
 }: CombatVisualPreviewProps) {
-  const plan = planCombatVisual(character, content, { weaponImage });
+  const plan = planCombatVisual(character, content, {
+    weaponImage,
+    backImage,
+    frontImage,
+  });
 
   return (
     <div
@@ -49,6 +59,15 @@ export function CombatVisualPreview({
 
       {plan.kind === "layered" ? (
         <div className="relative h-[92%] w-full">
+          {plan.backImage ? (
+            <img
+              src={plan.backImage}
+              alt=""
+              draggable={false}
+              data-skill-layer="back"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
           <img
             src={plan.baseImage}
             alt=""
@@ -65,14 +84,43 @@ export function CombatVisualPreview({
               className="absolute inset-0 h-full w-full object-contain object-bottom"
             />
           ))}
+          {plan.frontImage ? (
+            <img
+              src={plan.frontImage}
+              alt=""
+              draggable={false}
+              data-skill-layer="front"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
         </div>
       ) : plan.kind === "single" ? (
-        <img
-          src={plan.image}
-          alt=""
-          draggable={false}
-          className="relative h-[94%] w-full object-contain object-bottom"
-        />
+        <div className="relative h-[94%] w-full">
+          {plan.backImage ? (
+            <img
+              src={plan.backImage}
+              alt=""
+              draggable={false}
+              data-skill-layer="back"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
+          <img
+            src={plan.image}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 h-full w-full object-contain object-bottom"
+          />
+          {plan.frontImage ? (
+            <img
+              src={plan.frontImage}
+              alt=""
+              draggable={false}
+              data-skill-layer="front"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
+        </div>
       ) : (
         <div className="relative mb-6 flex h-24 w-24 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon">
           <span className="font-display text-4xl text-ui-faint">

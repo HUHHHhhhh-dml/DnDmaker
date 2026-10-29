@@ -25,6 +25,8 @@ export interface CombatantCardProps {
   active?: boolean;
   order?: number;
   weaponImage?: string;
+  backImage?: string;
+  frontImage?: string;
   /**
    * Si es false, el HP se muestra como porcentaje (regla 3F.5: los jugadores
    * no ven el HP exacto de los enemigos). El DM y la party ven el exacto.
@@ -42,6 +44,8 @@ export function CombatantCard({
   active = false,
   order,
   weaponImage,
+  backImage,
+  frontImage,
   showExactHp = true,
 }: CombatantCardProps) {
   const hp = hpPercent(unit);
@@ -89,6 +93,8 @@ export function CombatantCard({
         unit={unit}
         content={content}
         weaponImage={weaponImage}
+        backImage={backImage}
+        frontImage={frontImage}
         active={active}
       />
 

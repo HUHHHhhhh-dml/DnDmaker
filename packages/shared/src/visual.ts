@@ -38,21 +38,39 @@ export interface CombatVisualLayer {
   image: string;
 }
 
+/**
+ * Capas extra que aporta la skill activa. `backImage` se pinta detrás del
+ * cuerpo/equipo y `frontImage` delante de todo. Ambas son opcionales.
+ */
+export interface CombatVisualSkillLayers {
+  backImage?: string;
+  frontImage?: string;
+}
+
 export type CombatVisualPlan =
-  | {
+  | ({
       kind: "layered";
       baseImage: string;
       layers: CombatVisualLayer[];
-    }
-  | { kind: "single"; image: string }
-  | { kind: "placeholder" };
+    } & CombatVisualSkillLayers)
+  | ({ kind: "single"; image: string } & CombatVisualSkillLayers)
+  | ({ kind: "placeholder" } & CombatVisualSkillLayers);
 
-export interface CombatVisualOptions {
+export interface CombatVisualOptions extends CombatVisualSkillLayers {
   /**
    * Imagen del arma de la skill que se está usando. Sustituye temporalmente
    * la capa del objeto de mano; no altera el equipo persistido.
    */
   weaponImage?: string;
+}
+
+function skillLayers(
+  options: CombatVisualOptions,
+): CombatVisualSkillLayers {
+  return {
+    ...(options.backImage ? { backImage: options.backImage } : {}),
+    ...(options.frontImage ? { frontImage: options.frontImage } : {}),
+  };
 }
 
 export function planCombatVisual(
@@ -78,9 +96,16 @@ export function planCombatVisual(
       if (image) layers.push({ slot, image });
     }
 
-    return { kind: "layered", baseImage: source.bodyImage, layers };
+    return {
+      kind: "layered",
+      baseImage: source.bodyImage,
+      layers,
+      ...skillLayers(options),
+    };
   }
 
   const single = source.battleSprite || source.portrait;
-  return single ? { kind: "single", image: single } : { kind: "placeholder" };
+  return single
+    ? { kind: "single", image: single, ...skillLayers(options) }
+    : { kind: "placeholder", ...skillLayers(options) };
 }

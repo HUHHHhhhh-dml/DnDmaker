@@ -140,9 +140,11 @@ export function CharacterSheetPage() {
     .map((id) => (id ? skillsById.get(id) : null))
     .filter((skill): skill is Skill => Boolean(skill));
   const effectiveVisualMode = resolveVisualMode(view);
-  const previewWeapon = view.skills
+  const previewSkill = view.skills
     .map((id) => (id ? skillsById.get(id) : null))
-    .find((skill): skill is Skill => Boolean(skill?.weaponImage));
+    .find((skill): skill is Skill =>
+      Boolean(skill?.weaponImage || skill?.backImage || skill?.frontImage),
+    );
 
   function patch(update: Partial<Character>) {
     setDraft((current) => ({ ...current, ...update }));
@@ -887,17 +889,28 @@ export function CharacterSheetPage() {
                       hint="PNG 1024×1024 transparente, pies al 90%. Sin cuerpo base, el modo capas cae a sprite único."
                     />
 
-                    {previewWeapon ? (
+                    {previewSkill ? (
                       <div className="border border-ui-line bg-ui-surface-2 p-2.5">
-                        <div className="mono-label">Capa de arma en preview</div>
+                        <div className="mono-label">Capas de skill en preview</div>
                         <p className="mt-1 flex items-center gap-2 text-xs font-semibold">
                           <Icon name="sword" size={13} className="text-ui-danger" />
-                          {previewWeapon.name}
+                          {previewSkill.name}
                         </p>
-                        <p className="mt-1 text-[10px] leading-snug text-ui-faint">
-                          Mientras esa skill se resuelve, su{" "}
-                          <code>weaponImage</code> sustituye temporalmente la capa
-                          de la mano.
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {previewSkill.backImage ? (
+                            <span className="chip">Trasera</span>
+                          ) : null}
+                          {previewSkill.weaponImage ? (
+                            <span className="chip">Arma / mano</span>
+                          ) : null}
+                          {previewSkill.frontImage ? (
+                            <span className="chip">Delantera</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-[10px] leading-snug text-ui-faint">
+                          Mientras esa skill se usa, sus capas trasera y delantera
+                          se dibujan alrededor del personaje. La capa de arma
+                          heredada sustituye temporalmente la mano.
                         </p>
                       </div>
                     ) : null}
@@ -913,7 +926,9 @@ export function CharacterSheetPage() {
                     <CombatVisualPreview
                       character={draft}
                       content={content}
-                      weaponImage={previewWeapon?.weaponImage}
+                      weaponImage={previewSkill?.weaponImage}
+                      backImage={previewSkill?.backImage}
+                      frontImage={previewSkill?.frontImage}
                     />
                     <p className="font-mono text-[8px] uppercase tracking-[0.12em] text-ui-faint">
                       Cambia el equipo y el modo: el montaje se actualiza al instante.
@@ -1138,7 +1153,9 @@ export function CharacterSheetPage() {
                   <CombatVisualPreview
                     character={view}
                     content={content}
-                    weaponImage={previewWeapon?.weaponImage}
+                    weaponImage={previewSkill?.weaponImage}
+                    backImage={previewSkill?.backImage}
+                    frontImage={previewSkill?.frontImage}
                   />
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between gap-2 border-b border-ui-line pb-1.5">

@@ -1,5 +1,24 @@
 # Changelog
 
+## Capas de skill delante y detrás del personaje (2026-10-28)
+
+### Añadido
+
+- **`Skill.backImage` y `Skill.frontImage`**: dos capas opcionales que se
+  dibujan alrededor del personaje mientras la skill está activa. La trasera va
+  detrás del cuerpo y del equipo; la delantera va por encima de todo. Se puede
+  usar solo una o ambas.
+- Funcionan con **cualquier modo visual**: fichas por capas y fichas de sprite
+  único (incluidos enemigos y jefes). Se espejan junto al personaje en la
+  escena cuando corresponde.
+- El editor de Skills incorpora una sección de **Capas de combate** con campos
+  independientes para la capa trasera y la delantera.
+- La vista previa de la ficha y el renderer de combate (`CombatSprite`,
+  `CombatScene`) componen `trasera → cuerpo + equipo → delantera`.
+- `weaponImage` se mantiene como campo heredado para no romper campañas
+  anteriores; el editor conserva su valor al guardar.
+- Export/import y tests del plan visual cubren las capas nuevas.
+
 ## Fase 4F — Jefe enemigo con cambio de fase (2026-10-28)
 
 ### Añadido

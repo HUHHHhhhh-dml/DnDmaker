@@ -169,8 +169,21 @@ export interface Skill {
   /**
    * Capa de arma de combate para el modo `layered`. Mientras la unidad usa
    * esta skill, sustituye temporalmente la capa del objeto de mano.
+   *
+   * Se mantiene por compatibilidad con campañas anteriores; para capas de
+   * skill nuevas usa `backImage` y `frontImage`.
    */
   weaponImage?: string;
+  /**
+   * Capa que se dibuja **detrás** del personaje y de su equipo mientras la
+   * unidad usa esta skill. Opcional: puede convivir con `frontImage`.
+   */
+  backImage?: string;
+  /**
+   * Capa que se dibuja **delante** del personaje y de su equipo mientras la
+   * unidad usa esta skill. Opcional: puede convivir con `backImage`.
+   */
+  frontImage?: string;
 
   coins: number;
   baseClash: number;

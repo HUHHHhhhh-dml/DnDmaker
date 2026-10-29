@@ -149,6 +149,8 @@ async function setupScenario(options: ScenarioOptions = {}): Promise<Scenario> {
     baseDamage: 20,
     coinDamage: 5,
     weaponImage: "/assets/weapons/test-blade.png",
+    backImage: "/assets/skills/test-back.png",
+    frontImage: "/assets/skills/test-front.png",
   });
 
   const playerPayload = {
@@ -723,7 +725,7 @@ describe("Fase 3A — snapshot y dominio", () => {
     });
   });
 
-  it("export/import conserva visuales, hpCurrent y weaponImage", async () => {
+  it("export/import conserva visuales, hpCurrent y capas de skill", async () => {
     const scenario = await setupScenario({ playerHp: 30, enemyCount: 1 });
     const exportResponse = await app.inject({
       method: "GET",
@@ -742,10 +744,14 @@ describe("Fase 3A — snapshot y dominio", () => {
       bodyImage: "/assets/base-character.png",
       hpCurrent: 30,
     });
-    expect(
-      exported.content.skills.find((skill) => skill.id === scenario.skillId)
-        ?.weaponImage,
-    ).toBe("/assets/weapons/test-blade.png");
+    const exportedSkill = exported.content.skills.find(
+      (skill) => skill.id === scenario.skillId,
+    )!;
+    expect(exportedSkill).toMatchObject({
+      weaponImage: "/assets/weapons/test-blade.png",
+      backImage: "/assets/skills/test-back.png",
+      frontImage: "/assets/skills/test-front.png",
+    });
 
     const importResponse = await app.inject({
       method: "POST",
@@ -767,7 +773,11 @@ describe("Fase 3A — snapshot y dominio", () => {
     const importedSkill = imported.content.skills.find(
       (skill) => skill.name === "Filo visual",
     )!;
-    expect(importedSkill.weaponImage).toBe("/assets/weapons/test-blade.png");
+    expect(importedSkill).toMatchObject({
+      weaponImage: "/assets/weapons/test-blade.png",
+      backImage: "/assets/skills/test-back.png",
+      frontImage: "/assets/skills/test-front.png",
+    });
 
     const importedEncounter = imported.content.encounters.find(
       (encounter) => encounter.name === "Protocolo de prueba",

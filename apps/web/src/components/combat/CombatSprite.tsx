@@ -11,6 +11,7 @@ import { cx } from "../ui";
  * - `layered` + `bodyImage`: cuerpo + capas leg → armor → horns → hand.
  * - Si falta `bodyImage`, cae a `battleSprite` → `portrait` → placeholder.
  * - `weaponImage` sustituye temporalmente la capa de mano.
+ * - `backImage`/`frontImage` de la skill activa se pintan detrás/delante.
  * - La utilidad no se dibuja en el cuerpo.
  *
  * La composición la decide `planCombatVisual`, compartida con la vista previa
@@ -22,6 +23,10 @@ export interface CombatSpriteProps {
   content: Pick<CampaignContent, "items">;
   /** Imagen del arma de la skill activa; reemplaza la capa de mano. */
   weaponImage?: string;
+  /** Capa de la skill activa que va detrás del personaje. */
+  backImage?: string;
+  /** Capa de la skill activa que va delante del personaje. */
+  frontImage?: string;
   active?: boolean;
   className?: string;
 }
@@ -30,10 +35,16 @@ export function CombatSprite({
   unit,
   content,
   weaponImage,
+  backImage,
+  frontImage,
   active = false,
   className,
 }: CombatSpriteProps) {
-  const plan = planCombatVisual(unit, content, { weaponImage });
+  const plan = planCombatVisual(unit, content, {
+    weaponImage,
+    backImage,
+    frontImage,
+  });
 
   return (
     <div
@@ -53,6 +64,16 @@ export function CombatSprite({
 
       {plan.kind === "layered" ? (
         <div className="relative h-[92%] w-full" data-layer-count={plan.layers.length}>
+          {plan.backImage ? (
+            <img
+              src={plan.backImage}
+              alt=""
+              draggable={false}
+              loading="lazy"
+              data-skill-layer="back"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
           <img
             src={plan.baseImage}
             alt=""
@@ -71,15 +92,47 @@ export function CombatSprite({
               className="absolute inset-0 h-full w-full object-contain object-bottom"
             />
           ))}
+          {plan.frontImage ? (
+            <img
+              src={plan.frontImage}
+              alt=""
+              draggable={false}
+              loading="lazy"
+              data-skill-layer="front"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
         </div>
       ) : plan.kind === "single" ? (
-        <img
-          src={plan.image}
-          alt={unit.name}
-          draggable={false}
-          loading="lazy"
-          className="relative h-[94%] w-full object-contain object-bottom"
-        />
+        <div className="relative h-[94%] w-full">
+          {plan.backImage ? (
+            <img
+              src={plan.backImage}
+              alt=""
+              draggable={false}
+              loading="lazy"
+              data-skill-layer="back"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
+          <img
+            src={plan.image}
+            alt={unit.name}
+            draggable={false}
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-contain object-bottom"
+          />
+          {plan.frontImage ? (
+            <img
+              src={plan.frontImage}
+              alt=""
+              draggable={false}
+              loading="lazy"
+              data-skill-layer="front"
+              className="absolute inset-0 h-full w-full object-contain object-bottom"
+            />
+          ) : null}
+        </div>
       ) : (
         <div className="relative mb-4 flex h-24 w-24 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon sm:h-28 sm:w-28">
           <span className="font-display text-4xl text-ui-faint">

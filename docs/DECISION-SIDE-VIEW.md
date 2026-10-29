@@ -2,7 +2,7 @@
 
 > **Estado:** decisión cerrada el 2026-10-27. **Campos activados en 3A**; el renderer y el editor llegan en 3E/3F.
 > **Ámbito:** cómo se dibujan las unidades en el combate side-view.
-> **Contrato:** los campos `visualMode`, `battleSprite`, `bodyImage` y `weaponImage` ya están en [`schema-v0.1.ts`](./schema-v0.1.ts) y se copian al snapshot de combate.
+> **Contrato:** los campos `visualMode`, `battleSprite`, `bodyImage`, `weaponImage`, `backImage` y `frontImage` están en [`schema-v0.1.ts`](./schema-v0.1.ts); los de ficha se copian al snapshot de combate y las capas de skill se resuelven por `skillId`.
 
 ## 1. Decisión
 
@@ -33,6 +33,7 @@ Motivo: la party son pocas fichas y su identidad visual *es* el equipo; los enem
 - Encima, en este orden: `leg` → `armor` → `horns` → `hand`.
 - La **utilidad no se dibuja en el cuerpo**; va como icono/badge en la UI.
 - Si la unidad usa una skill con `weaponImage`, esa imagen sustituye temporalmente la capa del objeto de mano mientras se resuelve la acción.
+- Una skill también puede aportar `backImage` (detrás del personaje y del equipo) y `frontImage` (delante de todo). Son opcionales e independientes: puede usarse solo una o ambas. Funcionan tanto en modo capas como en sprite único.
 - Si falta `bodyImage`, el modo capas cae automáticamente a sprite único.
 - Los objetos usan su `Item.image` actual como capa. Si más adelante el arte de carta no sirve como capa (por encuadre o fondo), se evalúa añadir `Item.layerImage`; **no forma parte de esta decisión**.
 
@@ -55,8 +56,12 @@ export interface Character {
 
 export interface Skill {
   // ...campos actuales...
-  /** Capa de arma mientras se usa esta skill (opcional). */
+  /** Capa de arma mientras se usa esta skill (opcional, heredada). */
   weaponImage?: string;
+  /** Capa detrás del personaje mientras usa la skill (opcional). */
+  backImage?: string;
+  /** Capa delante del personaje mientras usa la skill (opcional). */
+  frontImage?: string;
 }
 ```
 
@@ -126,7 +131,7 @@ export interface Skill {
 - [ ] Un enemigo con solo `portrait` se ve correctamente (sprite único).
 - [ ] Un enemigo sin ninguna imagen usa placeholder y no rompe la escena.
 - [ ] El modo capas sin `bodyImage` cae a sprite único sin errores.
-- [ ] Export/import conserva `visualMode`, `battleSprite`, `bodyImage` y `weaponImage`.
+- [ ] Export/import conserva `visualMode`, `battleSprite`, `bodyImage`, `weaponImage`, `backImage` y `frontImage`.
 - [ ] Los assets siguen la plantilla de 1024×1024 y se ven alineados.
 - [ ] Ningún cambio requiere editar código para cambiar el visual de una ficha.
 

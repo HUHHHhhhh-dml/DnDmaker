@@ -182,6 +182,10 @@ export interface Skill {
   image?: string;
   /** Capa de arma mientras se usa esta skill (modo `layered`). */
   weaponImage?: string;
+  /** Capa que se dibuja detrás del personaje mientras usa la skill. */
+  backImage?: string;
+  /** Capa que se dibuja delante del personaje mientras usa la skill. */
+  frontImage?: string;
 
   /** Número de monedas (>= 1). */
   coins: number;
@@ -613,8 +617,10 @@ export interface ApiError {
  *
  * `portrait` sigue siendo la imagen de ficha/menús. En Fase 3 se activaron
  * `Character.visualMode`, `Character.battleSprite`, `Character.bodyImage` y
- * `Skill.weaponImage`; el snapshot de combate (`CombatUnit`) los copia para
- * no depender de la ficha viva durante la resolución.
+ * `Skill.weaponImage`; después se añadieron `Skill.backImage` y
+ * `Skill.frontImage` para capas de skill detrás/delante del personaje. El
+ * snapshot de combate (`CombatUnit`) copia los campos de ficha para no depender
+ * de la ficha viva durante la resolución.
  *
  * Defaults: enemigos → "portrait"; resto → "layered". Sin `bodyImage`, el modo
  * capas cae a sprite único. La utilidad no se dibuja en el cuerpo.
