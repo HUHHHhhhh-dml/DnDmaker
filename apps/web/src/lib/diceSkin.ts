@@ -7,7 +7,12 @@
  * vive en `useDiceSkinStore` (localStorage).
  */
 
-export type DiceSkinId = "bone" | "obsidian";
+export type DiceSkinId =
+  | "bone"
+  | "obsidian"
+  | "amber"
+  | "jade"
+  | "crimson";
 
 export interface DiceSkin {
   id: DiceSkinId;
@@ -29,7 +34,13 @@ export interface DiceSkin {
   labelInk: string;
 }
 
-export const DICE_SKIN_ORDER: readonly DiceSkinId[] = ["bone", "obsidian"];
+export const DICE_SKIN_ORDER: readonly DiceSkinId[] = [
+  "bone",
+  "obsidian",
+  "amber",
+  "jade",
+  "crimson",
+];
 
 export const DEFAULT_DICE_SKIN: DiceSkinId = "bone";
 
@@ -64,6 +75,51 @@ export const DICE_SKINS: Record<DiceSkinId, DiceSkin> = {
     labelBackground: "#0d0c10",
     labelInk: "#f6e7ba",
   },
+  amber: {
+    id: "amber",
+    label: "Ámbar",
+    faceBackground: "#d9a03c",
+    faceInk: "#241505",
+    materialColor: 0xffffff,
+    roughness: 0.42,
+    metalness: 0.14,
+    edgeColor: 0xf5d27a,
+    edgeOpacity: 0.66,
+    emissiveColor: 0xff9d2e,
+    emissiveBoost: 0.05,
+    labelBackground: "#2a1a07",
+    labelInk: "#ffe9b5",
+  },
+  jade: {
+    id: "jade",
+    label: "Jade",
+    faceBackground: "#14453a",
+    faceInk: "#dcf7ea",
+    materialColor: 0xffffff,
+    roughness: 0.34,
+    metalness: 0.18,
+    edgeColor: 0x7fe3b8,
+    edgeOpacity: 0.7,
+    emissiveColor: 0x4fd1a0,
+    emissiveBoost: 0.04,
+    labelBackground: "#07211a",
+    labelInk: "#dcf7ea",
+  },
+  crimson: {
+    id: "crimson",
+    label: "Carmesí",
+    faceBackground: "#4a1218",
+    faceInk: "#ffe1c7",
+    materialColor: 0xffffff,
+    roughness: 0.4,
+    metalness: 0.15,
+    edgeColor: 0xe8a05a,
+    edgeOpacity: 0.7,
+    emissiveColor: 0xd84315,
+    emissiveBoost: 0.05,
+    labelBackground: "#24070a",
+    labelInk: "#ffe2c4",
+  },
 };
 
 export const DICE_SKIN_STORAGE_KEY = "protocol-life-dice-skin";
@@ -73,8 +129,10 @@ export interface DiceSkinStorage {
   setItem(key: string, value: string): void;
 }
 
+const DICE_SKIN_IDS = new Set<string>(DICE_SKIN_ORDER);
+
 export function isDiceSkinId(value: unknown): value is DiceSkinId {
-  return value === "bone" || value === "obsidian";
+  return typeof value === "string" && DICE_SKIN_IDS.has(value);
 }
 
 /** Cualquier valor desconocido o corrupto cae a la skin por defecto. */

@@ -483,3 +483,186 @@
   border-color: #332d22;
   background: #141217;
 }
+
+/* Ámbar: resina cálida, números oscuros y acentos dorados. */
+.dice-tray.is-skin-amber .dice-main {
+  border-color: #8a5a1f;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(245, 210, 122, 0.16), transparent 62%),
+    linear-gradient(180deg, #2a1c0c, #140d05);
+}
+
+.dice-tray.is-skin-amber .dice-main:hover:not(:disabled),
+.dice-tray.is-skin-amber .dice-main.is-dragging {
+  border-color: #f5d27a;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(245, 210, 122, 0.26), transparent 62%),
+    linear-gradient(180deg, #34230f, #1a1007);
+}
+
+.dice-tray.is-skin-amber .dice-main-icon {
+  color: #ffcf6b;
+  filter: drop-shadow(0 0 12px rgba(255, 207, 107, 0.28));
+}
+
+.dice-tray.is-skin-amber .dice-main-label {
+  color: #f5d27a;
+}
+
+.dice-tray.is-skin-amber .dice-main-result {
+  color: #e9d3a8;
+}
+
+.dice-tray.is-skin-amber .dice-choice {
+  border-color: #4a3518;
+  background: #171006;
+  color: #d8c19a;
+}
+
+.dice-tray.is-skin-amber .dice-choice:hover:not(:disabled) {
+  border-color: #8a5a1f;
+  color: #ffe3a8;
+}
+
+.dice-tray.is-skin-amber .dice-choice.is-active {
+  border-color: #f5d27a;
+  background: rgba(245, 210, 122, 0.14);
+  color: #ffe9b5;
+}
+
+.dice-tray.is-skin-amber .dice-log-result {
+  color: #ffcf6b;
+}
+
+.dice-tray.is-skin-amber .dice-log-row {
+  border-color: #3a2a12;
+  background: #171006;
+}
+
+.dice-tray.is-skin-amber .dice-sound-toggle.is-on {
+  border-color: #f5d27a;
+  background: rgba(245, 210, 122, 0.14);
+  color: #ffe9b5;
+}
+
+/* Jade: cuerpo verde profundo y números menta. */
+.dice-tray.is-skin-jade .dice-main {
+  border-color: #2e6f5a;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(127, 227, 184, 0.16), transparent 62%),
+    linear-gradient(180deg, #0f2a22, #07130f);
+}
+
+.dice-tray.is-skin-jade .dice-main:hover:not(:disabled),
+.dice-tray.is-skin-jade .dice-main.is-dragging {
+  border-color: #7fe3b8;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(127, 227, 184, 0.25), transparent 62%),
+    linear-gradient(180deg, #14382c, #081a14);
+}
+
+.dice-tray.is-skin-jade .dice-main-icon {
+  color: #9af5d0;
+  filter: drop-shadow(0 0 12px rgba(127, 227, 184, 0.28));
+}
+
+.dice-tray.is-skin-jade .dice-main-label {
+  color: #7fe3b8;
+}
+
+.dice-tray.is-skin-jade .dice-main-result {
+  color: #c9f7e4;
+}
+
+.dice-tray.is-skin-jade .dice-choice {
+  border-color: #23483c;
+  background: #081712;
+  color: #a9d8c6;
+}
+
+.dice-tray.is-skin-jade .dice-choice:hover:not(:disabled) {
+  border-color: #2e6f5a;
+  color: #dcf7ea;
+}
+
+.dice-tray.is-skin-jade .dice-choice.is-active {
+  border-color: #7fe3b8;
+  background: rgba(127, 227, 184, 0.14);
+  color: #dcf7ea;
+}
+
+.dice-tray.is-skin-jade .dice-log-result {
+  color: #9af5d0;
+}
+
+.dice-tray.is-skin-jade .dice-log-row {
+  border-color: #1b3b31;
+  background: #081712;
+}
+
+.dice-tray.is-skin-jade .dice-sound-toggle.is-on {
+  border-color: #7fe3b8;
+  background: rgba(127, 227, 184, 0.14);
+  color: #dcf7ea;
+}
+
+/* Carmesí: cuerpo vino y números crema con acentos cobre. */
+.dice-tray.is-skin-crimson .dice-main {
+  border-color: #7a2a2a;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(232, 160, 90, 0.16), transparent 62%),
+    linear-gradient(180deg, #2a0f12, #140608);
+}
+
+.dice-tray.is-skin-crimson .dice-main:hover:not(:disabled),
+.dice-tray.is-skin-crimson .dice-main.is-dragging {
+  border-color: #e8a05a;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(232, 160, 90, 0.25), transparent 62%),
+    linear-gradient(180deg, #361418, #1a080b);
+}
+
+.dice-tray.is-skin-crimson .dice-main-icon {
+  color: #ffb07a;
+  filter: drop-shadow(0 0 12px rgba(255, 176, 122, 0.28));
+}
+
+.dice-tray.is-skin-crimson .dice-main-label {
+  color: #e8a05a;
+}
+
+.dice-tray.is-skin-crimson .dice-main-result {
+  color: #ffd6b0;
+}
+
+.dice-tray.is-skin-crimson .dice-choice {
+  border-color: #4a1e22;
+  background: #17090b;
+  color: #d9b6a8;
+}
+
+.dice-tray.is-skin-crimson .dice-choice:hover:not(:disabled) {
+  border-color: #7a2a2a;
+  color: #ffe2c4;
+}
+
+.dice-tray.is-skin-crimson .dice-choice.is-active {
+  border-color: #e8a05a;
+  background: rgba(232, 160, 90, 0.14);
+  color: #ffe2c4;
+}
+
+.dice-tray.is-skin-crimson .dice-log-result {
+  color: #ffb07a;
+}
+
+.dice-tray.is-skin-crimson .dice-log-row {
+  border-color: #3b1a1d;
+  background: #17090b;
+}
+
+.dice-tray.is-skin-crimson .dice-sound-toggle.is-on {
+  border-color: #e8a05a;
+  background: rgba(232, 160, 90, 0.14);
+  color: #ffe2c4;
+}

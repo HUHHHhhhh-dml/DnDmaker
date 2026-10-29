@@ -46,18 +46,35 @@ function contrast(a: string, b: string): number {
 }
 
 describe("skins de los dados", () => {
-  it("hay hueso por defecto y una lista estable hueso/negra", () => {
+  it("hay hueso por defecto y una lista estable de cinco skins", () => {
     expect(DEFAULT_DICE_SKIN).toBe("bone");
-    expect(DICE_SKIN_ORDER).toEqual(["bone", "obsidian"]);
-    expect(Object.keys(DICE_SKINS).sort()).toEqual(["bone", "obsidian"]);
+    expect(DICE_SKIN_ORDER).toEqual([
+      "bone",
+      "obsidian",
+      "amber",
+      "jade",
+      "crimson",
+    ]);
+    expect(Object.keys(DICE_SKINS).sort()).toEqual([
+      "amber",
+      "bone",
+      "crimson",
+      "jade",
+      "obsidian",
+    ]);
     expect(DICE_SKINS.bone.label).toBe("Hueso");
     expect(DICE_SKINS.obsidian.label).toBe("Negra");
-    expect(DICE_SKINS.obsidian.faceBackground).not.toBe(
-      DICE_SKINS.bone.faceBackground,
-    );
+    expect(DICE_SKINS.amber.label).toBe("Ámbar");
+    expect(DICE_SKINS.jade.label).toBe("Jade");
+    expect(DICE_SKINS.crimson.label).toBe("Carmesí");
+
+    for (const skin of Object.values(DICE_SKINS)) {
+      expect(skin.id).toBe(DICE_SKIN_ORDER.find((id) => DICE_SKINS[id] === skin));
+    }
+    expect(new Set(Object.values(DICE_SKINS).map((skin) => skin.faceBackground)).size).toBe(5);
   });
 
-  it("los números se leen con contraste alto en ambas skins", () => {
+  it("los números se leen con contraste alto en todas las skins", () => {
     for (const skin of Object.values(DICE_SKINS)) {
       expect(contrast(skin.faceInk, skin.faceBackground)).toBeGreaterThanOrEqual(
         4.5,
@@ -74,13 +91,20 @@ describe("skins de los dados", () => {
   it("parsea ids válidos y cae al valor por defecto con basura", () => {
     expect(parseDiceSkin("bone")).toBe("bone");
     expect(parseDiceSkin("obsidian")).toBe("obsidian");
+    expect(parseDiceSkin("amber")).toBe("amber");
+    expect(parseDiceSkin("jade")).toBe("jade");
+    expect(parseDiceSkin("crimson")).toBe("crimson");
     expect(parseDiceSkin("negra")).toBe("bone");
     expect(parseDiceSkin("")).toBe("bone");
     expect(parseDiceSkin(null)).toBe("bone");
     expect(parseDiceSkin(undefined)).toBe("bone");
     expect(isDiceSkinId("obsidian")).toBe(true);
     expect(isDiceSkinId("bone")).toBe(true);
+    expect(isDiceSkinId("amber")).toBe(true);
+    expect(isDiceSkinId("jade")).toBe(true);
+    expect(isDiceSkinId("crimson")).toBe(true);
     expect(isDiceSkinId("gold")).toBe(false);
+    expect(isDiceSkinId(42)).toBe(false);
   });
 
   it("lee y escribe la skin persistida", () => {

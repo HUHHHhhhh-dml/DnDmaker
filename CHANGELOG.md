@@ -1,5 +1,19 @@
 # Changelog
 
+## Fase 4E+ — skins Ámbar, Jade y Carmesí (2026-10-29)
+
+### Añadido
+
+- **Tres skins nuevas** para el dado 3D y la bandeja:
+  - **Ámbar**: resina cálida, números oscuros, aristas y acentos dorados.
+  - **Jade**: cuerpo verde profundo, números menta y acentos jade.
+  - **Carmesí**: cuerpo vino, números crema y acentos cobre.
+- La lista **Aspecto** pasa a cinco opciones; la elección sigue persistiendo en
+  `localStorage` y se aplica al atlas, material, aristas, etiquetas flotantes y
+  a los colores de la bandeja.
+- Tests de contraste WCAG para las cinco skins, ids válidos, orden estable,
+  fondos únicos y persistencia.
+
 ## Fase 4E+ — sonido de dados (2026-10-29)
 
 ### Añadido
