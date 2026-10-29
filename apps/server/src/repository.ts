@@ -11,6 +11,7 @@ import {
   findReferences,
   dungeonInputSchema,
   dungeonPatchSchema,
+  isEnemyKind,
   newId,
   shopInputSchema,
   shopPatchSchema,
@@ -600,7 +601,7 @@ export class Repository {
     const now = nowIso();
     this.sqlite.transaction(() => {
       for (const character of campaign.content.characters) {
-        if (character.kind === "enemy") continue;
+        if (isEnemyKind(character.kind)) continue;
         const derived = calculateStats(
           character,
           campaign.content,

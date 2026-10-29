@@ -1,5 +1,28 @@
 # Changelog
 
+## Fase 4F — Jefe enemigo con cambio de fase (2026-10-28)
+
+### Añadido
+
+- **Nuevo tipo de ficha `boss` («Jefe enemigo»)**, distinto de jugador, NPC y
+  enemigo. En combate usa `team: "enemies"` y cuenta como enemigo para
+  encuentros, recompensas y victoria/derrota.
+- **Cambio de fase único por jefe** (`bossPhase`): al terminar la ronda con la
+  vida en `thresholdPct` (1–99) o menos, el jefe pasa de la ficha base a la
+  fase 2. La transición es **unidireccional**: curarse por encima del umbral no
+  revierte sprite ni habilidades, y un jefe que muere en esa misma ronda no
+  cambia.
+- Overrides de fase 2 para nombre, descripción, retrato, modo visual, sprites y
+  las tres skills. Si se omiten, se conservan los valores de la fase 1.
+- La fase se evalúa **al final de la ronda**, después de daño/efectos y antes
+  de avanzar `round`: las acciones ya declaradas usan la fase 1 y la fase 2
+  está disponible para declarar en la ronda siguiente. El sprite se actualiza
+  en cuanto se publica el estado resuelto.
+- Evento de log `bossPhase` («Cambio de fase») y editor de ficha para
+  configurar umbral, etiqueta, overrides visuales y habilidades de fase 2.
+- Validación de referencias de skills de fase 2, listados y encuentros
+  actualizados para reconocer jefes como enemigos.
+
 ## Fase 4E+ — skin Vetas de oro (2026-10-29)
 
 ### Añadido

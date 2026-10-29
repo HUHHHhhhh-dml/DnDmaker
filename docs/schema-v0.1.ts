@@ -230,7 +230,22 @@ export interface SpecialAbility {
 /* Personajes                                                                 */
 /* ========================================================================== */
 
-export type CharacterKind = "player" | "npc" | "enemy";
+export type CharacterKind = "player" | "npc" | "enemy" | "boss";
+
+/** Cambio de fase único de un jefe (fase 1 = ficha base). */
+export interface BossPhase {
+  /** 1..99; se activa al bajar a este % de vida máxima o menos. */
+  thresholdPct: number;
+  label?: string;
+  name?: string;
+  description?: string;
+  portrait?: string;
+  visualMode?: VisualMode;
+  battleSprite?: string;
+  bodyImage?: string;
+  /** Exactamente 3 slots; ausente = conserva las skills base. */
+  skills?: (Id | null)[];
+}
 
 export interface Character {
   id: Id;
@@ -246,6 +261,8 @@ export interface Character {
   battleSprite?: string;
   /** Cuerpo base para el modo capas. Sin él, se cae a sprite único. */
   bodyImage?: string;
+  /** Configuración de fase 2; solo se evalúa si `kind === "boss"`. */
+  bossPhase?: BossPhase;
 
   /** Stats base antes de equipo/efectos. */
   baseStats: Stats;
@@ -447,6 +464,10 @@ export interface CombatUnit {
   visualMode?: VisualMode;
   battleSprite?: string;
   bodyImage?: string;
+  /** Configuración de fase 2 copiada de la ficha (solo jefes). */
+  bossPhase?: BossPhase;
+  /** true cuando ya se activó la fase 2; nunca se revierte. */
+  bossPhaseActive?: boolean;
   /** Stats ya calculados con equipo/efectos al iniciar (snapshot). */
   stats: Stats;
   /** Stats base para recalcular con efectos activos durante el combate. */
@@ -491,6 +512,7 @@ export type CombatEventType =
   | "cooldown"
   | "defeated"
   | "roundEnd"
+  | "bossPhase"
   | "combatEnd";
 
 export interface CombatEvent {

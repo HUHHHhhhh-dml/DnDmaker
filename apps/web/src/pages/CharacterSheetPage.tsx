@@ -12,6 +12,7 @@ import {
   characterInputSchema,
   newCharacter,
   resolveVisualMode,
+  type BossPhase,
   type Character,
   type CharacterKind,
   type EquipmentSlot,
@@ -38,6 +39,7 @@ import {
   TagList,
   TextArea,
   TextInput,
+  Toggle,
   cx,
 } from "../components/ui";
 import { CoinRow } from "../components/cards";
@@ -175,6 +177,51 @@ export function CharacterSheetPage() {
     }));
   }
 
+  function setBossPhaseEnabled(enabled: boolean) {
+    setDraft((current) => ({
+      ...current,
+      bossPhase: enabled
+        ? (current.bossPhase ?? { thresholdPct: 50 })
+        : undefined,
+    }));
+  }
+
+  function patchBossPhase(update: Partial<BossPhase>) {
+    setDraft((current) => ({
+      ...current,
+      bossPhase: {
+        thresholdPct: 50,
+        ...(current.bossPhase ?? {}),
+        ...update,
+      },
+    }));
+  }
+
+  function setBossPhaseSkillsEnabled(enabled: boolean) {
+    setDraft((current) => {
+      if (!current.bossPhase) return current;
+      return {
+        ...current,
+        bossPhase: {
+          ...current.bossPhase,
+          skills: enabled ? [...current.skills] : undefined,
+        },
+      };
+    });
+  }
+
+  function patchBossPhaseSkill(index: number, skillId: string | null) {
+    setDraft((current) => {
+      if (!current.bossPhase) return current;
+      const skills = [...(current.bossPhase.skills ?? current.skills)];
+      skills[index] = skillId;
+      return {
+        ...current,
+        bossPhase: { ...current.bossPhase, skills },
+      };
+    });
+  }
+
   function addInventoryEntry() {
     if (content.items.length === 0) return;
     const firstItem = content.items[0];
@@ -223,6 +270,14 @@ export function CharacterSheetPage() {
       );
       return;
     }
+    const bossPhase = draft.bossPhase
+      ? {
+          ...draft.bossPhase,
+          label: draft.bossPhase.label?.trim() || undefined,
+          name: draft.bossPhase.name?.trim() || undefined,
+          description: draft.bossPhase.description?.trim() || undefined,
+        }
+      : undefined;
     const payload = {
       name: draft.name.trim(),
       kind: draft.kind,
@@ -231,6 +286,7 @@ export function CharacterSheetPage() {
       visualMode: draft.visualMode,
       battleSprite: draft.battleSprite,
       bodyImage: draft.bodyImage,
+      bossPhase,
       baseStats: draft.baseStats,
       equipment: draft.equipment,
       skills: draft.skills,
@@ -621,9 +677,177 @@ export function CharacterSheetPage() {
                 </div>
               </section>
 
+              {draft.kind === "boss" ? (
+                <section className="panel p-4">
+                  <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                    05 · Cambio de fase
+                  </h2>
+                  <p className="mb-4 mt-2 text-[11px] leading-relaxed text-ui-faint">
+                    La fase 1 es esta ficha. Al terminar una ronda con la vida en
+                    el umbral o por debajo, el jefe entra una sola vez en fase 2 y
+                    cambia sprite, nombre y habilidades. Curarse después no revierte
+                    el cambio; morir en esa misma ronda lo impide.
+                  </p>
+                  <Toggle
+                    checked={Boolean(draft.bossPhase)}
+                    onCheckedChange={setBossPhaseEnabled}
+                    label="Activar cambio de fase"
+                    hint="Sin fase configurada, el jefe es un enemigo normal sin fase 2."
+                  />
+                  {draft.bossPhase ? (
+                    <div className="mt-4 space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field
+                          label="Umbral de vida (%)"
+                          hint="1–99. Se activa al terminar la ronda con este % de vida o menos."
+                        >
+                          <NumberInput
+                            value={draft.bossPhase?.thresholdPct ?? 50}
+                            onValueChange={(value) =>
+                              patchBossPhase({ thresholdPct: value ?? 50 })
+                            }
+                            min={1}
+                            max={99}
+                          />
+                        </Field>
+                        <Field
+                          label="Etiqueta de fase"
+                          hint="Texto para el log de combate, p. ej. «Fase 2: desatado»."
+                        >
+                          <TextInput
+                            value={draft.bossPhase?.label ?? ""}
+                            onValueChange={(value) =>
+                              patchBossPhase({ label: value })
+                            }
+                            maxLength={120}
+                            placeholder="Fase 2: desatado"
+                          />
+                        </Field>
+                      </div>
+
+                      <Field
+                        label="Nombre en fase 2"
+                        hint="Vacío = conserva el nombre de la fase 1."
+                      >
+                        <TextInput
+                          value={draft.bossPhase?.name ?? ""}
+                          onValueChange={(value) =>
+                            patchBossPhase({ name: value })
+                          }
+                          maxLength={80}
+                        />
+                      </Field>
+
+                      <Field
+                        label="Descripción en fase 2"
+                        hint="Vacío = conserva la descripción de la fase 1."
+                      >
+                        <TextArea
+                          value={draft.bossPhase?.description ?? ""}
+                          onValueChange={(value) =>
+                            patchBossPhase({ description: value })
+                          }
+                          rows={2}
+                          maxLength={2000}
+                        />
+                      </Field>
+
+                      <ImageField
+                        value={draft.bossPhase?.portrait}
+                        onChange={(value) => patchBossPhase({ portrait: value })}
+                        label="Retrato en fase 2"
+                        hint="Vacío = conserva el retrato de la fase 1."
+                        shape="portrait"
+                      />
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field
+                          label="Modo visual en fase 2"
+                          hint="Hereda el modo de la fase 1 si se deja en blanco."
+                        >
+                          <Select
+                            value={draft.bossPhase?.visualMode ?? ""}
+                            onValueChange={(value) =>
+                              patchBossPhase({
+                                visualMode: value
+                                  ? (value as VisualMode)
+                                  : undefined,
+                              })
+                            }
+                          >
+                            <option value="">— Heredar fase 1 —</option>
+                            <option value="portrait">Sprite único</option>
+                            <option value="layered">Capas</option>
+                          </Select>
+                        </Field>
+                        <p className="self-end text-[10px] leading-snug text-ui-faint">
+                          El sprite cambia en cuanto el servidor publica el estado
+                          resuelto de la ronda.
+                        </p>
+                      </div>
+
+                      <ImageField
+                        value={draft.bossPhase?.battleSprite}
+                        onChange={(value) =>
+                          patchBossPhase({ battleSprite: value })
+                        }
+                        label="Sprite de combate en fase 2"
+                        hint="Vacío = conserva el sprite de la fase 1."
+                      />
+
+                      <ImageField
+                        value={draft.bossPhase?.bodyImage}
+                        onChange={(value) => patchBossPhase({ bodyImage: value })}
+                        label="Cuerpo base en fase 2 (modo capas)"
+                        hint="Vacío = conserva el cuerpo base de la fase 1."
+                      />
+
+                      <div className="border border-ui-line bg-ui-surface-2 p-3">
+                        <Toggle
+                          checked={Boolean(draft.bossPhase?.skills)}
+                          onCheckedChange={setBossPhaseSkillsEnabled}
+                          label="Cambiar habilidades en fase 2"
+                          hint="Si se desactiva, conserva las skills de la fase 1."
+                        />
+                        {draft.bossPhase?.skills ? (
+                          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                            {[0, 1, 2].map((index) => (
+                              <Field
+                                key={index}
+                                label={`Skill ${index + 1} (fase 2)`}
+                              >
+                                <Select
+                                  value={draft.bossPhase?.skills?.[index] ?? ""}
+                                  onValueChange={(value) =>
+                                    patchBossPhaseSkill(index, value || null)
+                                  }
+                                >
+                                  <option value="">— Vacío —</option>
+                                  {campaign.content.skills.map((skill) => (
+                                    <option key={skill.id} value={skill.id}>
+                                      {skill.name}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <p className="text-[10px] leading-snug text-ui-faint">
+                        La fase 2 se evalúa al final de la ronda, después de
+                        daño/efectos y antes de avanzar el contador. Las acciones
+                        declaradas esa ronda usan la fase 1.
+                      </p>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               <section className="panel p-4">
                 <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-                  05 · Visual de combate
+                  06 · Visual de combate
                 </h2>
                 <p className="mb-4 mt-2 text-[11px] leading-relaxed text-ui-faint">
                   Decide cómo se dibuja esta ficha en el side-view. La vista previa
@@ -700,7 +924,7 @@ export function CharacterSheetPage() {
 
               <section className="panel p-4">
                 <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-                  06 · Inventario y notas
+                  07 · Inventario y notas
                 </h2>
                 <div className="mt-3 space-y-2">
                   {campaign.content.items.length === 0 ? (
@@ -826,6 +1050,85 @@ export function CharacterSheetPage() {
                   })}
                 </div>
               </section>
+
+              {view.kind === "boss" ? (
+                <section className="panel p-4">
+                  <h2 className="mb-3 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+                    Cambio de fase
+                  </h2>
+                  {view.bossPhase ? (
+                    <>
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className="chip chip-rust">
+                          Umbral {view.bossPhase.thresholdPct}%
+                        </span>
+                        {view.bossPhase.label ? (
+                          <span className="chip">{view.bossPhase.label}</span>
+                        ) : null}
+                        {view.bossPhase.skills ? (
+                          <span className="chip chip-accent">Skills fase 2</span>
+                        ) : null}
+                        {view.bossPhase.battleSprite ||
+                        view.bossPhase.bodyImage ||
+                        view.bossPhase.portrait ||
+                        view.bossPhase.visualMode ? (
+                          <span className="chip chip-accent">Visual fase 2</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-3 text-xs leading-relaxed text-ui-muted">
+                        Al terminar una ronda con un{" "}
+                        {view.bossPhase.thresholdPct}% de vida o menos, el jefe
+                        entra una sola vez en fase 2. Curarse después no revierte el
+                        cambio; si cae en esa misma ronda, no se activa.
+                      </p>
+                      {view.bossPhase.name ||
+                      view.bossPhase.description ? (
+                        <p className="mt-2 text-xs leading-relaxed text-ui-faint">
+                          {view.bossPhase.name ? (
+                            <span className="font-semibold text-ui">
+                              {view.bossPhase.name}
+                            </span>
+                          ) : null}
+                          {view.bossPhase.name && view.bossPhase.description
+                            ? " · "
+                            : null}
+                          {view.bossPhase.description}
+                        </p>
+                      ) : null}
+                      {view.bossPhase.skills ? (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                          {view.bossPhase.skills.map((skillId, index) => {
+                            const skill = skillId
+                              ? skillsById.get(skillId)
+                              : null;
+                            return (
+                              <div
+                                key={index}
+                                className="border border-ui-line bg-ui-surface-2 p-2"
+                              >
+                                <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-ui-faint">
+                                  Slot {index + 1} · fase 2
+                                </div>
+                                <div className="text-xs font-semibold">
+                                  {skill?.name ?? "Vacío"}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="mt-3 border-t border-ui-line pt-2 text-[10px] text-ui-faint">
+                          Conserva las skills de la fase 1.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-ui-muted">
+                      Sin cambio de fase: este jefe es un enemigo normal.
+                    </p>
+                  )}
+                </section>
+              ) : null}
 
               <section className="panel p-4">
                 <h2 className="mb-3 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">

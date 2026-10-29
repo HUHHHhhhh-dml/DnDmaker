@@ -88,6 +88,7 @@ const KIND_LABEL: Record<CombatUnit["kind"], string> = {
   player: "jugador",
   npc: "npc",
   enemy: "enemigo",
+  boss: "jefe",
 };
 
 export interface CombatSceneProps {

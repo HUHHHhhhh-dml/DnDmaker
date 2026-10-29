@@ -4,6 +4,7 @@ import {
   DEFAULT_STATS,
   SESSION_CODE_ALPHABET,
   SESSION_CODE_LENGTH,
+  isEnemyKind,
   newId,
   type Character,
   type HostSessionResponse,
@@ -374,7 +375,7 @@ export class SessionService {
   ) {
     const { pin: _pin, ...safeSettings } = campaign.settings;
     const party = campaign.content.characters.filter(
-      (character) => character.kind !== "enemy",
+      (character) => !isEnemyKind(character.kind),
     );
     const referencedItems = new Set<string>();
     const referencedSkills = new Set<string>();
@@ -388,6 +389,13 @@ export class SessionService {
       for (const entry of character.inventory) referencedItems.add(entry.itemId);
       for (const skillId of character.skills) {
         if (skillId) referencedSkills.add(skillId);
+      }
+      // En combate un jefe puede entrar en fase 2 y cambiar sus skills: sus
+      // definiciones viajan al jugador para poder pintarlas en el log/estado.
+      if (includeCombatReferences) {
+        for (const skillId of character.bossPhase?.skills ?? []) {
+          if (skillId) referencedSkills.add(skillId);
+        }
       }
     }
 

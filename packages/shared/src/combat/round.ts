@@ -13,6 +13,11 @@ import { resolveClash } from "./clash";
 import { rollCoins } from "./coins";
 import { computeDamage } from "./damage";
 import {
+  applyBossPhase,
+  bossPhaseEvent,
+  bossPhaseToActivate,
+} from "./boss";
+import {
   applyEffect,
   collectTriggers,
   executeEffectActions,
@@ -46,7 +51,8 @@ import type {
  *   3. Clash al apuntarse mutuamente, sin importar slot.
  *   4. Redirección válida antes del clash normal.
  *   5. roundEnd, tick de duraciones y cooldowns.
- *   6. La ronda avanza y el estado queda listo para declarar de nuevo.
+ *   6. Cambio de fase de jefes que bajaron de su umbral (fase 2).
+ *   7. La ronda avanza y el estado queda listo para declarar de nuevo.
  *
  * Importante para 3C: la ronda avanza (`round + 1`), la fase vuelve a
  * `declaring` y las acciones se limpian. Si `state.winner` queda definido (o
@@ -739,6 +745,22 @@ export function resolveRound(
 
   for (const event of tickSpecialCooldowns(draft, content.specials)) {
     emit(event);
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* 5b. Cambio de fase de jefes                                            */
+  /* ---------------------------------------------------------------------- */
+
+  // Se evalúa al final de la ronda, después de daño/efectos y antes de
+  // avanzar `round`: las acciones declaradas esta ronda usaron la fase 1 y
+  // los nuevos overrides están listos para declarar en la siguiente. Un jefe
+  // que muere en esta ronda (hpCurrent 0) no entra en fase 2.
+  for (const unit of [...units.values()]) {
+    const phase = bossPhaseToActivate(unit);
+    if (!phase) continue;
+    const transformed = applyBossPhase(unit, phase);
+    setUnit(transformed);
+    emit(bossPhaseEvent(unit, transformed, phase));
   }
 
   /* ---------------------------------------------------------------------- */

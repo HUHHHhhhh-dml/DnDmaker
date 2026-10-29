@@ -31,6 +31,7 @@ const baseCharacter = {
 describe("contrato visual y HP (3A)", () => {
   it("resuelve el modo visual por tipo y permite override", () => {
     expect(defaultVisualMode("enemy")).toBe("portrait");
+    expect(defaultVisualMode("boss")).toBe("portrait");
     expect(defaultVisualMode("player")).toBe("layered");
     expect(defaultVisualMode("npc")).toBe("layered");
 
@@ -38,6 +39,7 @@ describe("contrato visual y HP (3A)", () => {
       resolveVisualMode({ kind: "enemy", visualMode: "layered" }),
     ).toBe("layered");
     expect(resolveVisualMode({ kind: "enemy" })).toBe("portrait");
+    expect(resolveVisualMode({ kind: "boss" })).toBe("portrait");
     expect(resolveVisualMode({ kind: "player" })).toBe("layered");
   });
 

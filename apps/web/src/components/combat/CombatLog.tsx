@@ -29,6 +29,7 @@ const EVENT_LABEL: Record<CombatEventType, string> = {
   cooldown: "Cooldown",
   defeated: "Derrota",
   roundEnd: "Fin de ronda",
+  bossPhase: "Cambio de fase",
   combatEnd: "Fin del combate",
 };
 
@@ -45,6 +46,7 @@ const EVENT_ICON: Record<CombatEventType, IconName> = {
   cooldown: "lock",
   defeated: "skull",
   roundEnd: "broadcast",
+  bossPhase: "spark",
   combatEnd: "skull",
 };
 
@@ -61,6 +63,7 @@ const EVENT_TONE: Record<CombatEventType, string> = {
   cooldown: "border-ui-line bg-ui-surface-2",
   defeated: "border-ui-line-strong bg-ui-surface-3 text-ui",
   roundEnd: "border-ui-line bg-ui-surface-3",
+  bossPhase: "border-amber bg-amber/15",
   combatEnd: "border-rust bg-rust/15",
 };
 

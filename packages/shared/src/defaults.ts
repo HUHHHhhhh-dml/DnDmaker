@@ -2,6 +2,7 @@ import type {
   CampaignContent,
   CampaignSettings,
   Character,
+  CharacterKind,
   EffectDefinition,
   EffectTrigger,
   EquipmentSlot,
@@ -113,10 +114,18 @@ export const VISUAL_MODE_LABELS: Record<VisualMode, string> = {
 
 /**
  * Modo por defecto del side-view híbrido:
- * enemigos → sprite único; el resto → capas.
+ * enemigos y jefes → sprite único; el resto → capas.
  */
 export function defaultVisualMode(kind: Character["kind"]): VisualMode {
-  return kind === "enemy" ? "portrait" : "layered";
+  return kind === "enemy" || kind === "boss" ? "portrait" : "layered";
+}
+
+/**
+ * Tipos que cuentan como enemigo a efectos de combate, encuentros,
+ * recompensas y victoria/derrota. `boss` es un enemigo con cambio de fase.
+ */
+export function isEnemyKind(kind: CharacterKind): boolean {
+  return kind === "enemy" || kind === "boss";
 }
 
 /** Modo efectivo respetando el campo de la ficha y su default por tipo. */
@@ -166,6 +175,7 @@ export const CHARACTER_KIND_LABELS = {
   player: "Jugador",
   npc: "NPC",
   enemy: "Enemigo",
+  boss: "Jefe enemigo",
 } as const;
 
 export const STACK_MODE_LABELS = {

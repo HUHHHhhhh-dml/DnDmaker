@@ -1,4 +1,8 @@
-import { CHARACTER_SKILL_SLOTS, EQUIPMENT_SLOTS } from "./defaults";
+import {
+  CHARACTER_SKILL_SLOTS,
+  EQUIPMENT_SLOTS,
+  isEnemyKind,
+} from "./defaults";
 import { calculateStats } from "./stats";
 import type {
   Campaign,
@@ -264,6 +268,51 @@ export function validateCharacter(
     );
   }
 
+  if (character.bossPhase) {
+    const phase = character.bossPhase;
+    if (character.kind !== "boss") {
+      issues.push(
+        issue(
+          `${path}.bossPhase`,
+          "Solo los jefes usan el cambio de fase; se ignorará en combate.",
+          "warning",
+        ),
+      );
+    }
+    if (
+      !Number.isInteger(phase.thresholdPct) ||
+      phase.thresholdPct < 1 ||
+      phase.thresholdPct > 99
+    ) {
+      issues.push(
+        issue(
+          `${path}.bossPhase.thresholdPct`,
+          "El umbral de fase debe ser un entero entre 1 y 99.",
+        ),
+      );
+    }
+    if (phase.skills) {
+      if (phase.skills.length !== CHARACTER_SKILL_SLOTS) {
+        issues.push(
+          issue(
+            `${path}.bossPhase.skills`,
+            `La fase 2 debe tener exactamente ${CHARACTER_SKILL_SLOTS} slots de skill.`,
+          ),
+        );
+      }
+      phase.skills.forEach((skillId, index) => {
+        if (skillId && !skills.has(skillId)) {
+          issues.push(
+            issue(
+              `${path}.bossPhase.skills[${index}]`,
+              "La skill de la fase 2 no existe en la campaña.",
+            ),
+          );
+        }
+      });
+    }
+  }
+
   character.inventory.forEach((entry, index) => {
     if (!items.has(entry.itemId)) {
       issues.push(
@@ -327,7 +376,7 @@ export function validateEncounter(
       );
       return;
     }
-    if (character.kind !== "enemy") {
+    if (!isEnemyKind(character.kind)) {
       issues.push(
         issue(
           `${path}.enemies[${index}].characterId`,
@@ -649,6 +698,12 @@ export function findReferences(id: string, content: CampaignContent): ReferenceI
     }
     if (character.skills.includes(id)) {
       refs.push({ label: `personaje "${character.name}"`, id: character.id });
+    }
+    if (character.bossPhase?.skills?.includes(id)) {
+      refs.push({
+        label: `fase 2 de "${character.name}"`,
+        id: character.id,
+      });
     }
     if (character.special?.domainId === id || character.special?.habitatId === id) {
       refs.push({ label: `personaje "${character.name}"`, id: character.id });

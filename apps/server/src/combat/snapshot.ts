@@ -128,6 +128,17 @@ export function snapshotUnit(
   const stats = { ...derived.stats };
   if (spdRoll !== undefined) stats.spd += spdRoll;
 
+  // El motor evalúa la fase sin leer la ficha viva: la configuración viaja en
+  // el snapshot. La fase 1 son los campos base; estos overrides son la fase 2.
+  const bossPhase = character.bossPhase
+    ? {
+        ...character.bossPhase,
+        ...(character.bossPhase.skills
+          ? { skills: [...character.bossPhase.skills] }
+          : {}),
+      }
+    : undefined;
+
   return {
     id: newId("unt"),
     characterId: character.id,
@@ -139,6 +150,7 @@ export function snapshotUnit(
     visualMode: character.visualMode,
     battleSprite: character.battleSprite,
     bodyImage: character.bodyImage,
+    ...(bossPhase ? { bossPhase, bossPhaseActive: false } : {}),
     stats,
     ...(spdRoll === undefined ? {} : { spdRoll }),
     baseStats: { ...character.baseStats },

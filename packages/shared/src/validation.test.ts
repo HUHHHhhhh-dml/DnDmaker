@@ -73,6 +73,47 @@ describe("validación de contenido", () => {
     expect(result.issues.some((i) => i.severity === "warning")).toBe(true);
   });
 
+  it("acepta jefes como enemigos y sus skills de fase 2", () => {
+    const content = cloneContent();
+    const boss = content.characters[0]!;
+    boss.kind = "boss";
+    boss.bossPhase = {
+      thresholdPct: 50,
+      label: "Fase 2",
+      skills: [content.skills[0]!.id, null, null],
+    };
+    content.encounters.push({
+      id: "enc_boss",
+      name: "Jefe",
+      enemies: [{ characterId: boss.id }],
+    });
+
+    const result = validateContent(content);
+    expect(result.valid).toBe(true);
+    expect(
+      result.issues.some((i) => i.path.includes("enemies[0]")),
+    ).toBe(false);
+
+    const refs = findReferences(content.skills[0]!.id, content);
+    expect(refs.some((ref) => ref.label.includes("fase 2"))).toBe(true);
+  });
+
+  it("detecta skills inexistentes en la fase 2 de un jefe", () => {
+    const content = cloneContent();
+    const boss = content.characters[0]!;
+    boss.kind = "boss";
+    boss.bossPhase = {
+      thresholdPct: 50,
+      skills: ["skl_inexistente", null, null],
+    };
+
+    const result = validateContent(content);
+    expect(result.valid).toBe(false);
+    expect(
+      result.issues.some((i) => i.path.includes("bossPhase.skills")),
+    ).toBe(true);
+  });
+
   it("valida referencias de enemigos y recompensas de encuentros", () => {
     const content = cloneContent();
     const encounter: Encounter = {

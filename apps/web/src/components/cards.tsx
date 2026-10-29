@@ -273,9 +273,11 @@ export function CharacterCard({
   const kindTone =
     character.kind === "player"
       ? "bg-steel text-ui-on-accent border-steel"
-      : character.kind === "enemy"
-        ? "bg-rust text-ui-on-accent border-rust"
-        : "bg-moss text-ui-on-accent border-moss";
+      : character.kind === "boss"
+        ? "bg-amber text-ui-on-accent border-amber"
+        : character.kind === "enemy"
+          ? "bg-rust text-ui-on-accent border-rust"
+          : "bg-moss text-ui-on-accent border-moss";
 
   return (
     <Link

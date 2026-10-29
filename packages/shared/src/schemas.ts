@@ -50,7 +50,12 @@ export const equipmentSlotSchema = z.enum([
   "utility",
 ]);
 
-export const characterKindSchema = z.enum(["player", "npc", "enemy"]);
+export const characterKindSchema = z.enum([
+  "player",
+  "npc",
+  "enemy",
+  "boss",
+]);
 
 /** Modo de render del side-view híbrido. */
 export const visualModeSchema = z.enum(["portrait", "layered"]);
@@ -260,6 +265,22 @@ export const characterSkillsSchema = z.tuple([
   nullableId,
 ]);
 
+/**
+ * Cambio de fase de un jefe. Todos los overrides son opcionales; `skills`
+ * ausente conserva las skills base de la ficha.
+ */
+export const bossPhaseSchema = z.object({
+  thresholdPct: integer(1, 99),
+  label: z.string().trim().max(120).optional(),
+  name: nameSchema.optional(),
+  description: descriptionSchema.optional(),
+  portrait: imageSchema.optional(),
+  visualMode: visualModeSchema.optional(),
+  battleSprite: imageSchema.optional(),
+  bodyImage: imageSchema.optional(),
+  skills: characterSkillsSchema.optional(),
+});
+
 const inventoryEntrySchema = z.object({
   itemId: idSchema,
   qty: integer(1, 9999),
@@ -278,6 +299,8 @@ const characterFields = {
   visualMode: visualModeSchema.optional(),
   battleSprite: imageSchema.optional(),
   bodyImage: imageSchema.optional(),
+  /** Solo se evalúa en fichas de tipo jefe. */
+  bossPhase: bossPhaseSchema.optional(),
   baseStats: characterStatsSchema,
   /** HP actual; ausente = HP máximo derivado. */
   hpCurrent: integer(0, 99_999).optional(),
@@ -310,6 +333,7 @@ const characterOverridesSchema = z.object({
   visualMode: visualModeSchema.optional(),
   battleSprite: imageSchema.optional(),
   bodyImage: imageSchema.optional(),
+  bossPhase: bossPhaseSchema.optional(),
   baseStats: characterStatsSchema.partial().optional(),
   hpCurrent: integer(0, 99_999).optional(),
   equipment: equipmentSchema.partial().optional(),
@@ -740,6 +764,10 @@ export const combatUnitSchema = z.object({
   visualMode: visualModeSchema.optional(),
   battleSprite: imageSchema.optional(),
   bodyImage: imageSchema.optional(),
+  /** Configuración de fase 2 copiada de la ficha (solo jefes). */
+  bossPhase: bossPhaseSchema.optional(),
+  /** true cuando ya se activó la fase 2; nunca se revierte. */
+  bossPhaseActive: z.boolean().optional(),
   stats: combatStatsSchema,
   /**
    * Roll de SPD de este combate (1..4). 0/ausente en estados antiguos o si
@@ -789,6 +817,7 @@ export const combatEventTypeSchema = z.enum([
   "cooldown",
   "defeated",
   "roundEnd",
+  "bossPhase",
   "combatEnd",
 ]);
 

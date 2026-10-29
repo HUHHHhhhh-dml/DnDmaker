@@ -5,6 +5,7 @@ import {
   EQUIPMENT_SLOT_LABELS,
   HP_PERSISTENCE_LABELS,
   TIE_RULE_LABELS,
+  isEnemyKind,
   type CharacterKind,
 } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
@@ -39,7 +40,9 @@ export function DashboardPage() {
     ["player", "npc"].includes(character.kind),
   );
   const players = campaign.content.characters.filter((character) => character.kind === "player");
-  const enemies = campaign.content.characters.filter((character) => character.kind === "enemy");
+  const enemies = campaign.content.characters.filter((character) =>
+    isEnemyKind(character.kind),
+  );
   const featuredItems = campaign.content.items.slice(0, 3);
   const featuredEncounters = campaign.content.encounters.slice(0, 2);
 
@@ -48,7 +51,7 @@ export function DashboardPage() {
       acc[character.kind] += 1;
       return acc;
     },
-    { player: 0, npc: 0, enemy: 0 },
+    { player: 0, npc: 0, enemy: 0, boss: 0 },
   );
 
   const hasContent =
@@ -291,8 +294,8 @@ export function DashboardPage() {
               {players.length} jugador{players.length === 1 ? "" : "es"} · {enemies.length}{" "}
               enemigo{enemies.length === 1 ? "" : "s"}
             </p>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              {(["player", "npc", "enemy"] as CharacterKind[]).map((kind) => (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+              {(["player", "npc", "enemy", "boss"] as CharacterKind[]).map((kind) => (
                 <div key={kind} className="border border-ui-line px-1 py-2">
                   <div className="font-display text-xl">{kindCounts[kind]}</div>
                   <div className="font-mono text-[8px] uppercase tracking-[0.12em] text-ui-faint">

@@ -21,6 +21,7 @@ const KIND_FILTERS: Array<{ value: CharacterKind | "all"; label: string }> = [
   { value: "player", label: "Jugadores" },
   { value: "npc", label: "NPCs" },
   { value: "enemy", label: "Enemigos" },
+  { value: "boss", label: "Jefes" },
 ];
 
 export function CharactersPage() {
@@ -171,7 +172,7 @@ export function CharactersPage() {
       )}
 
       <div className="mono-label mt-6 flex flex-wrap gap-2 border-t border-ui-line pt-4">
-        {(["player", "npc", "enemy"] as CharacterKind[]).map((value) => (
+        {(["player", "npc", "enemy", "boss"] as CharacterKind[]).map((value) => (
           <span key={value} className="chip">
             {CHARACTER_KIND_LABELS[value]}
             <span className="font-bold text-ui">{counts[value] ?? 0}</span>

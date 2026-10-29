@@ -208,7 +208,30 @@ export interface SpecialAbility {
 /* Personajes                                                                 */
 /* ========================================================================== */
 
-export type CharacterKind = "player" | "npc" | "enemy";
+export type CharacterKind = "player" | "npc" | "enemy" | "boss";
+
+/**
+ * Configuración del único cambio de fase de un jefe (fase 1 = ficha base).
+ *
+ * El cambio es unidireccional: al bajar del umbral se aplican los overrides y
+ * `bossPhaseActive` queda fijado. Curarse por encima del umbral después no
+ * revierte ni el sprite ni las habilidades.
+ */
+export interface BossPhase {
+  /** 1..99; se activa al bajar a este % de vida máxima o menos. */
+  thresholdPct: number;
+  /** Etiqueta para UI/log, p. ej. "Fase 2: desatado". */
+  label?: string;
+  /** Overrides opcionales de la ficha al entrar en fase 2. */
+  name?: string;
+  description?: string;
+  portrait?: string;
+  visualMode?: VisualMode;
+  battleSprite?: string;
+  bodyImage?: string;
+  /** Exactamente 3 slots; si se omite, conserva las skills base. */
+  skills?: (Id | null)[];
+}
 
 export interface Character {
   id: Id;
@@ -227,6 +250,11 @@ export interface Character {
   battleSprite?: string;
   /** Cuerpo base para el modo `layered`. Sin él, cae a sprite único. */
   bodyImage?: string;
+  /**
+   * Cambio de fase de un jefe. Solo se evalúa si `kind === "boss"`; un jefe
+   * sin configurar es un enemigo normal sin fase 2.
+   */
+  bossPhase?: BossPhase;
 
   baseStats: Stats;
   /**
@@ -736,6 +764,13 @@ export interface CombatUnit {
   visualMode?: VisualMode;
   battleSprite?: string;
   bodyImage?: string;
+  /**
+   * Configuración de cambio de fase copiada de la ficha (solo jefes). El
+   * motor la evalúa al final de cada ronda sin leer la ficha viva.
+   */
+  bossPhase?: BossPhase;
+  /** true cuando el jefe ya entró en fase 2; el cambio nunca se revierte. */
+  bossPhaseActive?: boolean;
   /** Stats derivados al iniciar; no cambian si la ficha se edita después. */
   stats: Stats;
   /**
@@ -798,6 +833,7 @@ export type CombatEventType =
   | "cooldown"
   | "defeated"
   | "roundEnd"
+  | "bossPhase"
   | "combatEnd";
 
 export interface CombatEvent {

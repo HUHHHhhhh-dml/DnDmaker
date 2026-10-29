@@ -5,4 +5,5 @@ export * from "./damage";
 export * from "./effects";
 export * from "./clash";
 export * from "./specials";
+export * from "./boss";
 export * from "./round";

@@ -84,6 +84,8 @@ interface ScenarioOptions {
   utilityUses?: number;
   equipUtility?: boolean;
   withDomain?: boolean;
+  /** Crea a Eco Uno como jefe con cambio de fase. */
+  boss?: boolean;
   /** Override de HP inicial para probar objetivos ya derrotados. */
   enemyTwoHpCurrent?: number;
 }
@@ -216,7 +218,7 @@ async function setupScenario(
     campaignId,
     {
       name: "Eco Uno",
-      kind: "enemy",
+      kind: options.boss ? "boss" : "enemy",
       baseStats: {
         hpMax: options.enemyHp ?? 200,
         def: 0,
@@ -233,6 +235,17 @@ async function setupScenario(
         utility: null,
       },
       skills: enemySkills,
+      ...(options.boss
+        ? {
+            bossPhase: {
+              thresholdPct: 99,
+              label: "Fase 2: desatado",
+              name: "Eco Uno desatado",
+              battleSprite: "/assets/test/eco-fase2.png",
+              skills: [otherSkill.id, null, null],
+            },
+          }
+        : {}),
       inventory: [],
     },
   ) as Character;
@@ -1418,6 +1431,64 @@ describe("Fase 3C — declaraciones, lock y ronda", () => {
     } finally {
       socket.disconnect();
     }
+  });
+
+  it("instancia un jefe y activa su fase 2 para la ronda siguiente", async () => {
+    const scenario = await setupScenario({
+      enemyCount: 1,
+      enemyHp: 200,
+      enemySkills: false,
+      boss: true,
+    });
+    const started = built.combat.startEncounter(
+      scenario.campaignId,
+      scenario.encounterId,
+      scenario.sessionId,
+      { seed: "boss-phase", speedRoll: false },
+    );
+    const p1 = unitOf(started, scenario.playerOne.id);
+    const boss = unitOf(started, scenario.enemyOne.id);
+
+    // El snapshot copia la configuración y empieza en fase 1.
+    expect(boss.kind).toBe("boss");
+    expect(boss.team).toBe("enemies");
+    expect(boss.bossPhase).toMatchObject({ thresholdPct: 99 });
+    expect(boss.bossPhaseActive).toBe(false);
+    expect(boss.skills).toEqual([null, null, null]);
+
+    built.combat.declareActions(
+      playerActorFor(scenario, p1.characterId),
+      started.id,
+      [{ slot: 1, skillId: scenario.skillId, targetId: boss.id }],
+    );
+    lockAllLiving(scenario, started);
+    const resolved = built.combat.resolveCombatRound(started.id);
+
+    const after = unitOf(resolved, scenario.enemyOne.id);
+    expect(resolved.round).toBe(2);
+    expect(after.bossPhaseActive).toBe(true);
+    expect(after.name).toBe("Eco Uno desatado");
+    expect(after.battleSprite).toBe("/assets/test/eco-fase2.png");
+    expect(after.skills).toEqual([scenario.otherSkillId, null, null]);
+    expect(
+      resolved.log.some(
+        (event) => event.type === "bossPhase" && event.round === 1,
+      ),
+    ).toBe(true);
+
+    // La config de fase también queda persistida en el estado del combate.
+    const stored = built.combatStore.getState(started.id);
+    expect(
+      stored?.units.find((unit) => unit.id === boss.id)?.bossPhaseActive,
+    ).toBe(true);
+
+    // En la ronda 2 el DM ya puede declarar la skill de fase 2.
+    const declared = built.combat.declareActions(dmActor(boss.id), started.id, [
+      { slot: 1, skillId: scenario.otherSkillId, targetId: p1.id },
+    ]);
+    expect(declared.actions[boss.id]?.[0]).toMatchObject({
+      skillId: scenario.otherSkillId,
+    });
   });
 });
 

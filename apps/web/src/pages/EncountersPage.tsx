@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isEnemyKind } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
 import { EncounterCard } from "../components/cards";
 import { Icon } from "../components/Icons";
@@ -25,8 +26,8 @@ export function EncountersPage() {
     );
   }, [campaign.content.encounters, search]);
 
-  const enemyCount = campaign.content.characters.filter(
-    (character) => character.kind === "enemy",
+  const enemyCount = campaign.content.characters.filter((character) =>
+    isEnemyKind(character.kind),
   ).length;
 
   return (

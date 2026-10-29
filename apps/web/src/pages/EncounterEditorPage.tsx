@@ -5,6 +5,7 @@ import {
   EQUIPMENT_SLOT_LABELS,
   VISUAL_MODE_LABELS,
   encounterInputSchema,
+  isEnemyKind,
   type CharacterOverrides,
   type Encounter,
   type EncounterEnemy,
@@ -149,8 +150,8 @@ export function EncounterEditorPage() {
     );
   }
 
-  const enemies = campaign.content.characters.filter(
-    (character) => character.kind === "enemy",
+  const enemies = campaign.content.characters.filter((character) =>
+    isEnemyKind(character.kind),
   );
   const charactersById = new Map(
     campaign.content.characters.map((character) => [character.id, character]),
@@ -426,7 +427,7 @@ export function EncounterEditorPage() {
               02 · Enemigos
             </h2>
             <p className="mb-4 mt-2 text-[11px] text-ui-faint">
-              Solo se muestran fichas de tipo enemigo. La cantidad crea copias del
+              Solo se muestran fichas de tipo enemigo o jefe. La cantidad crea copias del
               mismo enemigo. Los overrides permiten una variante por aparición
               (stats o visuales) sin tocar la ficha base.
             </p>
@@ -438,7 +439,7 @@ export function EncounterEditorPage() {
                     key={index}
                     className={cx(
                       "flex flex-wrap items-center gap-2 border p-2",
-                      character?.kind === "enemy"
+                      character && isEnemyKind(character.kind)
                         ? "border-ui-line bg-ui-surface-2"
                         : "border-rust/50 bg-rust/5",
                     )}
@@ -493,9 +494,9 @@ export function EncounterEditorPage() {
                     >
                       <Icon name="trash" size={13} />
                     </button>
-                    {character && character.kind !== "enemy" ? (
+                    {character && !isEnemyKind(character.kind) ? (
                       <span className="w-full font-mono text-[9px] uppercase tracking-[0.1em] text-ui-danger">
-                        Esta ficha no es de tipo enemigo.
+                        Esta ficha no es de tipo enemigo ni jefe.
                       </span>
                     ) : null}
                     {overrideIndex === index ? (
