@@ -11,6 +11,10 @@
 - **Botón de altavoz** en la cabecera de la bandeja con estado persistido en
   `localStorage` (`protocol-life-dice-sound`, activo por defecto). Al reactivar
   suena una pequeña prueba; al silenciar se paran los sonidos programados.
+- **Nat 20 y Nat 1 con sonido propio**: el 20 añade un arpegio de campana
+  ascendente (cinco notas con armónico y chispas de ruido); el 1, un golpe grave
+  descendente con retumbe de baja frecuencia. Suenan una vez por tirada, respetan
+  el mute y se suman a los impactos de la caída.
 - **Fallback con sonido**: las tiradas que caen al pop (sin 3D, WebGL o
   reduced-motion) reproducen un breve rattle; las que usa la escena 3D
   sincronizan los impactos con el reloj de audio.
@@ -21,7 +25,8 @@
 ### Tests
 
 - Preferencia persistida, estado del store, perfil de impacto, paneo, orden,
-  acotado de impactos y tono por tipo de dado.
+  acotado de impactos, tono por tipo de dado y especificación del arpegio del
+  Nat 20 / golpe del Nat 1.
 
 ## Fase 4E+ — física para todos los dados (2026-10-29)
 

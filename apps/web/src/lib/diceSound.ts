@@ -25,6 +25,7 @@ let noise: AudioBuffer | null = null;
 let generation = 0;
 const active = new Set<AudioScheduledSourceNode>();
 const soundedRolls = new Set<string>();
+const soundedCelebrations = new Set<string>();
 
 export interface ImpactSound {
   atMs: number;
@@ -36,6 +37,38 @@ export interface SoundProfile {
   pitch: number;
   decay: number;
   gain: number;
+}
+
+export type CelebrationSoundKind = "nat20" | "nat1";
+
+export interface CelebrationNote {
+  /** Segundos desde el inicio de la celebración. */
+  at: number;
+  frequency: number;
+  duration: number;
+  gain: number;
+  type: OscillatorType;
+}
+
+/** Melodía del Nat 20 (arpegio ascendente) o golpe grave del Nat 1. */
+export function celebrationSoundSpec(
+  kind: CelebrationSoundKind,
+): CelebrationNote[] {
+  if (kind === "nat20") {
+    return [
+      { at: 0, frequency: 1046.5, duration: 0.22, gain: 0.16, type: "sine" },
+      { at: 0.08, frequency: 1318.51, duration: 0.25, gain: 0.14, type: "sine" },
+      { at: 0.16, frequency: 1567.98, duration: 0.3, gain: 0.12, type: "triangle" },
+      { at: 0.27, frequency: 2093, duration: 0.4, gain: 0.09, type: "sine" },
+      { at: 0.4, frequency: 2637.02, duration: 0.45, gain: 0.05, type: "sine" },
+    ];
+  }
+  return [
+    { at: 0, frequency: 82.41, duration: 0.55, gain: 0.22, type: "sine" },
+    { at: 0.03, frequency: 61.74, duration: 0.6, gain: 0.17, type: "triangle" },
+    { at: 0.17, frequency: 49, duration: 0.45, gain: 0.11, type: "sine" },
+    { at: 0.3, frequency: 41.2, duration: 0.35, gain: 0.07, type: "sine" },
+  ];
 }
 
 function clamp01(value: number): number {
@@ -157,6 +190,13 @@ function rememberSounded(id: string): void {
 
 export function wasRollSounded(id: string): boolean {
   return soundedRolls.has(id);
+}
+
+function rememberCelebration(id: string): void {
+  soundedCelebrations.add(id);
+  if (soundedCelebrations.size <= REMEMBER_LIMIT) return;
+  const oldest = soundedCelebrations.values().next().value;
+  if (oldest !== undefined) soundedCelebrations.delete(oldest);
 }
 
 function createNoiseBuffer(audio: AudioContext): AudioBuffer {
@@ -445,6 +485,141 @@ export function playDicePreviewSound(): void {
       strength: 0.65,
       pan: 0.2,
     }, 20);
+  });
+}
+
+function playChimeAt(
+  audio: AudioContext,
+  output: GainNode,
+  time: number,
+  note: CelebrationNote,
+): void {
+  const start = Math.max(time, audio.currentTime + 0.005);
+  const playTone = (
+    frequency: number,
+    gainValue: number,
+    duration: number,
+    type: OscillatorType,
+  ): void => {
+    const tone = audio.createOscillator();
+    tone.type = type;
+    tone.frequency.setValueAtTime(frequency, start);
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(
+      Math.max(0.0002, gainValue),
+      start + 0.006,
+    );
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    tone.connect(gain);
+    gain.connect(output);
+    tone.start(start);
+    tone.stop(start + duration + 0.03);
+    track(tone);
+  };
+  playTone(note.frequency, note.gain, note.duration, note.type);
+  // Armónico suave para que suene a campana, no a pitido.
+  playTone(note.frequency * 2.01, note.gain * 0.22, note.duration * 0.7, "sine");
+}
+
+function playSparkleAt(
+  audio: AudioContext,
+  output: GainNode,
+  noiseBuffer: AudioBuffer,
+  time: number,
+): void {
+  const start = Math.max(time, audio.currentTime + 0.005);
+  const source = audio.createBufferSource();
+  source.buffer = noiseBuffer;
+  const filter = audio.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 3200;
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.025, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(output);
+  source.start(start, Math.random() * 0.4, 0.35);
+  source.stop(start + 0.35);
+  track(source);
+}
+
+function playLowAt(
+  audio: AudioContext,
+  output: GainNode,
+  time: number,
+  note: CelebrationNote,
+): void {
+  const start = Math.max(time, audio.currentTime + 0.005);
+  const tone = audio.createOscillator();
+  tone.type = note.type;
+  tone.frequency.setValueAtTime(note.frequency, start);
+  tone.frequency.exponentialRampToValueAtTime(
+    Math.max(30, note.frequency * 0.82),
+    start + note.duration,
+  );
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(
+    Math.max(0.0002, note.gain),
+    start + 0.012,
+  );
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + note.duration);
+  tone.connect(gain);
+  gain.connect(output);
+  tone.start(start);
+  tone.stop(start + note.duration + 0.03);
+  track(tone);
+}
+
+function playRumbleAt(
+  audio: AudioContext,
+  output: GainNode,
+  noiseBuffer: AudioBuffer,
+  time: number,
+): void {
+  const start = Math.max(time, audio.currentTime + 0.005);
+  const source = audio.createBufferSource();
+  source.buffer = noiseBuffer;
+  const filter = audio.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 160;
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.08, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(output);
+  source.start(start, Math.random() * 0.4, 0.6);
+  source.stop(start + 0.6);
+  track(source);
+}
+
+/** Chime del Nat 20 o golpe grave del Nat 1; se dispara una vez por tirada. */
+export function playDiceCelebration(
+  rollId: string,
+  kind: CelebrationSoundKind,
+): void {
+  if (!enabled || soundedCelebrations.has(rollId)) return;
+  rememberCelebration(rollId);
+  withContext((audio, output, noiseBuffer) => {
+    if (!enabled) return;
+    const start = audio.currentTime + 0.03;
+    const notes = celebrationSoundSpec(kind);
+    if (kind === "nat20") {
+      for (const note of notes) {
+        playChimeAt(audio, output, start + note.at, note);
+      }
+      playSparkleAt(audio, output, noiseBuffer, start + 0.1);
+    } else {
+      for (const note of notes) {
+        playLowAt(audio, output, start + note.at, note);
+      }
+      playRumbleAt(audio, output, noiseBuffer, start);
+    }
   });
 }
 

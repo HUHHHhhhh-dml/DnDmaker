@@ -256,8 +256,10 @@ y se aplica también al primer plano del resultado.
 El botón de **altavoz** de la cabecera de dados activa o silencia los sonidos.
 Son sintetizados con Web Audio (sin ficheros): un roce al lanzar y un chasquido
 por cada rebote, con tono según el dado y paneo según el punto de la mesa. El
-estado se guarda en el navegador. El audio se desbloquea con el primer clic o
-arrastre, como exige el navegador; si se silencia, no se programa ningún sonido.
+estado se guarda en el navegador. Un **Nat 20** añade un arpegio de campana
+ascendente y un **Nat 1** un golpe grave con retumbe, por encima de los impactos.
+El audio se desbloquea con el primer clic o arrastre, como exige el navegador;
+si se silencia, no se programa ningún sonido.
 
 Los **dados múltiples** se lanzan en la misma mesa: caen juntos, colisionan
 entre ellos y cada uno trae su propia trayectoria y su resultado. La cámara se

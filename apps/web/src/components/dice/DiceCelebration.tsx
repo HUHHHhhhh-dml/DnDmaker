@@ -7,6 +7,7 @@ import {
   useDiceCinematicVersion,
 } from "../../lib/diceCinematic";
 import { DiceIcon } from "./DiceIcon";
+import { playDiceCelebration } from "../../lib/diceSound";
 import "./DiceCelebration.css";
 
 const DURATION_MS: Record<DiceOutcomeKind, number> = {
@@ -80,6 +81,7 @@ export function DiceCelebration({ rolls }: { rolls: DiceRoll[] }) {
 
   useEffect(() => {
     if (!current) return;
+    playDiceCelebration(current.roll.id, current.kind);
     const duration = DURATION_MS[current.kind];
     const timer = window.setTimeout(() => setCurrent(null), duration);
     const reduced =

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiceTrajectory } from "@protocol-life/shared";
 import {
+  celebrationSoundSpec,
   collectImpactSounds,
   impactSoundProfile,
   panForImpact,
@@ -76,5 +77,42 @@ describe("sonido de dados", () => {
     expect(panForImpact(-100)).toBeCloseTo(-0.55, 6);
     expect(panForImpact(100)).toBeCloseTo(0.55, 6);
     expect(panForImpact(0)).toBe(0);
+  });
+});
+
+
+describe("celebraciones de Nat 20 y Nat 1", () => {
+  it("el Nat 20 es un arpegio ascendente y brillante", () => {
+    const notes = celebrationSoundSpec("nat20");
+    expect(notes.length).toBeGreaterThanOrEqual(4);
+    for (let index = 0; index < notes.length; index += 1) {
+      const note = notes[index]!;
+      expect(note.frequency).toBeGreaterThan(500);
+      expect(note.gain).toBeGreaterThan(0);
+      expect(note.duration).toBeGreaterThan(0);
+      expect(note.at).toBeGreaterThanOrEqual(0);
+      if (index > 0) {
+        expect(note.frequency).toBeGreaterThan(notes[index - 1]!.frequency);
+        expect(note.at).toBeGreaterThanOrEqual(notes[index - 1]!.at);
+      }
+    }
+    const total = Math.max(...notes.map((note) => note.at + note.duration));
+    expect(total).toBeLessThan(2.2);
+  });
+
+  it("el Nat 1 es un golpe grave descendente", () => {
+    const notes = celebrationSoundSpec("nat1");
+    expect(notes.length).toBeGreaterThanOrEqual(3);
+    for (let index = 0; index < notes.length; index += 1) {
+      const note = notes[index]!;
+      expect(note.frequency).toBeLessThanOrEqual(100);
+      expect(note.gain).toBeGreaterThan(0);
+      expect(note.duration).toBeGreaterThan(0);
+      if (index > 0) {
+        expect(note.frequency).toBeLessThan(notes[index - 1]!.frequency);
+      }
+    }
+    const total = Math.max(...notes.map((note) => note.at + note.duration));
+    expect(total).toBeLessThan(1.5);
   });
 });
