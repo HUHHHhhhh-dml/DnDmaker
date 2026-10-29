@@ -237,6 +237,136 @@ function drawLavaTile(
   context.restore();
 }
 
+/**
+ * Obsidiana con vetas doradas: basalto vítreo, vetas finas y motas de oro.
+ * Comparte la construcción determinista del patrón de lava, con otra paleta.
+ */
+function drawGoldVeinsTile(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  baseColor: string,
+  seed: number,
+): void {
+  const random = mulberry32(seed);
+  context.save();
+  context.beginPath();
+  context.rect(x, y, size, size);
+  context.clip();
+
+  context.fillStyle = baseColor;
+  context.fillRect(x, y, size, size);
+
+  // Vidrio volcánico: manchas sutiles y un brillo diagonal muy tenue.
+  for (let index = 0; index < 30; index += 1) {
+    const cx = x + random() * size;
+    const cy = y + random() * size;
+    const rx = size * (0.02 + random() * 0.1);
+    const ry = size * (0.015 + random() * 0.08);
+    context.beginPath();
+    context.ellipse(cx, cy, rx, ry, random() * Math.PI, 0, Math.PI * 2);
+    context.fillStyle =
+      random() > 0.6
+        ? `rgba(118, 100, 62, ${0.03 + random() * 0.05})`
+        : `rgba(0, 0, 0, ${0.18 + random() * 0.18})`;
+    context.fill();
+  }
+  const sheen = context.createLinearGradient(x, y, x + size, y + size);
+  sheen.addColorStop(0, "rgba(255, 246, 210, 0.06)");
+  sheen.addColorStop(0.45, "rgba(255, 246, 210, 0)");
+  sheen.addColorStop(1, "rgba(0, 0, 0, 0.12)");
+  context.fillStyle = sheen;
+  context.fillRect(x, y, size, size);
+
+  const strokePath = (
+    points: ReadonlyArray<readonly [number, number]>,
+    width: number,
+    color: string,
+    blur: number,
+  ): void => {
+    context.save();
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.shadowColor = "#d4a72c";
+    context.shadowBlur = blur;
+    context.strokeStyle = color;
+    context.lineWidth = width;
+    context.beginPath();
+    points.forEach(([px, py], index) => {
+      if (index === 0) context.moveTo(px, py);
+      else context.lineTo(px, py);
+    });
+    context.stroke();
+    context.restore();
+  };
+
+  const veins = 3 + Math.floor(random() * 2);
+  for (let vein = 0; vein < veins; vein += 1) {
+    const side = Math.floor(random() * 4);
+    let px = x + random() * size;
+    let py = y + random() * size;
+    if (side === 0) px = x;
+    else if (side === 1) px = x + size;
+    else if (side === 2) py = y;
+    else py = y + size;
+
+    const tx = x + size * (0.25 + random() * 0.5);
+    const ty = y + size * (0.25 + random() * 0.5);
+    const segments = 6 + Math.floor(random() * 5);
+    const step = Math.hypot(tx - px, ty - py) / segments;
+    let angle = Math.atan2(ty - py, tx - px);
+    const points: Array<[number, number]> = [[px, py]];
+    for (let segment = 0; segment < segments; segment += 1) {
+      angle += (random() - 0.5) * 0.8;
+      px += Math.cos(angle) * step;
+      py += Math.sin(angle) * step;
+      points.push([px, py]);
+    }
+
+    strokePath(points, 5, "rgba(42, 28, 6, 0.95)", 6);
+    strokePath(points, 2.2, "#d4a72c", 5);
+    strokePath(points, 0.8, "#ffe8a3", 2);
+
+    if (random() > 0.4) {
+      const start = points[Math.floor(points.length * 0.45)]!;
+      const branch: Array<[number, number]> = [[start[0], start[1]]];
+      let bx = start[0];
+      let by = start[1];
+      let branchAngle =
+        Math.atan2(ty - by, tx - bx) +
+        (random() > 0.5 ? 1 : -1) * (0.7 + random() * 0.5);
+      const branchStep = size * 0.055;
+      for (let segment = 0; segment < 3; segment += 1) {
+        branchAngle += (random() - 0.5) * 0.6;
+        bx += Math.cos(branchAngle) * branchStep;
+        by += Math.sin(branchAngle) * branchStep;
+        branch.push([bx, by]);
+      }
+      strokePath(branch, 3.4, "rgba(42, 28, 6, 0.9)", 4);
+      strokePath(branch, 1.4, "#d4a72c", 3);
+      strokePath(branch, 0.6, "#ffe8a3", 1);
+    }
+  }
+
+  // Motas de oro.
+  for (let index = 0; index < 10; index += 1) {
+    const ex = x + random() * size;
+    const ey = y + random() * size;
+    const radius = 0.8 + random() * 1.8;
+    context.save();
+    context.shadowColor = "#d4a72c";
+    context.shadowBlur = 4;
+    context.fillStyle = random() > 0.5 ? "#ffe8a3" : "#d4a72c";
+    context.beginPath();
+    context.arc(ex, ey, radius, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+  }
+
+  context.restore();
+}
+
 function drawLabel(
   context: CanvasRenderingContext2D,
   skin: DiceSkin,
@@ -311,6 +441,15 @@ export function createDieAtlas(
 
     if (skin.pattern === "lava") {
       drawLavaTile(
+        context,
+        x,
+        y,
+        TILE,
+        skin.faceBackground,
+        face.number * 2654435761 + index * 97,
+      );
+    } else if (skin.pattern === "gold-veins") {
+      drawGoldVeinsTile(
         context,
         x,
         y,

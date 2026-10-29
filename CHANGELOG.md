@@ -1,5 +1,20 @@
 # Changelog
 
+## Fase 4E+ — skin Vetas de oro (2026-10-29)
+
+### Añadido
+
+- **Skin Vetas de oro**: obsidiana negra con vetas doradas procedurales, motas
+  de oro y un brillo metálico sutil. El patrón se genera por cara en el atlas
+  con una paleta de oro (sin naranja de lava) y usa el atlas como `emissiveMap`
+  con intensidad baja para que las vetas destaquen sin parecer lava.
+- Material más vítreo y metálico que la skin Negra, con contorno oscuro en los
+  números para mantener la legibilidad.
+- La bandeja se tiñe de obsidiana cálida con acentos dorados; el selector
+  **Aspecto** pasa a siete opciones y la elección sigue persistiendo.
+- Tests de contraste, patrón `gold-veins`, `emissiveFromAtlas`, contorno,
+  metalness y lista estable de siete skins.
+
 ## Fase 4E+ — skin Volcánica (2026-10-29)
 
 ### Añadido

@@ -727,3 +727,64 @@
   background: rgba(255, 122, 47, 0.16);
   color: #ffd9b0;
 }
+
+/* Vetas de oro: obsidiana negra con vetas doradas y brillo metálico. */
+.dice-tray.is-skin-gilded .dice-main {
+  border-color: #5a4a24;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(232, 197, 106, 0.16), transparent 62%),
+    linear-gradient(180deg, #1c1912, #0b0907);
+}
+
+.dice-tray.is-skin-gilded .dice-main:hover:not(:disabled),
+.dice-tray.is-skin-gilded .dice-main.is-dragging {
+  border-color: #e8c56a;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(232, 197, 106, 0.26), transparent 62%),
+    linear-gradient(180deg, #262117, #100d09);
+}
+
+.dice-tray.is-skin-gilded .dice-main-icon {
+  color: #e8c56a;
+  filter: drop-shadow(0 0 12px rgba(232, 197, 106, 0.35));
+}
+
+.dice-tray.is-skin-gilded .dice-main-label {
+  color: #e8c56a;
+}
+
+.dice-tray.is-skin-gilded .dice-main-result {
+  color: #f2e2b3;
+}
+
+.dice-tray.is-skin-gilded .dice-choice {
+  border-color: #3a3327;
+  background: #12100d;
+  color: #c8bda3;
+}
+
+.dice-tray.is-skin-gilded .dice-choice:hover:not(:disabled) {
+  border-color: #5a4a24;
+  color: #ffe7a8;
+}
+
+.dice-tray.is-skin-gilded .dice-choice.is-active {
+  border-color: #e8c56a;
+  background: rgba(232, 197, 106, 0.15);
+  color: #ffe7a8;
+}
+
+.dice-tray.is-skin-gilded .dice-log-result {
+  color: #f2e2b3;
+}
+
+.dice-tray.is-skin-gilded .dice-log-row {
+  border-color: #332d22;
+  background: #12100d;
+}
+
+.dice-tray.is-skin-gilded .dice-sound-toggle.is-on {
+  border-color: #e8c56a;
+  background: rgba(232, 197, 106, 0.15);
+  color: #ffe7a8;
+}
