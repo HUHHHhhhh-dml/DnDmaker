@@ -53,6 +53,16 @@ export function defaultAction(type: EffectAction["type"], effects: EffectDefinit
       return { type: "consumeStacks", amount: 1 };
     case "addStacks":
       return { type: "addStacks", amount: 1 };
+    default:
+      // Fallback defensivo: una acción desconocida nunca debe dejar
+      // `undefined` dentro del array (crashea el render).
+      return {
+        type: "damage",
+        base: 1,
+        perStack: 0,
+        damageType: "physical",
+        target: "self",
+      };
   }
 }
 
