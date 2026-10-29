@@ -53,7 +53,7 @@ describe("Fase 1 — API", () => {
   it("responde health", async () => {
     const response = await app.inject({ method: "GET", url: "/api/health" });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ ok: true, app: "PROTOCOL LIFE" });
+    expect(response.json()).toMatchObject({ ok: true, app: "PROTOCOL DND" });
   });
 
   it("crea una campaña vacía", async () => {

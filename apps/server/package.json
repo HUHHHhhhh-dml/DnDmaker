@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Servidor local de PROTOCOL LIFE (Fastify + SQLite + Drizzle)",
+  "description": "Servidor local de PROTOCOL DND (Fastify + SQLite + Drizzle)",
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
     "start": "tsx src/index.ts",

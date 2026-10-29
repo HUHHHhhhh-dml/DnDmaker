@@ -1,4 +1,4 @@
-# PROTOCOL LIFE
+# PROTOCOL DND
 
 Aplicación para que un **DM** cree y dirija su campaña de rol con contenido personalizado, y para que su mesa se conecte desde el navegador por la WiFi local. El combate está inspirado en *Limbus Company*: skills con monedas, clash, DEF y status effects.
 

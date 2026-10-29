@@ -5,7 +5,7 @@
 ## Prompt maestro para un chat nuevo (copiar y pegar)
 
 ```text
-Hola. Este chat es exclusivo para la FASE 3 de PROTOCOL LIFE (encuentros y combate).
+Hola. Este chat es exclusivo para la FASE 3 de PROTOCOL DND (encuentros y combate).
 
 Proyecto: /home/serahdml/Documents/GAMES/protocol-life
 Diseño cerrado: docs/DISENO-v0.1.md y docs/schema-v0.1.ts. No rediseñes ni cambies reglas.
@@ -49,7 +49,7 @@ Empieza por el preflight y dime el estado antes de tocar código.
 ## Prompt 0 — Preflight
 
 ```text
-Eres el agente que continúa PROTOCOL LIFE en /home/serahdml/Documents/GAMES/protocol-life.
+Eres el agente que continúa PROTOCOL DND en /home/serahdml/Documents/GAMES/protocol-life.
 
 Antes de tocar código:
 1. Lee docs/HANDOFF-FASE-1.md, docs/DISENO-v0.1.md (secciones 6, 7, 9, 10, 11), docs/schema-v0.1.ts y docs/DECISION-SIDE-VIEW.md.
@@ -77,7 +77,7 @@ No escribas código todavía.
 ## Prompt 3A — Dominio de combate y snapshot
 
 ```text
-Continúa PROTOCOL LIFE. Ya leíste el diseño y la base está completa.
+Continúa PROTOCOL DND. Ya leíste el diseño y la base está completa.
 
 OBJETIVO: crear el dominio de combate en el servidor y el snapshot de encuentro, sin motor de reglas todavía.
 
@@ -128,7 +128,7 @@ CRITERIO: iniciar un encuentro con 2 jugadores + 1 enemigo crea un CombatState v
 ## Prompt 3B — Motor de reglas puro
 
 ```text
-Continúa PROTOCOL LIFE. El dominio de combate ya existe.
+Continúa PROTOCOL DND. El dominio de combate ya existe.
 
 OBJETIVO: implementar el motor de reglas puro en packages/shared, sin I/O ni React.
 
@@ -181,7 +181,7 @@ CRITERIO: `npm test` pasa y el motor se puede llamar con un estado de prueba sin
 ## Prompt 3C — Orquestador de ronda y declaraciones
 
 ```text
-Continúa PROTOCOL LIFE. El motor puro ya está testeado.
+Continúa PROTOCOL DND. El motor puro ya está testeado.
 
 OBJETIVO: conectar el motor al ciclo de ronda del servidor: declarar, bloquear, resolver, emitir eventos y terminar.
 
@@ -227,7 +227,7 @@ CRITERIO: una ronda completa se resuelve y el log coincide con el motor puro; do
 ## Prompt 3D — API y WebSocket de combate
 
 ```text
-Continúa PROTOCOL LIFE. El ciclo de ronda ya funciona en el servidor.
+Continúa PROTOCOL DND. El ciclo de ronda ya funciona en el servidor.
 
 OBJETIVO: exponer la API/eventos de combate y conectar la sesión en vivo.
 
@@ -271,7 +271,7 @@ CRITERIO: dos navegadores juegan una ronda completa por WebSocket sin desincroni
 ## Prompt 3E — UI de combate del jugador
 
 ```text
-Continúa PROTOCOL LIFE. La API de combate ya funciona.
+Continúa PROTOCOL DND. La API de combate ya funciona.
 
 OBJETIVO: construir la pantalla de combate del jugador, side-view, con declaración por slots y log.
 
@@ -320,7 +320,7 @@ CRITERIO: un jugador puede declarar 2 acciones, bloquear y ver la ronda resuelta
 ## Prompt 3F — UI del DM y editor de encuentros
 
 ```text
-Continúa PROTOCOL LIFE. La UI del jugador ya funciona.
+Continúa PROTOCOL DND. La UI del jugador ya funciona.
 
 OBJETIVO: construir el editor de encuentros y la consola de combate del DM.
 
@@ -365,7 +365,7 @@ CRITERIO: el DM puede crear un encuentro, iniciarlo, jugar enemigos y terminarlo
 ## Prompt 3G — Integración, QA y aceptación
 
 ```text
-Continúa PROTOCOL LIFE. Todas las piezas de Fase 3 están implementadas.
+Continúa PROTOCOL DND. Todas las piezas de Fase 3 están implementadas.
 
 OBJETIVO: integración final, pruebas end-to-end y cierre de Fase 3.
 

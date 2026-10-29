@@ -1,6 +1,6 @@
-# PROTOCOL LIFE
+# PROTOCOL DND
 
-**PROTOCOL LIFE** es una aplicación local-first para dirigir campañas de rol en mesa. El DM crea el contenido desde un estudio propio y los jugadores se conectan desde el navegador por la WiFi local. El combate está inspirado en *Limbus Company*: monedas, clash, DEF y estados.
+**PROTOCOL DND** es una aplicación local-first para dirigir campañas de rol en mesa. El DM crea el contenido desde un estudio propio y los jugadores se conectan desde el navegador por la WiFi local. El combate está inspirado en *Limbus Company*: monedas, clash, DEF y estados.
 
 ![Mesa del DM con una jugadora conectada](./docs/screenshots/fase-2-mesa-dm.png)
 

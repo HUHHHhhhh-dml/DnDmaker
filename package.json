@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "PROTOCOL LIFE \u2014 estudio del DM y mesa de rol local-first",
+  "description": "PROTOCOL DND \u2014 estudio del DM y mesa de rol local-first",
   "workspaces": [
     "packages/*",
     "apps/*"

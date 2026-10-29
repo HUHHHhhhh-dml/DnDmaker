@@ -1,5 +1,5 @@
 /**
- * PROTOCOL LIFE — Contrato de datos v0.1
+ * PROTOCOL DND — Contrato de datos v0.1
  *
  * Tipos compartidos por servidor y cliente. Se mantienen alineados con
  * `docs/schema-v0.1.ts`; los IDs internos son inmutables y `code` es solo

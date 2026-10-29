@@ -144,9 +144,9 @@ export function Layout() {
       >
         <div className="flex items-center gap-2">
           <div className="pentagon flex h-8 w-8 items-center justify-center border border-ui-line-strong bg-ui-surface-3">
-            <span className="display text-[11px] text-ui-accent">P</span>
+            <span className="display text-[11px] text-ui-accent">PD</span>
           </div>
-          <span className="display text-sm uppercase tracking-wide text-ui">Protocol Life</span>
+          <span className="display text-sm uppercase tracking-wide text-ui">Protocol DnD</span>
         </div>
         <button
           type="button"
@@ -191,7 +191,7 @@ export function Layout() {
           )}
         </div>
         <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 border-t border-ui-line px-4 py-5 font-mono text-[10px] uppercase tracking-[0.14em] text-ui-faint sm:px-8">
-          <span>PROTOCOL LIFE · Fase 2 — mesa en vivo</span>
+          <span>PROTOCOL DND · mesa en vivo</span>
           <span>SQLite local · LAN misma WiFi · sin cuentas</span>
         </footer>
       </main>
@@ -235,13 +235,13 @@ function SidebarContent({
       <div className="border-b border-ui-line px-5 pb-5 pt-6">
         <div className="flex items-center gap-3">
           <div className="pentagon flex h-10 w-10 items-center justify-center border border-ui-line-strong bg-ui-surface-3">
-            <span className="display text-sm text-ui-accent">PL</span>
+            <span className="display text-sm text-ui-accent">PD</span>
           </div>
           <div>
             <div className="display text-lg leading-none tracking-[0.04em] text-ui">
               PROTOCOL
               <br />
-              LIFE
+              DND
             </div>
             <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-ui-faint">
               DM Studio · v0.2
@@ -376,9 +376,9 @@ function Splash() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-ui text-ui">
       <div className="pentagon flex h-20 w-20 animate-pulse items-center justify-center border border-ui-line-strong bg-ui-surface-3">
-        <span className="display text-xl text-ui-accent">PL</span>
+        <span className="display text-xl text-ui-accent">PD</span>
       </div>
-      <div className="display text-2xl uppercase tracking-[0.06em] text-ui">Protocol Life</div>
+      <div className="display text-2xl uppercase tracking-[0.06em] text-ui">Protocol DnD</div>
       <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ui-faint">
         Abriendo el estudio del DM…
       </div>
@@ -409,16 +409,16 @@ function Welcome({
         <div className="relative">
           <div className="mb-8 flex items-center gap-3">
             <div className="pentagon flex h-11 w-11 items-center justify-center border border-ui-line-strong bg-ui-surface-3">
-              <span className="display text-sm text-ui-accent">PL</span>
+              <span className="display text-sm text-ui-accent">PD</span>
             </div>
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ui-faint">
-              Protocol Life · DM Studio
+              Protocol DnD · DM Studio
             </div>
           </div>
           <h1 className="display text-6xl leading-[0.85] sm:text-8xl">
             PROTOCOL
             <br />
-            <span className="text-ui-accent">LIFE</span>
+            <span className="text-ui-accent">DND</span>
           </h1>
           <p className="mt-6 max-w-md text-sm leading-relaxed text-ui-muted">
             El estudio del DM: crea tu campaña, tu arsenal de objetos, tus skills,

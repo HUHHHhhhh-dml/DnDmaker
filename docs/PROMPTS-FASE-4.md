@@ -82,7 +82,7 @@ El prompt maestro debe parar si estas decisiones no están confirmadas:
 ## Prompt maestro para un chat nuevo
 
 ```text
-Hola. Este chat es exclusivo para la FASE 4 de PROTOCOL LIFE (contenido avanzado y pulido).
+Hola. Este chat es exclusivo para la FASE 4 de PROTOCOL DND (contenido avanzado y pulido).
 
 Proyecto: /home/serahdml/Documents/GAMES/protocol-life
 Fase 3 cerrada en el commit 11aa86b. No rehagas 3A–3G.
@@ -113,7 +113,7 @@ Empieza por el preflight y dime estado, huecos y plan corto antes de tocar códi
 ## Prompt 0 — Preflight de Fase 4
 
 ```text
-Eres el agente que continúa PROTOCOL LIFE en /home/serahdml/Documents/GAMES/protocol-life.
+Eres el agente que continúa PROTOCOL DND en /home/serahdml/Documents/GAMES/protocol-life.
 
 Antes de tocar código:
 1. Lee docs/DISENO-v0.1.md, docs/schema-v0.1.ts, docs/PROMPTS-FASE-4.md y docs/REDISENO-COMBATE.md.
@@ -133,7 +133,7 @@ Antes de tocar código:
 ## Prompt 4A — Economía y tiendas
 
 ```text
-Continúa PROTOCOL LIFE. Fase 3 cerrada. Implementa 4A: economía de Clean Shards y tiendas funcionales.
+Continúa PROTOCOL DND. Fase 3 cerrada. Implementa 4A: economía de Clean Shards y tiendas funcionales.
 
 LEE: docs/DISENO-v0.1.md (3.2, 6, 7.12, 9), docs/schema-v0.1.ts, packages/shared/src/types.ts, schemas.ts, apps/server/src/repository.ts, routes.ts, apps/server/src/combat/service.ts, apps/web/src/pages/ItemsPage.tsx, ItemEditorPage.tsx, PlayerTablePage.tsx, TablePage.tsx, Layout.tsx, App.tsx, apps/web/src/lib/combat.ts.
 
@@ -182,7 +182,7 @@ CRITERIO: DM crea tienda con stock; jugador compra y ve inventario/wallet actual
 ## Prompt 4B — Mazmorras: modelo y editor
 
 ```text
-Continúa PROTOCOL LIFE. 4A cerrada. Implementa 4B: CRUD y editor de mazmorras, sin recorrido todavía.
+Continúa PROTOCOL DND. 4A cerrada. Implementa 4B: CRUD y editor de mazmorras, sin recorrido todavía.
 
 LEE: docs/DISENO-v0.1.md (3.2, 7.12, 9), docs/schema-v0.1.ts, packages/shared/src/types.ts/schemas.ts, apps/server/src/repository.ts/routes.ts, apps/web/src/pages/EncountersPage.tsx/EncounterEditorPage.tsx, Layout.tsx, App.tsx.
 
@@ -212,7 +212,7 @@ CRITERIO: el DM crea una mazmorra de 3 salas, vincula 2 encuentros, elige entrad
 ## Prompt 4C — Mazmorras: recorrido
 
 ```text
-Continúa PROTOCOL LIFE. 4B cerrada. Implementa 4C: recorrido básico de mazmorra ligado a la sesión y al combate.
+Continúa PROTOCOL DND. 4B cerrada. Implementa 4C: recorrido básico de mazmorra ligado a la sesión y al combate.
 
 LEE: docs/DISENO-v0.1.md (3.2, 8, 9), apps/server/src/sessions.ts, combat/service.ts, app.ts, routes.ts, realtime.ts, apps/web/src/pages/TablePage.tsx/PlayerTablePage.tsx, stores.
 
@@ -247,7 +247,7 @@ CRITERIO: 2 jugadores recorren 2 salas con encuentro, ganan, avanzan y terminan 
 ## Prompt 4D — Backup/restore y operación
 
 ```text
-Continúa PROTOCOL LIFE. 4A–4C cerradas. Implementa 4D: backup/restore seguro y documentado.
+Continúa PROTOCOL DND. 4A–4C cerradas. Implementa 4D: backup/restore seguro y documentado.
 
 LEE: docs/DISENO-v0.1.md (8.3–8.5), apps/server/src/config.ts, db.ts, index.ts, package.json, README.md.
 
@@ -276,7 +276,7 @@ CRITERIO: se crea una copia, se restaura en una DB temporal y la app sigue funci
 ## Prompt 4E — Pulido, QA y aceptación
 
 ```text
-Continúa PROTOCOL LIFE. 4A–4D cerradas. Cierra Fase 4: pulido mínimo, QA de sesión completa y documentación.
+Continúa PROTOCOL DND. 4A–4D cerradas. Cierra Fase 4: pulido mínimo, QA de sesión completa y documentación.
 
 LEE: docs/DISENO-v0.1.md (9–11), README.md, CHANGELOG.md, docs/PROMPTS-FASE-4.md.
 

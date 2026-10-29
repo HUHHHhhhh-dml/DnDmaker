@@ -1,4 +1,4 @@
-# HANDOFF — PROTOCOL LIFE · Fase 1
+# HANDOFF — PROTOCOL DND · Fase 1
 
 > **Instrucción para el siguiente agente:** continúa el proyecto desde aquí. El diseño v0.1 ya está cerrado; **no lo rediseñes ni vuelvas a preguntar las decisiones de la sección 3**. Tu tarea es ejecutar la **Fase 1** (estudio del DM local). Trabaja en español con el usuario, con tono cercano, y mantén el orden de este documento.
 
@@ -6,7 +6,7 @@
 
 ## 1. Contexto del proyecto
 
-El usuario está construyendo **PROTOCOL LIFE**, una app para que un **DM** cree y dirija su campaña de rol con contenido totalmente personalizado, y para que sus jugadores se conecten desde el navegador. El combate está inspirado en *Limbus Company*: side-view, skills con monedas, clash, DEF y status effects.
+El usuario está construyendo **PROTOCOL DND**, una app para que un **DM** cree y dirija su campaña de rol con contenido totalmente personalizado, y para que sus jugadores se conecten desde el navegador. El combate está inspirado en *Limbus Company*: side-view, skills con monedas, clash, DEF y status effects.
 
 - **Ruta del proyecto:** `/home/serahdml/Documents/GAMES/protocol-life`
 - **Documento de diseño:** [`docs/DISENO-v0.1.md`](./DISENO-v0.1.md) (todas las decisiones cerradas)
@@ -36,7 +36,7 @@ El prototipo es un HTML único con `localStorage` y datos hardcodeados. **No se 
 | **Jugadores** | 1 DM + **6 jugadores** máximo. |
 | **Hosting** | **LAN misma WiFi**. El DM corre el servidor local; la app muestra link/QR + PIN. Sin cuentas, sin internet, sin túneles en v0.1. |
 | **UI** | Español. El contenido puede tener nombres en inglés. |
-| **Nombre** | **PROTOCOL LIFE**. |
+| **Nombre** | **PROTOCOL DND**. |
 | **Skill Slots** | **2 base**; `skillSlots` es un stat; objetos/efectos pueden sumar; **máximo 6**. |
 | **Acciones por ronda** | Hasta `skillSlots` acciones. Cada una ocupa un slot distinto (solo UI/orden). |
 | **Clash** | Ocurre cuando dos unidades **se apuntan mutuamente**, **sin importar el slot**. Se empareja con la **primera acción no resuelta** del rival que apunte al atacante. Si no hay, es one-sided. |
@@ -221,7 +221,7 @@ interface Stats {
 El usuario ya dijo que quiere arrancar Fase 1. Confirma brevemente:
 
 - UI en español.
-- Nombre PROTOCOL LIFE.
+- Nombre PROTOCOL DND.
 - npm workspaces (o pnpm si lo pide).
 - Alcance Fase 1 (solo estudio local).
 
@@ -300,7 +300,7 @@ Crear:
 
 ## 10. Prompt corto para pegar en el chat nuevo
 
-> Hola. Continúa el proyecto **PROTOCOL LIFE** en `/home/serahdml/Documents/GAMES/protocol-life`. El diseño v0.1 está cerrado en `docs/DISENO-v0.1.md` y `docs/schema-v0.1.ts`; no lo rediseñes. Empieza la **Fase 1**: monorepo con `apps/web`, `apps/server`, `packages/shared`; React+TS+Vite+Tailwind+Zustand; Fastify+SQLite+Drizzle; Zod; Vitest. Alcance: estudio del DM local (campaña, items, skills, effects, characters, encounters), CRUD, ficha con stats derivados, seed y `npm run dev`. Sin host/join ni combate todavía. Usa npm workspaces (Node 26, npm 11; pnpm no está instalado), UI en español, nombre PROTOCOL LIFE. Sigue el handoff completo en `docs/HANDOFF-FASE-1.md` y arranca con el scaffold.
+> Hola. Continúa el proyecto **PROTOCOL DND** en `/home/serahdml/Documents/GAMES/protocol-life`. El diseño v0.1 está cerrado en `docs/DISENO-v0.1.md` y `docs/schema-v0.1.ts`; no lo rediseñes. Empieza la **Fase 1**: monorepo con `apps/web`, `apps/server`, `packages/shared`; React+TS+Vite+Tailwind+Zustand; Fastify+SQLite+Drizzle; Zod; Vitest. Alcance: estudio del DM local (campaña, items, skills, effects, characters, encounters), CRUD, ficha con stats derivados, seed y `npm run dev`. Sin host/join ni combate todavía. Usa npm workspaces (Node 26, npm 11; pnpm no está instalado), UI en español, nombre PROTOCOL DND. Sigue el handoff completo en `docs/HANDOFF-FASE-1.md` y arranca con el scaffold.
 
 ---
 

@@ -138,7 +138,7 @@ El cliente del jugador y el del DM tienen stores separados (`usePlayerStore`, `u
 
 ### Jugador
 
-- `/join/:code`: marca PROTOCOL LIFE, info pública de la campaña/sala, PIN, nombre, selección de ficha o creación, error de sala llena/PIN/cerrada, recuperación de sesión guardada.
+- `/join/:code`: marca PROTOCOL DND, info pública de la campaña/sala, PIN, nombre, selección de ficha o creación, error de sala llena/PIN/cerrada, recuperación de sesión guardada.
 - `/play/:code`: ficha propia con retrato, stats derivados y equipo/skills/inventario; botón **Editar ficha** con editor completo; party lateral con presencia y stats; estado de conexión; salida con liberación de ficha; pantalla de “La sala se cerró”.
 - Sin acceso al Layout del DM ni a enemigos/notas/PIN.
 

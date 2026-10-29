@@ -361,7 +361,7 @@ export function validateBackupFile(path: string): void {
     const tables = new Set(rows.map((row) => row.name));
     if (!tables.has("campaigns")) {
       throw new Error(
-        "La copia no parece una base de PROTOCOL LIFE (falta la tabla campaigns).",
+        "La copia no parece una base de PROTOCOL DND (falta la tabla campaigns).",
       );
     }
   } finally {

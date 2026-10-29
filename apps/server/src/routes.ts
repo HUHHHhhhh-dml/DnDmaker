@@ -279,7 +279,7 @@ export async function registerRoutes(
 
   app.get("/api/health", async () => ({
     ok: true,
-    app: "PROTOCOL LIFE",
+    app: "PROTOCOL DND",
     version: "0.2.0",
     time: new Date().toISOString(),
   }));

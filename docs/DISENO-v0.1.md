@@ -1,4 +1,4 @@
-# PROTOCOL LIFE — Documento de Diseño v0.1
+# PROTOCOL DND — Documento de Diseño v0.1
 
 > **Estado:** borrador para revisión
 > **Fecha:** 2026-10-26
@@ -21,7 +21,7 @@ Este documento es la **base** del proyecto: la idea es que puedas modificarlo de
 
 ## 1. Visión
 
-**PROTOCOL LIFE** es una aplicación para que un **DM** cree y dirija su propia campaña de rol, con contenido totalmente personalizado, y para que sus **jugadores** se conecten a la mesa desde el navegador.
+**PROTOCOL DND** es una aplicación para que un **DM** cree y dirija su propia campaña de rol, con contenido totalmente personalizado, y para que sus **jugadores** se conecten a la mesa desde el navegador.
 
 El corazón del proyecto es:
 

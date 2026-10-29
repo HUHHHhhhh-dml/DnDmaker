@@ -1,5 +1,5 @@
 /**
- * PROTOCOL LIFE — Contrato de datos v0.1
+ * PROTOCOL DND — Contrato de datos v0.1
  *
  * Estos tipos son la base del proyecto. La idea es que puedas modificarlos
  * después sin romper el resto: los IDs internos son estables y el contenido

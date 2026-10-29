@@ -44,7 +44,7 @@ try {
   await acquireLockWithRetry();
   built = await buildApp({ logger: true });
   await built.app.listen({ port, host });
-  built.app.log.info(`PROTOCOL LIFE server listo en http://${host}:${port}`);
+  built.app.log.info(`PROTOCOL DND server listo en http://${host}:${port}`);
   // Copia diaria en `data/backups/`; no bloquea el arranque ni la mesa.
   autoBackup = startAutoBackup({ dbPath: dbFile });
 } catch (error) {

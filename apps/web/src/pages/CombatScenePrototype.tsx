@@ -676,9 +676,9 @@ export function CombatScenePrototype() {
       <div className="sv-ambient" aria-hidden />
       <header className="sv-header">
         <div className="sv-brand">
-          <span className="sv-brand-mark">PL</span>
+          <span className="sv-brand-mark">PD</span>
           <div>
-            <div className="sv-brand-name">PROTOCOL LIFE</div>
+            <div className="sv-brand-name">PROTOCOL DND</div>
             <div className="sv-brand-sub">PROTOTIPO VISUAL · 3F.5</div>
           </div>
         </div>

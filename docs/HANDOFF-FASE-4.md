@@ -1,4 +1,4 @@
-# HANDOFF — PROTOCOL LIFE · Fase 4
+# HANDOFF — PROTOCOL DND · Fase 4
 
 > **Instrucción para el siguiente agente:** continúa desde aquí. Fase 3 está
 > cerrada (`11aa86b`); **4A está commiteada en `409f5e1`**. El plan original de
@@ -242,7 +242,7 @@ y luego 4C (run + escena). Checkpoint al final de cada uno. Después 4D
 ## 7. Prompt sugerido para el siguiente chat
 
 ```text
-Continúa PROTOCOL LIFE en /home/serahdml/Documents/GAMES/protocol-life.
+Continúa PROTOCOL DND en /home/serahdml/Documents/GAMES/protocol-life.
 Lee docs/HANDOFF-FASE-4.md, docs/DISENO-DUNGEON-LINEAL.md y
 docs/PROMPTS-FASE-4.md. Fase 3 cerrada; 4A commiteada en 409f5e1 y los cambios
 de combate del usuario en 4e523f8 (191/191, typecheck y build verdes; árbol

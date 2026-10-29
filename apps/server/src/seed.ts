@@ -16,7 +16,7 @@ import {
 
 export const SEED_CAMPAIGN_NAME = "Campaña de prueba";
 export const SEED_CAMPAIGN_DESCRIPTION =
-  "Contenido inicial de PROTOCOL LIFE: objetos, skills, efectos y una party para empezar a editar.";
+  "Contenido inicial de PROTOCOL DND: objetos, skills, efectos y una party para empezar a editar.";
 
 export function buildSeedContent(): CampaignContent {
   const content = emptyContent();

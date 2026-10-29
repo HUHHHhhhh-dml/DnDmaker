@@ -474,11 +474,11 @@ function PlayerBrandHeader() {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center border border-[var(--ui-line-strong)] bg-[var(--ui-surface-2)] pentagon">
-            <span className="font-display text-sm text-[var(--ui-accent)]">PL</span>
+            <span className="font-display text-sm text-[var(--ui-accent)]">PD</span>
           </div>
           <div>
             <div className="font-display text-lg leading-none tracking-wide">
-              PROTOCOL LIFE
+              PROTOCOL DND
             </div>
             <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-[var(--ui-text-muted)]">
               Mesa de jugador · LAN

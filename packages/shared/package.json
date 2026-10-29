@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Tipos, esquemas Zod, motor de stats y validación de PROTOCOL LIFE",
+  "description": "Tipos, esquemas Zod, motor de stats y validación de PROTOCOL DND",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

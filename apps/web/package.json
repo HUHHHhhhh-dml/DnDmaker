@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Estudio del DM de PROTOCOL LIFE (React + Vite + Tailwind + Zustand)",
+  "description": "Estudio del DM de PROTOCOL DND (React + Vite + Tailwind + Zustand)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
