@@ -183,6 +183,8 @@ const itemFields = {
   icon: imageSchema.optional(),
   stats: partialStatsSchema.optional(),
   effects: z.array(itemEffectRefSchema).max(10).optional(),
+  /** Efectos activos que se aplican al iniciar combate. */
+  startCombatEffects: z.array(itemEffectRefSchema).max(10).optional(),
   uses: integer(0, 99).optional(),
   useEffect: z.array(effectActionSchema).max(20).optional(),
   tags: tagsSchema.optional(),

@@ -46,6 +46,20 @@ describe("validación de contenido", () => {
     expect(result.issues.some((i) => i.path.includes(".effects"))).toBe(true);
   });
 
+  it("detecta efectos de inicio de combate inexistentes en un objeto", () => {
+    const content = cloneContent();
+    content.items[0]!.startCombatEffects = [
+      { effectId: "eff_inexistente", stacks: 2 },
+    ];
+    const result = validateContent(content);
+    expect(result.valid).toBe(false);
+    expect(
+      result.issues.some((issue) =>
+        issue.path.includes("startCombatEffects"),
+      ),
+    ).toBe(true);
+  });
+
   it("avisa si se aplica un efecto al rival en un trigger sin rival", () => {
     const content = cloneContent();
     const base = content.effects[0]!;

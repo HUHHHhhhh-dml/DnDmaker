@@ -30,6 +30,9 @@ export function ItemCard({
   const effectNames = (item.effects ?? [])
     .map((ref) => effects.find((effect) => effect.id === ref.effectId))
     .filter((effect): effect is EffectDefinition => Boolean(effect));
+  const startEffectNames = (item.startCombatEffects ?? [])
+    .map((ref) => effects.find((effect) => effect.id === ref.effectId))
+    .filter((effect): effect is EffectDefinition => Boolean(effect));
 
   return (
     <Link
@@ -108,6 +111,15 @@ export function ItemCard({
             {effectNames.map((effect) => (
               <span key={effect.id} className="chip chip-rust">
                 <Icon name="flame" size={10} /> {effect.name}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {startEffectNames.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {startEffectNames.map((effect) => (
+              <span key={effect.id} className="chip chip-accent">
+                <Icon name="spark" size={10} /> Inicio: {effect.name}
               </span>
             ))}
           </div>

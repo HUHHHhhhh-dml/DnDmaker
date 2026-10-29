@@ -108,6 +108,17 @@ export function validateItem(
     }
   });
 
+  (item.startCombatEffects ?? []).forEach((ref, index) => {
+    if (!effects.has(ref.effectId)) {
+      issues.push(
+        issue(
+          `${path}.startCombatEffects[${index}]`,
+          "El efecto de inicio de combate no existe en la campaña.",
+        ),
+      );
+    }
+  });
+
   (item.useEffect ?? []).forEach((action, index) => {
     if (action.type === "applyEffect" && !effects.has(action.effectId)) {
       issues.push(
@@ -690,6 +701,12 @@ export function findReferences(id: string, content: CampaignContent): ReferenceI
   for (const item of content.items) {
     if (item.effects?.some((ref) => ref.effectId === id)) {
       refs.push({ label: `objeto "${item.name}"`, id: item.id });
+    }
+    if (item.startCombatEffects?.some((ref) => ref.effectId === id)) {
+      refs.push({
+        label: `inicio de combate de "${item.name}"`,
+        id: item.id,
+      });
     }
     if (item.useEffect?.some((action) => action.type === "applyEffect" && action.effectId === id)) {
       refs.push({ label: `objeto "${item.name}"`, id: item.id });

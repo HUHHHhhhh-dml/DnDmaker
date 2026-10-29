@@ -563,6 +563,24 @@ function ItemPickerModal({
                       ) : null;
                     })}
                   </div>
+                  {item.startCombatEffects?.length ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {item.startCombatEffects.map((ref) => {
+                        const effect = effects.find(
+                          (entry) => entry.id === ref.effectId,
+                        );
+                        return effect ? (
+                          <span
+                            key={ref.effectId}
+                            className="chip chip-accent"
+                          >
+                            <Icon name="spark" size={9} /> Inicio:{" "}
+                            {effect.name} ×{ref.stacks ?? 1}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  ) : null}
                   <Button
                     type="button"
                     variant={equipped ? "ghost" : "primary"}

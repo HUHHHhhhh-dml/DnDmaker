@@ -44,6 +44,7 @@ interface ItemDraft {
   image: string | undefined;
   stats: Partial<Stats>;
   effects: { effectId: string; stacks?: number }[];
+  startCombatEffects: { effectId: string; stacks?: number }[];
   uses: number | undefined;
   useEffect: EffectAction[];
   tags: string;
@@ -62,6 +63,7 @@ function emptyDraft(): ItemDraft {
     image: undefined,
     stats: {},
     effects: [],
+    startCombatEffects: [],
     uses: undefined,
     useEffect: [],
     tags: "",
@@ -81,6 +83,9 @@ function draftFromItem(item: Item): ItemDraft {
     image: item.image,
     stats: { ...item.stats },
     effects: (item.effects ?? []).map((ref) => ({ ...ref })),
+    startCombatEffects: (item.startCombatEffects ?? []).map((ref) => ({
+      ...ref,
+    })),
     uses: item.uses,
     useEffect: item.useEffect ? structuredClone(item.useEffect) : [],
     tags: (item.tags ?? []).join(", "),
@@ -159,6 +164,10 @@ export function ItemEditorPage() {
       image: draft.image,
       stats: Object.keys(cleanStats).length > 0 ? cleanStats : undefined,
       effects: draft.effects.length > 0 ? draft.effects : undefined,
+      startCombatEffects:
+        draft.startCombatEffects.length > 0
+          ? draft.startCombatEffects
+          : undefined,
       uses: draft.slot === "utility" ? draft.uses : undefined,
       useEffect:
         draft.slot === "utility" && draft.useEffect.length > 0
@@ -203,6 +212,9 @@ export function ItemEditorPage() {
   }
 
   const selectedEffectIds = new Set(draft.effects.map((ref) => ref.effectId));
+  const selectedStartEffectIds = new Set(
+    draft.startCombatEffects.map((ref) => ref.effectId),
+  );
 
   function toggleEffect(effectId: string) {
     setDraft((current) => {
@@ -225,12 +237,40 @@ export function ItemEditorPage() {
     }));
   }
 
+  function toggleStartEffect(effectId: string) {
+    setDraft((current) => {
+      const exists = current.startCombatEffects.some(
+        (ref) => ref.effectId === effectId,
+      );
+      return {
+        ...current,
+        startCombatEffects: exists
+          ? current.startCombatEffects.filter(
+              (ref) => ref.effectId !== effectId,
+            )
+          : [...current.startCombatEffects, { effectId, stacks: 1 }],
+      };
+    });
+  }
+
+  function setStartEffectStacks(
+    effectId: string,
+    stacks: number | undefined,
+  ) {
+    setDraft((current) => ({
+      ...current,
+      startCombatEffects: current.startCombatEffects.map((ref) =>
+        ref.effectId === effectId ? { ...ref, stacks } : ref,
+      ),
+    }));
+  }
+
   return (
     <div className="animate-rise">
       <PageHeader
         eyebrow={itemId ? "Editar objeto" : "Nuevo objeto"}
         title={itemId ? draft.name || "Objeto" : "Nuevo objeto"}
-        description="Stats, slot, imagen y efectos pasivos. El código visible es editable; el ID interno no cambia."
+        description="Stats, slot, imagen, efectos pasivos y efectos activos al iniciar combate. El código visible es editable; el ID interno no cambia."
         back={{ to: "/items", label: "Volver al arsenal" }}
         actions={
           <>
@@ -462,10 +502,82 @@ export function ItemEditorPage() {
             )}
           </section>
 
+          <section className="panel p-4">
+            <h2 className="mb-1 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+              05 · Efectos al iniciar combate
+            </h2>
+            <p className="mb-3 mt-2 text-[11px] text-ui-faint">
+              Se aplican una vez al empezar el encuentro como efectos{" "}
+              <strong>activos</strong>, no pasivos. A diferencia de los pasivos,
+              estos pueden consumirse o caducar durante el combate.
+            </p>
+            {campaign.content.effects.length === 0 ? (
+              <p className="border border-dashed border-ui-line p-3 text-xs text-ui-muted">
+                No hay efectos en la campaña.{" "}
+                <LinkButton to="/effects/new" variant="ghost" size="sm" className="ml-1">
+                  Crear uno
+                </LinkButton>
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {campaign.content.effects.map((effect) => {
+                  const selected = selectedStartEffectIds.has(effect.id);
+                  const ref = draft.startCombatEffects.find(
+                    (entry) => entry.effectId === effect.id,
+                  );
+                  return (
+                    <div
+                      key={effect.id}
+                      className={cx(
+                        "flex flex-wrap items-center gap-3 border px-3 py-2 transition-colors",
+                        selected
+                          ? "border-ui-line-strong bg-amber/10"
+                          : "border-ui-line bg-ui-surface-2",
+                      )}
+                    >
+                      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleStartEffect(effect.id)}
+                          className="h-4 w-4 accent-rust"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">
+                            {effect.name}
+                          </span>
+                          <span className="block truncate text-[10px] text-ui-faint">
+                            {effect.description || "Sin descripción."}
+                          </span>
+                        </span>
+                      </label>
+                      {selected ? (
+                        <label className="flex items-center gap-2">
+                          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ui-faint">
+                            Stacks
+                          </span>
+                          <NumberInput
+                            value={ref?.stacks ?? 1}
+                            onValueChange={(value) =>
+                              setStartEffectStacks(effect.id, value)
+                            }
+                            min={1}
+                            max={99}
+                            className="w-16 px-1 py-0.5 text-center text-xs"
+                          />
+                        </label>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
           {draft.slot === "utility" ? (
             <section className="panel p-4">
               <h2 className="mb-1 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-                05 · Utilidad
+                06 · Utilidad
               </h2>
               <p className="mb-3 mt-2 text-[11px] text-ui-faint">
                 Una utilidad consume 1 Skill Slot al usarse y gasta un uso. No hace clash.
@@ -559,6 +671,24 @@ export function ItemEditorPage() {
                         <span key={ref.effectId} className="chip chip-rust">
                           <Icon name="flame" size={10} />
                           {effect.name}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                ) : null}
+                {draft.startCombatEffects.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-ui-faint">
+                      Inicio
+                    </span>
+                    {draft.startCombatEffects.map((ref) => {
+                      const effect = campaign.content.effects.find(
+                        (entry) => entry.id === ref.effectId,
+                      );
+                      return effect ? (
+                        <span key={ref.effectId} className="chip chip-accent">
+                          <Icon name="spark" size={10} />
+                          {effect.name} ×{ref.stacks ?? 1}
                         </span>
                       ) : null;
                     })}

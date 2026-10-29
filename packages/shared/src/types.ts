@@ -164,6 +164,11 @@ export interface Item {
   icon?: string;
   stats?: Partial<Stats>;
   effects?: { effectId: Id; stacks?: number }[];
+  /**
+   * Efectos que se aplican al portador como **activos** al iniciar combate.
+   * A diferencia de `effects` (pasivos), estos pueden consumirse o caducar.
+   */
+  startCombatEffects?: { effectId: Id; stacks?: number }[];
   uses?: number;
   useEffect?: EffectAction[];
   tags?: string[];

@@ -1,5 +1,23 @@
 # Changelog
 
+## Efectos activos al iniciar combate (2026-10-28)
+
+### Añadido
+
+- **`Item.startCombatEffects`**: efectos que el objeto aplica al portador como
+  **activos** al empezar un encuentro, no como pasivos.
+- Al ser activos, estos efectos **pueden consumirse o caducar** con las reglas
+  normales; a diferencia de `Item.effects`, que sigue siendo pasivo y permanente
+  durante el combate.
+- El snapshot de combate los aplica con `applyEffect`, respetando stacks
+  máximos, `stackMode`, duración y `sourceId` del objeto.
+- El editor de objetos incorpora la sección **«Efectos al iniciar combate»**,
+  separada de los efectos pasivos, y las tarjetas/selector muestran qué efectos
+  iniciales aporta el objeto.
+- Validación de referencias y `findReferences` cubren los efectos de inicio.
+- Test de snapshot que comprueba que un mismo efecto puede existir como pasivo
+  (1 stack permanente) y como activo (3 stacks consumibles).
+
 ## Efectos aplicados al rival (2026-10-28)
 
 ### Añadido

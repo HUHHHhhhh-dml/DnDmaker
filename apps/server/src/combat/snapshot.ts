@@ -1,5 +1,6 @@
 import {
   EQUIPMENT_SLOTS,
+  applyEffect,
   calculateStats,
   clamp,
   currentHp,
@@ -10,6 +11,7 @@ import {
   type Character,
   type CharacterOverrides,
   type CombatUnit,
+  type Id,
   type Team,
 } from "@protocol-life/shared";
 
@@ -113,6 +115,24 @@ export function utilityUses(
   return Math.max(0, item?.uses ?? 0);
 }
 
+/** Efectos activos que aporta el equipo al empezar el combate. */
+export function collectStartCombatEffects(
+  character: Character,
+  content: Pick<CampaignContent, "items">,
+): { itemId: Id; effectId: Id; stacks?: number }[] {
+  const itemById = new Map(content.items.map((item) => [item.id, item]));
+  const refs: { itemId: Id; effectId: Id; stacks?: number }[] = [];
+  for (const slot of EQUIPMENT_SLOTS) {
+    const itemId = character.equipment?.[slot];
+    if (!itemId) continue;
+    const item = itemById.get(itemId);
+    for (const ref of item?.startCombatEffects ?? []) {
+      refs.push({ itemId, effectId: ref.effectId, stacks: ref.stacks });
+    }
+  }
+  return refs;
+}
+
 export function snapshotUnit(
   character: Character,
   options: SnapshotOptions,
@@ -144,7 +164,7 @@ export function snapshotUnit(
       }
     : undefined;
 
-  return {
+  const unit: CombatUnit = {
     id: newId("unt"),
     characterId: character.id,
     team,
@@ -171,4 +191,19 @@ export function snapshotUnit(
     utilityUses: utilityUses(character, campaign.content),
     defeated: hp <= 0,
   };
+
+  // Los efectos de inicio se aplican como activos (no pasivos): tendrán
+  // duración y podrán consumirse igual que los aplicados por una skill.
+  let withStartEffects = unit;
+  for (const ref of collectStartCombatEffects(character, campaign.content)) {
+    withStartEffects = applyEffect(
+      withStartEffects,
+      ref.effectId,
+      ref.stacks ?? 1,
+      { content: campaign.content, rules: campaign.rules },
+      ref.itemId,
+    ).unit;
+  }
+
+  return withStartEffects;
 }

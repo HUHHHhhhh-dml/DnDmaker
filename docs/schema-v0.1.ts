@@ -166,6 +166,8 @@ export interface Item {
   stats?: Partial<Stats>;
   /** Efectos pasivos mientras está equipado. */
   effects?: { effectId: Id; stacks?: number }[];
+  /** Efectos activos que se aplican al iniciar combate (pueden consumirse). */
+  startCombatEffects?: { effectId: Id; stacks?: number }[];
   /** Solo utilidad: usos por combate/descanso. */
   uses?: number;
   /** Solo utilidad: qué hace al usarse. */
