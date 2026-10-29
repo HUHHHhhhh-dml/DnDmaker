@@ -136,6 +136,10 @@ export const effectActionSchema = z.discriminatedUnion("type", [
     type: z.literal("consumeStacks"),
     amount: integer(1, 99),
   }),
+  z.object({
+    type: z.literal("addStacks"),
+    amount: integer(1, 99),
+  }),
 ]);
 
 export const effectTriggerSpecSchema = z.object({

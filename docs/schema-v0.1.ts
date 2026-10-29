@@ -102,12 +102,18 @@ export interface EffectActionConsumeStacks {
   amount: number;
 }
 
+export interface EffectActionAddStacks {
+  type: "addStacks";
+  amount: number;
+}
+
 export type EffectAction =
   | EffectActionDamage
   | EffectActionHeal
   | EffectActionModifyStat
   | EffectActionApplyEffect
-  | EffectActionConsumeStacks;
+  | EffectActionConsumeStacks
+  | EffectActionAddStacks;
 
 export interface EffectTriggerSpec {
   when: EffectTrigger;

@@ -16,6 +16,7 @@ const ACTION_LABELS: Record<EffectAction["type"], string> = {
   modifyStat: "Modificar stat",
   applyEffect: "Aplicar efecto",
   consumeStacks: "Consumir stacks",
+  addStacks: "Aumentar stacks",
 };
 
 const ACTION_HINTS: Record<EffectAction["type"], string> = {
@@ -24,6 +25,7 @@ const ACTION_HINTS: Record<EffectAction["type"], string> = {
   modifyStat: "Modifica un stat mientras el efecto esté activo.",
   applyEffect: "Aplica otro efecto al portador o al rival del trigger.",
   consumeStacks: "Resta stacks al efecto actual.",
+  addStacks: "Suma stacks al efecto actual, hasta su máximo.",
 };
 
 export function defaultAction(type: EffectAction["type"], effects: EffectDefinition[]): EffectAction {
@@ -49,6 +51,8 @@ export function defaultAction(type: EffectAction["type"], effects: EffectDefinit
       };
     case "consumeStacks":
       return { type: "consumeStacks", amount: 1 };
+    case "addStacks":
+      return { type: "addStacks", amount: 1 };
   }
 }
 
@@ -277,7 +281,7 @@ export function EffectActionEditor({
               </div>
             ) : null}
 
-            {action.type === "consumeStacks" ? (
+            {action.type === "consumeStacks" || action.type === "addStacks" ? (
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Cantidad">
                   <NumberInput

@@ -289,6 +289,54 @@ export function consumeStacks(
   };
 }
 
+/** Aumenta stacks del efecto activo, respetando su `maxStacks`. */
+export function addStacks(
+  unit: CombatUnit,
+  effectId: Id,
+  amount: number,
+  context: EffectContext,
+): EffectResult {
+  const requested = Math.max(1, Math.trunc(amount));
+  const effects = unit.effects.map((effect) => ({ ...effect }));
+  const index = effects.findIndex(
+    (effect) => effect.effectId === effectId && !effect.passive,
+  );
+  if (index < 0) return { unit, events: [], damageApplied: false };
+
+  const current = effects[index]!;
+  const definition = buildEffectCatalog(context.content).get(effectId);
+  const maxStacks = Math.max(
+    1,
+    Math.trunc(definition?.maxStacks ?? 99),
+  );
+  const nextStacks = Math.min(maxStacks, current.stacks + requested);
+  if (nextStacks === current.stacks) {
+    return { unit, events: [], damageApplied: false };
+  }
+
+  const gained = nextStacks - current.stacks;
+  effects[index] = { ...current, stacks: nextStacks };
+  const name = definition?.name ?? effectId;
+
+  return {
+    unit: refreshUnitStats({ ...unit, effects }, context),
+    events: [
+      {
+        type: "effectTick",
+        targetId: unit.id,
+        message: `${name} gana ${gained} stack${gained === 1 ? "" : "s"} en ${unit.name}.`,
+        data: {
+          effectId,
+          added: gained,
+          stacks: nextStacks,
+          expired: false,
+        },
+      },
+    ],
+    damageApplied: false,
+  };
+}
+
 /**
  * Tick de duración al final de la ronda. Solo afecta a efectos activos con
  * `remainingTurns`; los pasivos del equipo no caducan.
@@ -503,6 +551,12 @@ export function executeEffectActions(
       const consumed = consumeStacks(current, effectId, action.amount, context);
       current = consumed.unit;
       events.push(...consumed.events);
+    } else if (action.type === "addStacks") {
+      const effectId = source.effectId ?? source.specialId;
+      if (!effectId) continue;
+      const added = addStacks(current, effectId, action.amount, context);
+      current = added.unit;
+      events.push(...added.events);
     }
   }
 

@@ -768,6 +768,41 @@ describe("3B — estados, utilidad y dominios", () => {
     ).toBe(true);
   });
 
+  it("Aumentar stacks sube el efecto activo y respeta maxStacks", () => {
+    const growth = makeEffect("growth", { maxStacks: 3, triggers: [] });
+    const growthContent = makeContent({ effects: [growth] });
+    const growthContext = {
+      content: growthContent,
+      rules: DEFAULT_RULES,
+    };
+    const applied = applyEffect(
+      makeUnit({ id: "growing" }),
+      growth.id,
+      1,
+      growthContext,
+    ).unit;
+
+    const first = executeEffectActions(
+      applied,
+      [{ type: "addStacks", amount: 2 }],
+      1,
+      growthContext,
+      { effectId: growth.id },
+    );
+    expect(first.unit.effects[0]?.stacks).toBe(3);
+    expect(first.events[0]?.data).toMatchObject({ added: 2, stacks: 3 });
+
+    const capped = executeEffectActions(
+      first.unit,
+      [{ type: "addStacks", amount: 2 }],
+      1,
+      growthContext,
+      { effectId: growth.id },
+    );
+    expect(capped.unit.effects[0]?.stacks).toBe(3);
+    expect(capped.events).toHaveLength(0);
+  });
+
   it("Protection y Haste modifican stats mientras duran y revierten al caducar", () => {
     const base = makeUnit({
       id: "buffed",

@@ -1,5 +1,19 @@
 # Changelog
 
+## Acción «Aumentar stacks» (2026-10-28)
+
+### Añadido
+
+- Nueva acción **Aumentar stacks** (`addStacks`) para los efectos: suma una
+  cantidad al efecto activo que dispara el trigger.
+- Respeta el `maxStacks` del efecto; si ya está en el tope no emite evento ni
+  cambia nada.
+- Solo afecta a efectos activos: los pasivos de objetos siguen sin modificarse,
+  igual que ocurre con `Consumir stacks`.
+- El editor de efectos incluye la acción con su campo **Cantidad** y el motor
+  emite el evento de subida con los stacks resultantes.
+- Test de aumento y tope máximo de stacks.
+
 ## Daño dirigido y en área desde efectos (2026-10-28)
 
 ### Añadido
