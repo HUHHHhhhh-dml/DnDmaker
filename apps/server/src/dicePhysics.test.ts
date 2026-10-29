@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  combineD100,
   D20_FACES,
   D20_TABLE_BOUNDS,
   DIE_REST_Y,
   DIE_SCALE,
+  getDieDefinition,
+  restHeight,
+  type DiceSides,
   type DiceTrajectory,
+  type DieDefinition,
 } from "@protocol-life/shared";
-import { simulateD20Roll, simulateD20Throw } from "./dicePhysics";
+import {
+  simulateD20Roll,
+  simulateD20Throw,
+  simulateDiceRoll,
+} from "./dicePhysics";
 
 /**
  * Física pura del d20: rebotes controlados por el gesto, caras reales y varios
@@ -73,6 +82,36 @@ function minPairDistance(trajectories: readonly DiceTrajectory[]): number {
   return min;
 }
 
+/** Resultado que se lee de la pose final según el tipo de dado. */
+function resultFromFinal(
+  definition: DieDefinition,
+  trajectory: DiceTrajectory,
+): number {
+  const final = trajectory.frames[trajectory.frames.length - 1]!;
+  if (definition.resultMode === "top-vertex") {
+    let best = -Infinity;
+    let value = 0;
+    definition.vertices.forEach((vertex, index) => {
+      const [, y] = rotate(vertex, final.q);
+      if (y > best) {
+        best = y;
+        value = definition.vertexNumbers?.[index] ?? 0;
+      }
+    });
+    return value;
+  }
+  let best = -Infinity;
+  let value = 0;
+  for (const face of definition.faces) {
+    const [, y] = rotate(face.normal, final.q);
+    if (y > best) {
+      best = y;
+      value = face.number;
+    }
+  }
+  return value;
+}
+
 describe("rebotes contra la mesa", () => {
   for (const bounces of [1, 2, 3, 4]) {
     it(`clava ${bounces} rebote${bounces === 1 ? "" : "s"} con la cara física`, () => {
@@ -103,6 +142,34 @@ describe("rebotes contra la mesa", () => {
       }
     });
   }
+
+  it("clava los rebotes pedidos en todos los dados", () => {
+    for (const sides of [4, 6, 8, 10, 12, 20] as const) {
+      const roll = simulateDiceRoll({
+        seed: 7,
+        sides,
+        count: 1,
+        throw: { ...THROW, bounces: 4 },
+      });
+      expect(roll, `d${sides}`).not.toBeNull();
+      expect(roll!.trajectories).toHaveLength(1);
+      expect(roll!.trajectories[0]!.bounces).toBe(4);
+      expect(roll!.trajectories[0]!.impacts).toHaveLength(5);
+    }
+
+    const d100 = simulateDiceRoll({
+      seed: 7,
+      sides: 100,
+      count: 1,
+      throw: { ...THROW, bounces: 2 },
+    });
+    expect(d100).not.toBeNull();
+    expect(d100!.trajectories).toHaveLength(2);
+    for (const trajectory of d100!.trajectories) {
+      expect(trajectory.bounces).toBe(2);
+      expect(trajectory.impacts).toHaveLength(3);
+    }
+  });
 
   it("más rebotes no cambia la autoridad del servidor: la cara sale de la pose", () => {
     for (const bounces of [1, 4]) {
@@ -164,6 +231,16 @@ describe("varios d20 en la misma mesa", () => {
     expect(size).toBeLessThan(150_000);
   });
 
+  it("los dados de cada tipo se tocan en la misma mesa", () => {
+    for (const sides of [4, 6, 8, 10, 12, 20] as const) {
+      const roll = simulateDiceRoll({ seed: 2, sides, count: 3 });
+      expect(roll, `d${sides}`).not.toBeNull();
+      expect(minPairDistance(roll!.trajectories), `d${sides}`).toBeLessThan(
+        2 * DIE_SCALE * 1.05,
+      );
+    }
+  });
+
   it("es determinista para la misma semilla y cantidad", () => {
     const first = simulateD20Roll({ seed: 123456, count: 3 });
     const second = simulateD20Roll({ seed: 123456, count: 3 });
@@ -183,5 +260,82 @@ describe("varios d20 en la misma mesa", () => {
     const low = simulateD20Roll({ seed: 11, count: 0 });
     expect(low).not.toBeNull();
     expect(low!.results).toHaveLength(1);
+  });
+});
+
+
+describe("física de todos los dados", () => {
+  for (const sides of [4, 6, 8, 10, 12, 20] as const) {
+    it(`simula un d${sides} y lee su cara o vértice`, () => {
+      const definition = getDieDefinition(sides);
+      const roll = simulateDiceRoll({ seed: 3, sides, count: 1 });
+      expect(roll, `d${sides}`).not.toBeNull();
+      expect(roll!.results).toHaveLength(1);
+      expect(roll!.trajectories).toHaveLength(1);
+      const result = roll!.results[0]!;
+      expect(result).toBeGreaterThanOrEqual(1);
+      expect(result).toBeLessThanOrEqual(sides);
+      expect(resultFromFinal(definition, roll!.trajectories[0]!)).toBe(result);
+
+      const [, y] = finalPosition(roll!.trajectories[0]!);
+      expect(Math.abs(y - restHeight(definition, DIE_SCALE))).toBeLessThanOrEqual(
+        0.08,
+      );
+    });
+
+    it(`simula 3 d${sides} en la misma mesa`, () => {
+      const roll = simulateDiceRoll({ seed: 11, sides, count: 3 });
+      expect(roll, `d${sides}`).not.toBeNull();
+      expect(roll!.results).toHaveLength(3);
+      expect(roll!.trajectories).toHaveLength(3);
+      const duration = roll!.trajectories[0]!.durationMs;
+      for (let index = 0; index < 3; index += 1) {
+        const trajectory = roll!.trajectories[index]!;
+        expect(trajectory.durationMs).toBe(duration);
+        expect(roll!.results[index]).toBe(
+          resultFromFinal(getDieDefinition(sides), trajectory),
+        );
+      }
+      expect(simulateDiceRoll({ seed: 11, sides, count: 3 })).toEqual(roll);
+    });
+  }
+
+  it("simula el d100 como pareja de d10", () => {
+    const definition = getDieDefinition(10);
+    const roll = simulateDiceRoll({ seed: 5, sides: 100, count: 1 });
+    expect(roll).not.toBeNull();
+    expect(roll!.results).toHaveLength(1);
+    expect(roll!.trajectories).toHaveLength(2);
+    const result = roll!.results[0]!;
+    expect(result).toBeGreaterThanOrEqual(1);
+    expect(result).toBeLessThanOrEqual(100);
+    expect(
+      combineD100(
+        roll!.trajectories[0]!.face,
+        roll!.trajectories[1]!.face,
+      ),
+    ).toBe(result);
+    for (const trajectory of roll!.trajectories) {
+      const [, y] = finalPosition(trajectory);
+      expect(Math.abs(y - restHeight(definition, DIE_SCALE))).toBeLessThanOrEqual(
+        0.08,
+      );
+    }
+  });
+
+  it("simula varios d100 y combina cada pareja", () => {
+    const roll = simulateDiceRoll({ seed: 5, sides: 100, count: 3 });
+    expect(roll).not.toBeNull();
+    expect(roll!.results).toHaveLength(3);
+    expect(roll!.trajectories).toHaveLength(6);
+    for (let index = 0; index < 3; index += 1) {
+      const tens = roll!.trajectories[index * 2]!;
+      const units = roll!.trajectories[index * 2 + 1]!;
+      expect(combineD100(tens.face, units.face)).toBe(roll!.results[index]);
+    }
+  });
+
+  it("no simula dados fuera de la mesa física", () => {
+    expect(simulateDiceRoll({ seed: 1, sides: 7 as DiceSides, count: 1 })).toBeNull();
   });
 });

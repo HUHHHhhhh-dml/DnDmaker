@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import type { DiceRoll } from "@protocol-life/shared";
+import { d100TensLabel, d100UnitsLabel, type DiceRoll } from "@protocol-life/shared";
+import { uniformBounces } from "../../lib/dice3d/roll";
 import {
   isHeld,
   useDiceCinematicVersion,
@@ -47,6 +48,7 @@ export function DiceRollToast({ rolls }: { rolls: DiceRoll[] }) {
   }, [rolls.length, current]);
 
   if (!current || typeof document === "undefined") return null;
+  const bounces = uniformBounces(current);
 
   return createPortal(
     <div
@@ -79,12 +81,17 @@ export function DiceRollToast({ rolls }: { rolls: DiceRoll[] }) {
             {current.results.join(" + ")}
           </div>
         ) : null}
-        {current.count === 1 &&
-        current.trajectory &&
-        current.trajectory.bounces > 0 ? (
+        {current.sides === 100 &&
+        current.count === 1 &&
+        current.trajectories?.length === 2 ? (
           <div className="dice-toast-breakdown">
-            {current.trajectory.bounces} rebote
-            {current.trajectory.bounces === 1 ? "" : "s"} en la mesa
+            {d100TensLabel(current.trajectories[0]!.face)} +{" "}
+            {d100UnitsLabel(current.trajectories[1]!.face)}
+          </div>
+        ) : null}
+        {bounces !== null && bounces > 0 ? (
+          <div className="dice-toast-breakdown">
+            {bounces} rebote{bounces === 1 ? "" : "s"} en la mesa
           </div>
         ) : null}
       </div>

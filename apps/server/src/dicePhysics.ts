@@ -1,43 +1,46 @@
 import * as CANNON from "cannon-es";
 import {
-  D20_FACES,
   D20_GRAVITY,
   D20_SIM_DT,
   D20_SIM_MAX_MS,
   D20_TABLE_BOUNDS,
   D20_TRAJECTORY_HZ,
-  D20_VERTICES,
-  DIE_REST_Y,
   DIE_SCALE,
+  combineD100,
+  getDieDefinition,
+  isPhysicalDieSides,
+  restHeight,
+  type BuiltDieSides,
+  type DiceSides,
   type DiceThrowInput,
   type DiceTrajectory,
   type DiceTrajectoryFrame,
   type DiceTrajectoryImpact,
+  type DieDefinition,
+  type DieFace,
 } from "@protocol-life/shared";
 
 /**
- * Simulación física del d20 en el servidor.
+ * Simulación física de los dados en el servidor.
  *
- * El servidor tira los dados de verdad: construye un `ConvexPolyhedron` con la
+ * El servidor tira los dados de verdad: construye el `ConvexPolyhedron` con la
  * geometría compartida, los lanza sobre el plano de la mesa, deja que reboten y
- * graba las trayectorias. La cara que queda arriba de cada dado **es** su
- * resultado; no hay una cara objetivo ni un ajuste final. Después el cliente
- * reproduce los frames y todos ven la misma caída.
+ * graba las trayectorias. La cara (o el vértice, en el d4) que queda arriba es
+ * el resultado; no hay una cara objetivo ni un ajuste final.
  *
  * El lanzamiento del cliente (arrastrar y soltar) es opcional: se usa como
  * condición inicial y el servidor le añade entropía criptográfica, así que el
  * resultado sigue siendo impredecible y no se puede forzar desde fuera. El
  * gesto sí controla una cosa puramente visual: los rebotes contra la mesa
  * (`bounces`). Se ajusta la restitución del contacto dado-mesa y se cuentan los
- * impactos hasta dar con el objetivo, sin tocar la cara final.
+ * impactos hasta dar con el objetivo, sin tocar el resultado.
  */
 
 const MAX_ATTEMPTS = 24;
-/** Con varios dados hay más restricciones; más intentos saldrían caros. */
+/** Con varios cuerpos hay más restricciones; más intentos saldrían caros. */
 const MULTI_MAX_ATTEMPTS = 16;
 /** Con rebotes el objetivo es más difícil de clavar; se permite buscar más. */
 const BOUNCE_MAX_ATTEMPTS = 48;
-const MAX_DICE = 20;
 const START_HEIGHT = 2.15;
 const REST_SPEED = 0.06;
 const REST_ANGULAR = 0.18;
@@ -48,6 +51,22 @@ const MIN_CONTACT_GAP_MS = 80;
 const DEFAULT_RESTITUTION = 0.26;
 /** Valor de restitución de partida para cada número de rebotes visibles. */
 const BOUNCE_RESTITUTION = [0.1, 0.1, 0.38, 0.5, 0.62] as const;
+/** Separación entre los dos d10 que forman un d100 (centros). */
+const D100_PAIR_OFFSET = 0.29;
+
+/**
+ * Techo de dados simulados por tipo. Los dados con más caras y los d100 (dos
+ * cuerpos por dado) se quedan antes para mantener la tirada interactiva.
+ */
+const MAX_PHYSICAL_DICE: Record<DiceSides, number> = {
+  4: 12,
+  6: 12,
+  8: 12,
+  10: 10,
+  12: 7,
+  20: 12,
+  100: 6,
+};
 
 const RECORD_EVERY = Math.max(
   1,
@@ -63,16 +82,23 @@ interface CollideEvent {
   };
 }
 
-const DIE_MATERIAL = new CANNON.Material("d20");
+const DIE_MATERIAL = new CANNON.Material("dice");
 
-const DIE_SHAPE = (() => {
-  const vertices = D20_VERTICES.map(
+const SHAPES = new Map<BuiltDieSides, CANNON.ConvexPolyhedron>();
+
+function shapeFor(definition: DieDefinition): CANNON.ConvexPolyhedron {
+  const cached = SHAPES.get(definition.sides);
+  if (cached) return cached;
+
+  const vertices = definition.vertices.map(
     ([x, y, z]) =>
       new CANNON.Vec3(x * DIE_SCALE, y * DIE_SCALE, z * DIE_SCALE),
   );
-  const faces = D20_FACES.map((face) => [...face.indices]);
-  return new CANNON.ConvexPolyhedron({ vertices, faces });
-})();
+  const faces = definition.faces.map((face) => [...face.indices]);
+  const shape = new CANNON.ConvexPolyhedron({ vertices, faces });
+  SHAPES.set(definition.sides, shape);
+  return shape;
+}
 
 function mulberry32(seed: number): () => number {
   let state = seed >>> 0;
@@ -92,6 +118,31 @@ function clamp(value: number, min: number, max: number): number {
 /** Redondeo de la trayectoria: 0,1 mm de precisión y payload mucho menor. */
 function round(value: number): number {
   return Math.round(value * 1e4) / 1e4;
+}
+
+export function maxPhysicalDice(sides: DiceSides): number {
+  return MAX_PHYSICAL_DICE[sides] ?? 1;
+}
+
+function builtSides(sides: DiceSides): BuiltDieSides | null {
+  if (sides === 100) return 10;
+  if (
+    sides === 4 ||
+    sides === 6 ||
+    sides === 8 ||
+    sides === 10 ||
+    sides === 12 ||
+    sides === 20
+  ) {
+    return sides;
+  }
+  return null;
+}
+
+function definitionFor(sides: DiceSides): DieDefinition {
+  const built = builtSides(sides);
+  if (built === null) throw new Error(`El d${sides} no tiene física`);
+  return getDieDefinition(built);
 }
 
 interface TableWorld {
@@ -147,14 +198,14 @@ function worldWithTable(tableRestitution: number): TableWorld {
   return { world, table };
 }
 
-function topFace(quaternion: CANNON.Quaternion): {
-  face: (typeof D20_FACES)[number];
-  up: number;
-} {
+function topFace(
+  definition: DieDefinition,
+  quaternion: CANNON.Quaternion,
+): { face: DieFace; up: number } {
   let best = -Infinity;
-  let bestFace: (typeof D20_FACES)[number] | null = null;
+  let bestFace: DieFace | null = null;
 
-  for (const face of D20_FACES) {
+  for (const face of definition.faces) {
     const [nx, ny, nz] = face.normal;
     const world = quaternion.vmult(new CANNON.Vec3(nx, ny, nz));
     if (world.y > best) {
@@ -163,8 +214,58 @@ function topFace(quaternion: CANNON.Quaternion): {
     }
   }
 
-  if (!bestFace) throw new Error("La simulación del d20 no encontró cara");
+  if (!bestFace) throw new Error("La simulación no encontró cara");
   return { face: bestFace, up: best };
+}
+
+interface VertexResult {
+  index: number;
+  value: number;
+  up: number;
+}
+
+function topVertex(
+  definition: DieDefinition,
+  quaternion: CANNON.Quaternion,
+): VertexResult | null {
+  let best = -Infinity;
+  let bestIndex = -1;
+  for (let index = 0; index < definition.vertices.length; index += 1) {
+    const [vx, vy, vz] = definition.vertices[index]!;
+    const world = quaternion.vmult(new CANNON.Vec3(vx, vy, vz));
+    if (world.y > best) {
+      best = world.y;
+      bestIndex = index;
+    }
+  }
+  if (bestIndex < 0) return null;
+  const value = definition.vertexNumbers?.[bestIndex];
+  if (value === undefined) return null;
+  return { index: bestIndex, value, up: best };
+}
+
+interface BodyResult {
+  /** Número que se publica como resultado del dado. */
+  value: number;
+  /** Cara que se usa para pintar/etiquetar la trayectoria. */
+  face: number;
+  up: number;
+}
+
+function bodyResult(
+  definition: DieDefinition,
+  quaternion: CANNON.Quaternion,
+): BodyResult | null {
+  if (definition.resultMode === "top-vertex") {
+    const vertex = topVertex(definition, quaternion);
+    if (!vertex) return null;
+    return { value: vertex.value, face: vertex.value, up: vertex.up };
+  }
+
+  const { face, up } = topFace(definition, quaternion);
+  // En una cara plana apoyada, la normal debe apuntar casi recta hacia arriba.
+  if (up < 0.995) return null;
+  return { value: face.number, face: face.number, up };
 }
 
 function pushFrame(
@@ -189,47 +290,63 @@ interface InitialCondition {
   quaternion: CANNON.Quaternion;
 }
 
+interface StartOptions {
+  /** Cuántos dados lógicos se tiran (cada d100 son 2 cuerpos). */
+  groups: number;
+  /** 1 para dados normales; 2 para la pareja de un d100. */
+  perGroup: number;
+}
+
 /**
- * Reparte los puntos de salida de `count` dados en una rejilla que cabe en la
- * mesa. Con un solo dado reproduce el comportamiento anterior (aleatorio o el
- * `start` del gesto); con varios, los dados no se solapan al aparecer.
+ * Reparte los puntos de salida en una rejilla que cabe en la mesa. Con un solo
+ * dado reproduce el comportamiento de siempre; con varios, los cuerpos no se
+ * solapan al aparecer. En un d100 cada pareja sale junta.
  */
 function spreadStarts(
   random: () => number,
   input: DiceThrowInput | undefined,
-  count: number,
+  options: StartOptions,
 ): Array<[number, number]> {
+  const { groups, perGroup } = options;
   const { x: maxX, z: maxZ } = D20_TABLE_BOUNDS;
   const margin = DIE_SCALE * 1.5;
+  const pairHalf = perGroup === 2 ? D100_PAIR_OFFSET : 0;
 
-  if (count === 1) {
+  if (groups === 1) {
+    const centerX = clamp(
+      input?.start?.[0] ??
+        (perGroup === 1 ? (random() * 2 - 1) * maxX * 0.8 : 0),
+      -maxX + margin + pairHalf,
+      maxX - margin - pairHalf,
+    );
+    const centerZ = clamp(
+      input?.start?.[1] ??
+        (perGroup === 1 ? (random() * 2 - 1) * maxZ * 0.8 : 0),
+      -maxZ + margin,
+      maxZ - margin,
+    );
+    if (perGroup === 1) return [[centerX, centerZ]];
     return [
-      [
-        clamp(
-          input?.start?.[0] ?? (random() * 2 - 1) * maxX * 0.8,
-          -maxX + margin,
-          maxX - margin,
-        ),
-        clamp(
-          input?.start?.[1] ?? (random() * 2 - 1) * maxZ * 0.8,
-          -maxZ + margin,
-          maxZ - margin,
-        ),
-      ],
+      [centerX - pairHalf, centerZ],
+      [centerX + pairHalf, centerZ],
     ];
   }
 
   const columns = Math.min(
-    count,
-    Math.max(2, Math.ceil(Math.sqrt(count * (maxX / maxZ)))),
+    groups,
+    Math.max(2, Math.ceil(Math.sqrt(groups * (maxX / maxZ)))),
   );
-  const rows = Math.ceil(count / columns);
-  const spacingX = Math.min(0.64, (maxX * 2 - margin * 2) / columns);
+  const rows = Math.ceil(groups / columns);
+  const minSpacingX = pairHalf * 2 + 0.24;
+  const spacingX = Math.min(
+    Math.max(minSpacingX, 0.64),
+    (maxX * 2 - margin * 2) / columns,
+  );
   const spacingZ = Math.min(0.64, (maxZ * 2 - margin * 2) / rows);
   const centerX = clamp(
     input?.start?.[0] ?? 0,
-    -maxX + (spacingX * (columns - 1)) / 2 + margin,
-    maxX - (spacingX * (columns - 1)) / 2 - margin,
+    -maxX + (spacingX * (columns - 1)) / 2 + margin + pairHalf,
+    maxX - (spacingX * (columns - 1)) / 2 - margin - pairHalf,
   );
   const centerZ = clamp(
     input?.start?.[1] ?? 0,
@@ -238,15 +355,19 @@ function spreadStarts(
   );
 
   const positions: Array<[number, number]> = [];
-  for (let index = 0; index < count; index += 1) {
+  for (let index = 0; index < groups; index += 1) {
     const row = Math.floor(index / columns);
     const column = index % columns;
-    const inRow = Math.min(columns, count - row * columns);
+    const inRow = Math.min(columns, groups - row * columns);
     const rowOffset = ((columns - inRow) * spacingX) / 2;
-    positions.push([
-      centerX + (column - (columns - 1) / 2) * spacingX + rowOffset,
-      centerZ + (row - (rows - 1) / 2) * spacingZ,
-    ]);
+    const groupX =
+      centerX + (column - (columns - 1) / 2) * spacingX + rowOffset;
+    const groupZ = centerZ + (row - (rows - 1) / 2) * spacingZ;
+    if (perGroup === 1) {
+      positions.push([groupX, groupZ]);
+    } else {
+      positions.push([groupX - pairHalf, groupZ], [groupX + pairHalf, groupZ]);
+    }
   }
   return positions;
 }
@@ -254,38 +375,43 @@ function spreadStarts(
 function initialConditions(
   random: () => number,
   input: DiceThrowInput | undefined,
+  sides: DiceSides,
   count: number,
 ): InitialCondition[] {
-  const positions = spreadStarts(random, input, count);
+  const perGroup = sides === 100 ? 2 : 1;
+  const positions = spreadStarts(random, input, { groups: count, perGroup });
   const baseVelocity = input?.velocity ?? [0, -2.6, 0];
   const baseAngular = input?.angular ?? [0, 0, 0];
-  // Con varios dados hay que repartir el impulso: si todos salieran con la
-  // velocidad máxima del gesto se saldrían de la mesa.
-  const horizontalJitter = count > 1 ? 1.35 : 1.1;
+  const multi = count > 1;
+  const horizontalJitter = multi ? 1.35 : 1.1;
   // Con varios dados, una parte del impulso apunta al centro de la mesa para
   // que se crucen y colisionen entre ellos; el resto es entropía.
   const centerX =
     positions.reduce((sum, [x]) => sum + x, 0) / positions.length;
   const centerZ =
     positions.reduce((sum, [, z]) => sum + z, 0) / positions.length;
-  const inward = count > 1 ? 1.15 : 0;
+  const inward = multi ? 1.15 : 0;
 
   return positions.map(([startX, startZ]) => {
     const start = new CANNON.Vec3(
       startX,
-      START_HEIGHT + random() * 0.35 + (count > 1 ? random() * 0.2 : 0),
+      START_HEIGHT +
+        random() * 0.35 +
+        (positions.length > 1 ? random() * 0.2 : 0),
       startZ,
     );
+    const horizontalX = multi
+      ? (centerX - startX) * inward + baseVelocity[0] * 0.4
+      : baseVelocity[0];
+    const horizontalZ = multi
+      ? (centerZ - startZ) * inward + baseVelocity[2] * 0.4
+      : baseVelocity[2];
     return {
       start,
       velocity: new CANNON.Vec3(
-        (centerX - startX) * inward +
-          baseVelocity[0] * 0.4 +
-          (random() * 2 - 1) * horizontalJitter,
+        horizontalX + (random() * 2 - 1) * horizontalJitter,
         Math.min(-1.2, baseVelocity[1] + (random() * 2 - 1) * 0.9),
-        (centerZ - startZ) * inward +
-          baseVelocity[2] * 0.4 +
-          (random() * 2 - 1) * horizontalJitter,
+        horizontalZ + (random() * 2 - 1) * horizontalJitter,
       ),
       angular: new CANNON.Vec3(
         baseAngular[0] + (random() * 2 - 1) * 11,
@@ -304,12 +430,14 @@ function initialConditions(
 interface AttemptResult {
   trajectories: DiceTrajectory[];
   results: number[];
-  /** Impactos fuertes contra la mesa de cada dado (el primero es el aterrizaje). */
+  /** Impactos fuertes contra la mesa de cada cuerpo (el primero es el aterrizaje). */
   tableContacts: number[];
 }
 
 function runSimulation(
   conditions: readonly InitialCondition[],
+  definition: DieDefinition,
+  bodiesPerDie: number,
   tableRestitution: number,
 ): AttemptResult | null {
   const { world, table } = worldWithTable(tableRestitution);
@@ -319,12 +447,14 @@ function runSimulation(
   const tableContacts = conditions.map(() => 0);
   const lastContactMs = conditions.map(() => -Infinity);
   const bodies: CANNON.Body[] = [];
+  const shape = shapeFor(definition);
+  const restY = restHeight(definition, DIE_SCALE);
   let currentMs = 0;
 
   conditions.forEach((condition, index) => {
     const body = new CANNON.Body({
       mass: 1,
-      shape: DIE_SHAPE,
+      shape,
       material: DIE_MATERIAL,
     });
     body.position.copy(condition.start);
@@ -345,7 +475,12 @@ function runSimulation(
         1,
       );
       if (strength < MIN_IMPACT_STRENGTH) return;
-      if (currentMs - (lastContactMs[index] ?? -Infinity) < MIN_CONTACT_GAP_MS) return;
+      if (
+        currentMs - (lastContactMs[index] ?? -Infinity) <
+        MIN_CONTACT_GAP_MS
+      ) {
+        return;
+      }
       lastContactMs[index] = currentMs;
       tableContacts[index] = (tableContacts[index] ?? 0) + 1;
       impacts[index]?.push({
@@ -393,7 +528,7 @@ function runSimulation(
       const slow =
         body.velocity.length() < REST_SPEED &&
         body.angularVelocity.length() < REST_ANGULAR &&
-        Math.abs(body.position.y - DIE_REST_Y) < 0.08;
+        Math.abs(body.position.y - restY) < 0.08;
       restMs[index] = slow ? (restMs[index] ?? 0) + D20_SIM_DT * 1000 : 0;
       if ((restMs[index] ?? 0) < REST_HOLD_MS) allSlow = false;
     }
@@ -417,7 +552,7 @@ function runSimulation(
   finalMs = elapsedMs;
 
   const trajectories: DiceTrajectory[] = [];
-  const results: number[] = [];
+  const values: number[] = [];
 
   for (let index = 0; index < bodies.length; index += 1) {
     const body = bodies[index];
@@ -432,14 +567,14 @@ function runSimulation(
       return null;
     }
 
-    const { face, up } = topFace(body.quaternion);
-    if (up < 0.995) return null;
+    const result = bodyResult(definition, body.quaternion);
+    if (!result) return null;
 
     const durationMs = Math.max(1, finalMs);
     trajectories.push({
       frames: framesForDie,
       durationMs,
-      face: face.number,
+      face: result.face,
       impacts: impactsForDie
         .filter((impact) => impact.atMs <= durationMs)
         .map((impact) => ({
@@ -448,7 +583,19 @@ function runSimulation(
         })),
       bounces: Math.max(0, impactsForDie.length - 1),
     });
-    results.push(face.number);
+    values.push(result.value);
+  }
+
+  const results: number[] = [];
+  if (bodiesPerDie === 1) {
+    results.push(...values);
+  } else {
+    for (let index = 0; index < values.length; index += 2) {
+      const tens = values[index];
+      const units = values[index + 1];
+      if (tens === undefined || units === undefined) return null;
+      results.push(combineD100(tens, units));
+    }
   }
 
   return { trajectories, results, tableContacts };
@@ -461,12 +608,14 @@ function average(values: readonly number[]): number {
 
 /**
  * Busca, para unas condiciones iniciales fijas, la restitución dado-mesa que
- * produce exactamente `targetContacts` impactos. La relación suele ser
- * monótona (más restitución, más contactos), así que se corrige en la dirección
- * del error y se reintenta con condiciones nuevas si no se clava.
+ * produce exactamente `targetContacts` impactos en cada cuerpo. La relación
+ * suele ser monótona (más restitución, más contactos), así que se corrige en la
+ * dirección del error y se reintenta con condiciones nuevas si no se clava.
  */
 function runWithBounceTarget(
   conditions: readonly InitialCondition[],
+  definition: DieDefinition,
+  bodiesPerDie: number,
   targetBounces: number,
 ): AttemptResult | null {
   const targetContacts = targetBounces + 1;
@@ -480,7 +629,12 @@ function runWithBounceTarget(
     if (tried.has(key)) break;
     tried.add(key);
 
-    const result = runSimulation(conditions, restitution);
+    const result = runSimulation(
+      conditions,
+      definition,
+      bodiesPerDie,
+      restitution,
+    );
     if (!result) {
       restitution = clamp(restitution + 0.05, 0.02, 0.85);
       continue;
@@ -501,45 +655,59 @@ function runWithBounceTarget(
   return fallback;
 }
 
-export interface SimulatedD20Roll {
-  /** Cara superior de cada dado, en el orden en que se lanzaron. */
+export interface SimulatedDiceRoll {
+  /** Resultado lógico de cada dado (en d100, el número 1..100). */
   results: number[];
-  /** Una trayectoria por dado, en el mismo orden que `results`. */
+  /** Una trayectoria por cuerpo; en d100 hay dos por dado. */
   trajectories: DiceTrajectory[];
 }
 
 /**
- * Simula una tirada de `count` d20 en la misma mesa. Devuelve `null` si no lo
- * consigue en unos pocos intentos; el llamador cae al número aleatorio y el
- * cliente usa el pop.
+ * Simula una tirada de `count` dados iguales en la misma mesa. Devuelve `null`
+ * si no lo consigue en unos pocos intentos; el llamador cae al número aleatorio
+ * y el cliente usa el pop.
  */
-export function simulateD20Roll(options: {
+export function simulateDiceRoll(options: {
   seed: number;
+  sides: DiceSides;
   count?: number;
   throw?: DiceThrowInput;
-}): SimulatedD20Roll | null {
-  const count = clamp(Math.round(options.count ?? 1), 1, MAX_DICE);
+}): SimulatedDiceRoll | null {
+  const { sides, throw: throwInput } = options;
+  if (!isPhysicalDieSides(sides)) return null;
+  const definition = definitionFor(sides);
+  const bodiesPerDie = sides === 100 ? 2 : 1;
+  const count = clamp(
+    Math.round(options.count ?? 1),
+    1,
+    maxPhysicalDice(sides),
+  );
   const targetBounces =
-    count === 1 && options.throw?.bounces !== undefined
-      ? clamp(Math.round(options.throw.bounces), 1, 4)
+    count === 1 && throwInput?.bounces !== undefined
+      ? clamp(Math.round(throwInput.bounces), 1, 4)
       : null;
   const maxAttempts =
     targetBounces !== null
       ? BOUNCE_MAX_ATTEMPTS
-      : count > 1
+      : count > 1 || bodiesPerDie > 1
         ? MULTI_MAX_ATTEMPTS
         : MAX_ATTEMPTS;
-  let fallback: SimulatedD20Roll | null = null;
+  let fallback: SimulatedDiceRoll | null = null;
   let fallbackDelta = Infinity;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const random = mulberry32(
       (options.seed + attempt * 0x9e3779b1) >>> 0,
     );
-    const conditions = initialConditions(random, options.throw, count);
+    const conditions = initialConditions(random, throwInput, sides, count);
 
     if (targetBounces !== null) {
-      const result = runWithBounceTarget(conditions, targetBounces);
+      const result = runWithBounceTarget(
+        conditions,
+        definition,
+        bodiesPerDie,
+        targetBounces,
+      );
       if (!result) continue;
       if (result.tableContacts.every((c) => c === targetBounces + 1)) {
         return {
@@ -547,8 +715,6 @@ export function simulateD20Roll(options: {
           trajectories: result.trajectories,
         };
       }
-      // Guarda el mejor aunque no dé el número exacto de rebotes: es una
-      // restricción visual, la cara física manda.
       const delta = Math.max(
         ...result.tableContacts.map((c) => Math.abs(c - targetBounces - 1)),
       );
@@ -562,7 +728,12 @@ export function simulateD20Roll(options: {
       continue;
     }
 
-    const result = runSimulation(conditions, DEFAULT_RESTITUTION);
+    const result = runSimulation(
+      conditions,
+      definition,
+      bodiesPerDie,
+      DEFAULT_RESTITUTION,
+    );
     if (result) {
       return {
         results: result.results,
@@ -575,6 +746,15 @@ export function simulateD20Roll(options: {
 }
 
 /** Compatibilidad: una tirada física de un d20. */
+export function simulateD20Roll(options: {
+  seed: number;
+  count?: number;
+  throw?: DiceThrowInput;
+}): SimulatedDiceRoll | null {
+  return simulateDiceRoll({ ...options, sides: 20 });
+}
+
+/** Compatibilidad: la trayectoria de un d20 único. */
 export function simulateD20Throw(options: {
   seed: number;
   throw?: DiceThrowInput;

@@ -11,20 +11,20 @@ import {
 import { createPortal } from "react-dom";
 import type { DiceRoll } from "@protocol-life/shared";
 import {
-  disableD20Cinematic,
+  disableDiceCinematic,
   markFailed,
   markLanded,
   registerCinematic,
-  supportsD20Cinematic,
+  supportsDiceCinematic,
 } from "../../lib/diceCinematic";
-import { isPhysicalD20Roll } from "../../lib/dice3d/roll";
+import { isPhysicalDiceRoll } from "../../lib/dice3d/roll";
 import { useDiceSkinStore } from "../../store/useDiceSkinStore";
 import type { DiceSkinId } from "../../lib/diceSkin";
 import { DiceIcon } from "./DiceIcon";
 import "./DiceCinematic.css";
 
 /**
- * Overlay 3D de una tirada de d20 (uno o varios dados).
+ * Overlay 3D de una tirada de dados (uno o varios cuerpos).
  *
  * - La escena 3D (three + fiber) se carga con `import()` en la primera tirada.
  * - La pantalla hace de mesa: los dados caen sobre la página, sin backdrop ni
@@ -37,7 +37,7 @@ import "./DiceCinematic.css";
  * - Sin WebGL, con reduced-motion o si el chunk falla, todo cae al pop actual.
  */
 
-type D20SceneComponent = ComponentType<{
+type DiceSceneComponent = ComponentType<{
   roll: DiceRoll;
   skipped: boolean;
   skin?: DiceSkinId;
@@ -53,10 +53,10 @@ const EXIT_FADE_MS = 280;
 /** Ids ya vistos a nivel de módulo, como los pops: el header se remonta. */
 const seenCinematicIds = new Set<string>();
 
-let scenePromise: Promise<typeof import("./d20/D20Scene")> | null = null;
+let scenePromise: Promise<typeof import("./scene/DiceScene")> | null = null;
 
-function loadScene(): Promise<typeof import("./d20/D20Scene")> {
-  scenePromise ??= import("./d20/D20Scene");
+function loadScene(): Promise<typeof import("./scene/DiceScene")> {
+  scenePromise ??= import("./scene/DiceScene");
   return scenePromise;
 }
 
@@ -64,7 +64,7 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
   const skin = useDiceSkinStore((state) => state.skin);
   const [capable, setCapable] = useState(false);
   const [current, setCurrent] = useState<DiceRoll | null>(null);
-  const [Scene, setScene] = useState<D20SceneComponent | null>(null);
+  const [Scene, setScene] = useState<DiceSceneComponent | null>(null);
   const [skipped, setSkipped] = useState(false);
   const [landed, setLanded] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -75,7 +75,7 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
   const exitTimer = useRef<number | null>(null);
 
   const disableCinematic = useCallback(() => {
-    disableD20Cinematic();
+    disableDiceCinematic();
     setCapable(false);
   }, []);
 
@@ -149,7 +149,7 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
   useLayoutEffect(() => registerCinematic(), []);
 
   useEffect(() => {
-    setCapable(supportsD20Cinematic());
+    setCapable(supportsDiceCinematic());
   }, []);
 
   useEffect(() => {
@@ -159,9 +159,9 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
 
   /* Cola: una tirada cada vez, sin pisarse. */
   useEffect(() => {
-    if (!capable || current || !supportsD20Cinematic()) return;
+    if (!capable || current || !supportsDiceCinematic()) return;
     const next = rolls.find(
-      (roll) => isPhysicalD20Roll(roll) && !seenCinematicIds.has(roll.id),
+      (roll) => isPhysicalDiceRoll(roll) && !seenCinematicIds.has(roll.id),
     );
     if (!next) return;
     seenCinematicIds.add(next.id);
@@ -252,7 +252,7 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
           </SceneErrorBoundary>
         ) : (
           <div className="dice-cinematic-pending">
-            <DiceIcon sides={20} size={64} />
+            <DiceIcon sides={current.sides} size={64} />
             <span>
               Preparando {current.count > 1 ? `${current.count} dados` : "dado"}{" "}
               3D…

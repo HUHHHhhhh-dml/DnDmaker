@@ -1,5 +1,38 @@
 # Changelog
 
+## Fase 4E+ — física para todos los dados (2026-10-29)
+
+### Añadido
+
+- **d4, d6, d8, d10 y d12 con física real**: geometrías compartidas en
+  `diceGeometry.ts` (tetraedro, cubo, octaedro, trapezoedro pentagonal y
+  dodecaedro), caras planas, numeración de opuestas y lectura del resultado.
+  El d4 se lee por el **vértice superior**; el resto por la cara superior.
+- **d100 como pareja de d10**: el servidor simula dos cuerpos (decenas y
+  unidades), combina `00-90 + 0-9` (00+0 = 100) y el cliente muestra las dos
+  caras y una etiqueta con el resultado combinado de cada pareja. Los topes
+  físicos son 6 d100 (12 d10).
+- **Atlas y malla genéricos**: cada cara poligonal se proyecta a un tile y se
+  triangula con UVs; el d4 pinta tres números por cara, junto a sus vértices.
+  Skins Hueso/Negra aplicadas a todos los dados.
+- **Arrastre y rebotes en todos los dados**: el gesto envía `bounces` 1..4
+  también para d4/d6/d8/d10/d12/d100; el servidor busca la restitución que
+  clava el objetivo en todos los cuerpos (en d100, en los dos d10).
+- **Multi-dado para todos los tipos**: d4/d6/d8 hasta 12, d10 hasta 10, d12
+  hasta 7, d20 hasta 12 y d100 hasta 6; etiquetas por dado (o por pareja en
+  d100), cámara de grupo y pop con suma/desglose. Por encima del tope se usa el
+  pop clásico.
+
+### Cambios
+
+- `DiceRoll.trajectories` convive con `DiceRoll.trajectory` (dado único normal);
+  en d100 `trajectory` no se usa y `trajectories` lleva los dos d10.
+- `DiceTrajectory.face` es la cara (o vértice en d4); en d100 es la cara de ese
+  d10 y el resultado combinado vive en `DiceRoll.results`.
+- Se eliminó el atlas específico del d20; la escena 3D pasó a `DiceScene`.
+- El emisivo del cuerpo se redujo para que la skin Negra mantenga el cuerpo
+  oscuro y los números marfil legibles.
+
 ## Fase 4E+ — dados físicos, rebotes y skins (2026-10-28)
 
 ### Añadido

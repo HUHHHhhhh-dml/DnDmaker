@@ -587,7 +587,10 @@ export interface DiceTrajectoryImpact {
 export interface DiceTrajectory {
   frames: DiceTrajectoryFrame[];
   durationMs: number;
-  /** Cara que queda arriba; coincide con `DiceRoll.result`. */
+  /**
+   * Cara que queda arriba (o vértice superior en el d4). En un d100 es la cara
+   * de ese d10: el resultado combinado está en `DiceRoll.results`.
+   */
   face: number;
   impacts: DiceTrajectoryImpact[];
   /**
@@ -607,7 +610,8 @@ export interface DiceThrowInput {
   start?: [number, number];
   /**
    * Rebotes deseados contra la mesa (1..4). Cuanto más se arrastra, más
-   * rebotes. Solo se aplica a un d20 único; el resto de tiradas lo ignoran.
+   * rebotes. Solo se aplica a un dado único; en un d100 se busca en los dos
+   * d10. En tiradas múltiples se ignora.
    */
   bounces?: number;
 }
@@ -625,13 +629,13 @@ export interface DiceRoll {
   roller: DiceRoller;
   at: IsoDate;
   /**
-   * Trayectoria física del d20 único. Se mantiene por compatibilidad: para
-   * `count === 1` es la primera (y única) entrada de `trajectories`.
+   * Trayectoria física de un dado único normal (no d100). Se mantiene por
+   * compatibilidad: equivale a la única entrada de `trajectories`.
    */
   trajectory?: DiceTrajectory;
   /**
-   * Una trayectoria física por dado, en el mismo orden que `results`. Solo la
-   * genera el servidor para tiradas de d20 con física; las demás usan el pop.
+   * Una trayectoria física por cuerpo. En d4/d6/d8/d10/d12/d20 coincide con
+   * `results`; en d100 hay dos d10 por dado (decenas y unidades), en orden.
    */
   trajectories?: DiceTrajectory[];
 }

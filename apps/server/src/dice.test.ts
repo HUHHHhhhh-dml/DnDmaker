@@ -6,6 +6,7 @@ import { io as ioClient, type Socket } from "socket.io-client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   DICE_SIDES,
+  isPhysicalDieSides,
   type Character,
   type DiceRoll,
   type HostSessionResponse,
@@ -13,7 +14,7 @@ import {
 } from "@protocol-life/shared";
 import { buildApp, type BuiltApp } from "./app";
 import { DiceService } from "./dice";
-import { simulateD20Throw } from "./dicePhysics";
+import { maxPhysicalDice, simulateD20Throw } from "./dicePhysics";
 
 /**
  * Dados de mesa compartidos: ruta, permisos, cooldown, resultados en rango,
@@ -280,6 +281,22 @@ describe("Dados de mesa compartidos", () => {
     expect(dice.result).toBe(dice.trajectory!.face);
   });
 
+  it("el d6 también respeta los rebotes del gesto", async () => {
+    const fixture = await makeFixture();
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/sessions/${fixture.sessionCode}/dice`,
+      headers: withToken(fixture.playerToken),
+      payload: { sides: 6, throw: { bounces: 3 } },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const dice = response.json() as DiceRoll;
+    expect(dice.trajectory).toBeDefined();
+    expect(dice.trajectory!.bounces).toBe(3);
+    expect(dice.trajectory!.impacts).toHaveLength(4);
+    expect(dice.result).toBe(dice.trajectory!.face);
+  });
+
   it("rechaza bounces fuera de 1..4", async () => {
     const fixture = await makeFixture();
     for (const bounces of [0, 5, 1.5]) {
@@ -342,6 +359,35 @@ describe("Dados de mesa compartidos", () => {
     expect(dice.trajectories).toBeUndefined();
   });
 
+  it("tira d100 como pareja de d10 y d6 con un solo cuerpo", async () => {
+    const fixture = await makeFixture();
+    const hundred = await app.inject({
+      method: "POST",
+      url: `/api/sessions/${fixture.sessionCode}/dice`,
+      headers: withToken(fixture.playerToken),
+      payload: { sides: 100 },
+    });
+    expect(hundred.statusCode, hundred.body).toBe(200);
+    const d100 = hundred.json() as DiceRoll;
+    expect(d100.trajectories).toHaveLength(2);
+    expect(d100.trajectory).toBeUndefined();
+    expect(d100.result).toBeGreaterThanOrEqual(1);
+    expect(d100.result).toBeLessThanOrEqual(100);
+
+    const six = await app.inject({
+      method: "POST",
+      url: `/api/sessions/${fixture.sessionCode}/dice`,
+      headers: withToken(fixture.dmToken),
+      payload: { sides: 6 },
+    });
+    expect(six.statusCode, six.body).toBe(200);
+    const d6 = six.json() as DiceRoll;
+    expect(d6.trajectory).toBeDefined();
+    expect(d6.result).toBe(d6.trajectory!.face);
+    expect(d6.result).toBeGreaterThanOrEqual(1);
+    expect(d6.result).toBeLessThanOrEqual(6);
+  });
+
   it("aplica un cooldown por jugador", async () => {
     const fixture = await makeFixture();
     const first = await roll(fixture, fixture.playerToken, 20);
@@ -362,15 +408,15 @@ describe("Dados de mesa compartidos", () => {
     // Test puro del servicio, sin el cooldown de la ruta.
     const service = new DiceService(built.sessions, 0);
     for (const sides of DICE_SIDES) {
-      for (let index = 0; index < 5; index += 1) {
+      for (const count of [1, 2, 3]) {
         const dice = service.roll(
           ready.sessionCode,
           ready.playerToken,
           sides,
-          index + 1,
+          count,
         );
-        expect(dice.count).toBe(index + 1);
-        expect(dice.results).toHaveLength(index + 1);
+        expect(dice.count).toBe(count);
+        expect(dice.results).toHaveLength(count);
         for (const value of dice.results) {
           expect(value).toBeGreaterThanOrEqual(1);
           expect(value).toBeLessThanOrEqual(sides);
@@ -378,16 +424,18 @@ describe("Dados de mesa compartidos", () => {
         expect(dice.result).toBe(
           dice.results.reduce((sum, value) => sum + value, 0),
         );
-        if (sides === 20 && index === 0) {
-          expect(dice.trajectory).toBeDefined();
-          expect(dice.result).toBe(dice.trajectory!.face);
-          expect(dice.trajectories).toBeUndefined();
-        } else if (sides === 20 && index + 1 <= 12) {
-          expect(dice.trajectory).toBeUndefined();
-          expect(dice.trajectories).toHaveLength(index + 1);
-          expect(dice.trajectories!.map((trajectory) => trajectory.face)).toEqual(
-            dice.results,
-          );
+
+        if (isPhysicalDieSides(sides) && count <= maxPhysicalDice(sides)) {
+          if (count === 1 && sides !== 100) {
+            // Un dado único normal conserva el campo `trajectory`.
+            expect(dice.trajectory).toBeDefined();
+            expect(dice.result).toBe(dice.trajectory!.face);
+            expect(dice.trajectories).toBeUndefined();
+          } else {
+            const expected = sides === 100 ? count * 2 : count;
+            expect(dice.trajectory).toBeUndefined();
+            expect(dice.trajectories).toHaveLength(expected);
+          }
         } else {
           expect(dice.trajectory).toBeUndefined();
           expect(dice.trajectories).toBeUndefined();

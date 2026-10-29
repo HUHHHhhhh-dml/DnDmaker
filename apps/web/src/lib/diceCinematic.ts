@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from "react";
 import type { DiceRoll } from "@protocol-life/shared";
-import { isPhysicalD20Roll } from "./dice3d/roll";
+import { isPhysicalDiceRoll } from "./dice3d/roll";
 
 /**
  * Coordinación entre el overlay 3D y los pops actuales (toast y celebración).
  *
- * El overlay anima tiradas de **d20 con física** (uno o varios dados). Mientras
+ * El overlay anima tiradas de **dados con física** (uno o varios cuerpos). Mientras
  * una tirada está en manos del overlay, el toast y la celebración la ignoran;
  * cuando aterriza (o falla), se marca y vuelven a procesarla. Si no hay WebGL o
  * el usuario prefiere movimiento reducido, `isHeld` es siempre `false` y todo
@@ -50,7 +50,7 @@ function remember(target: Set<string>, id: string): void {
  * WebGL crea un contexto. `failIfMajorPerformanceCaveat` descarta render por
  * software: ahí el pop se ve mejor que una animación a 5 fps.
  */
-export function supportsD20Cinematic(): boolean {
+export function supportsDiceCinematic(): boolean {
   if (disabled) return false;
   if (capability !== null) return capability;
 
@@ -94,8 +94,8 @@ export function registerCinematic(): () => void {
  */
 export function isHeld(roll: RollKey): boolean {
   if (directors === 0) return false;
-  if (!isPhysicalD20Roll(roll)) return false;
-  if (!supportsD20Cinematic()) return false;
+  if (!isPhysicalDiceRoll(roll)) return false;
+  if (!supportsDiceCinematic()) return false;
   return !landed.has(roll.id) && !failed.has(roll.id);
 }
 
@@ -115,7 +115,7 @@ export function markFailed(id: string): void {
  * Un fallo del chunk o del contexto WebGL desactiva el 3D para el resto de la
  * sesión: es preferible el pop a reintentar la animación en cada tirada.
  */
-export function disableD20Cinematic(): void {
+export function disableDiceCinematic(): void {
   if (disabled) return;
   disabled = true;
   emit();

@@ -8,3 +8,4 @@ export * from "./session";
 export * from "./combat";
 export * from "./loot";
 export * from "./dice3d";
+export * from "./diceGeometry";

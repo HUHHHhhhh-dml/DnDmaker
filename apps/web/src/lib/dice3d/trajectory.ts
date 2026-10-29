@@ -56,6 +56,7 @@ function ringAt(
 export function sampleTrajectory(
   tMs: number,
   trajectory: DiceTrajectory,
+  restY = DIE_REST_Y,
 ): DicePose {
   const frames = trajectory.frames;
   if (frames.length < 2) {
@@ -90,7 +91,7 @@ export function sampleTrajectory(
     quaternion.set(final.q[0], final.q[1], final.q[2], final.q[3]);
   }
 
-  const clearance = Math.max(0, position.y - DIE_REST_Y);
+  const clearance = Math.max(0, position.y - restY);
   const shadowScale = 1 / (1 + clearance * 1.7);
   const shadowOpacity = 0.7 / (1 + clearance * 1.1);
   const contactGlow = 0.26 + 0.34 * (1 - clamp01(clearance / 2.2));

@@ -240,21 +240,26 @@ En la hoja del jugador, debajo de la bolsa de la party, hay una bandeja con los
 dados **d20, d12, d100, d10, d8, d6 y d4**. Se elige uno en la fila inferior,
 se ajusta la cantidad con **+ / −** (hasta 20 dados del mismo tipo) y se pulsa
 el dado grande para tirar. También se puede **arrastrar el dado grande** en la
-dirección del lanzamiento: la distancia marca la fuerza y, en un d20 único, los
-**rebotes** contra la mesa (1 con un gesto suave, 4 con el máximo). El servidor
-simula la caída con física real y añade su propia entropía; la cara que queda
-arriba es el resultado. Toda la mesa conectada recibe un pop de 5 segundos con
-el dado, el resultado y quién lo tiró; las últimas 5 tiradas quedan en un log
-efímero del cliente. El DM tiene la misma bandeja en el panel lateral de **Mesa**.
+dirección del lanzamiento: la distancia marca la fuerza y los **rebotes** contra
+la mesa (1 con un gesto suave, 4 con el máximo). El servidor simula la caída con
+física real para **todos los dados** y añade su propia entropía; en d4 el
+resultado es el **vértice superior**, en el resto la cara que queda arriba y en
+**d100** se lanzan **dos d10** (decenas 00-90 + unidades 0-9; 00+0 = 100). Toda
+la mesa conectada recibe un pop de 5 segundos con el dado, el resultado y quién
+lo tiró; las últimas 5 tiradas quedan en un log efímero del cliente. El DM tiene
+la misma bandeja en el panel lateral de **Mesa**.
 
 La lista **Aspecto** cambia la skin del dado 3D y de la bandeja entre **Hueso**
 (clara) y **Negra** (cuerpo oscuro con números marfil); se guarda en el navegador
 y se aplica también al primer plano del resultado.
 
-Los **d20 múltiples** (de 2 a 12) se lanzan en la misma mesa: caen juntos,
-colisionan entre ellos y cada uno trae su propia trayectoria y su resultado. La
-cámara se abre a una vista de grupo, cada dado muestra su número en una etiqueta
-y el pop resume la suma y el desglose. Por encima de 12 se usa el pop clásico.
+Los **dados múltiples** se lanzan en la misma mesa: caen juntos, colisionan
+entre ellos y cada uno trae su propia trayectoria y su resultado. La cámara se
+abre a una vista de grupo, cada dado muestra su número en una etiqueta y el pop
+resume la suma y el desglose. Los topes físicos son 12 para d4/d6/d8/d20, 10
+para d10, 7 para d12 y 6 para d100; por encima de cada tope se usa el pop
+clásico. En d100 la etiqueta flotante muestra el número combinado de cada pareja
+de d10.
 
 Si en un **d20** sale una cara **20**, la pantalla se llena de brillitos dorados
 y aparece «¡NAT 20!»; si sale una cara **1**, los bordes se tiñen de rojo y la
@@ -373,7 +378,7 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 | POST | `/api/sessions/:code/shop/buy` | Comprar `{ itemId }` o `{ skillId }`; desbloquea para la campaña. |
 | GET | `/api/sessions/:code/dungeon` | Run de mazmorra activa saneada (o `null`). |
 | POST | `/api/sessions/:code/dungeon/start\|encounter\|rest\|chest\|advance\|end` | Acciones del DM sobre la run. |
-| POST | `/api/sessions/:code/dice` | Tirada compartida `{ sides, count?, throw? }` (1–20 dados, se suman); `throw` lleva velocidad/angular/salida/rebotes (1–4) para el d20 físico. El servidor decide el resultado y lo emite a la sala. |
+| POST | `/api/sessions/:code/dice` | Tirada compartida `{ sides, count?, throw? }` (1–20 dados, se suman); `throw` lleva velocidad/angular/salida/rebotes (1–4) para la física. El servidor decide el resultado y lo emite a la sala; d100 devuelve dos trayectorias de d10 por dado. |
 | GET/POST | `/api/campaigns/:id/:type` | Listar / crear contenido (`items`, `skills`, `effects`, `characters`, `encounters`). |
 | GET/PATCH/DELETE | `/api/content/:type/:id` | Leer / editar / borrar; el jugador solo puede editar su ficha. |
 | GET | `/api/campaigns/:id/characters/:charId/sheet` | Ficha con equipo y stats derivados. |

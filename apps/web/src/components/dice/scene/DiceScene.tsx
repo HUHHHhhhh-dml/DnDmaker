@@ -1,10 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ACESFilmicToneMapping,
   AdditiveBlending,
@@ -12,7 +7,6 @@ import {
   CanvasTexture,
   Color,
   DoubleSide,
-  Float32BufferAttribute,
   Group,
   LineBasicMaterial,
   Mesh,
@@ -22,9 +16,27 @@ import {
   SRGBColorSpace,
   Vector3,
 } from "three";
-import type { DiceRoll, DiceTrajectory } from "@protocol-life/shared";
+import {
+  DIE_SCALE,
+  d100TensLabel,
+  d100UnitsLabel,
+  getDieDefinition,
+  restHeight,
+  type BuiltDieSides,
+  type DiceRoll,
+  type DiceSides,
+  type DiceTrajectory,
+  type DieDefinition,
+  type DieFace,
+} from "@protocol-life/shared";
 import { sampleTrajectory } from "../../../lib/dice3d/trajectory";
-import { createD20Atlas, faceUv } from "../../../lib/dice3d/atlas";
+import {
+  buildDieEdgeGeometry,
+  buildDieGeometry,
+  createDieAtlas,
+  createResultLabelTexture,
+  type DieLabelMode,
+} from "../../../lib/dice3d/dieAtlas";
 import { rollTrajectories } from "../../../lib/dice3d/roll";
 import {
   DICE_SKINS,
@@ -33,27 +45,22 @@ import {
   type DiceSkinId,
 } from "../../../lib/diceSkin";
 import {
-  D20_EDGES,
-  D20_FACES,
-  DIE_INRADIUS,
-  DIE_SCALE,
   TABLE_CAMERA_POS,
   TABLE_CAMERA_TARGET,
-  faceForNumber,
 } from "../../../lib/dice3d/geometry";
 
 /**
- * Escena 3D de los dados. Este es el único módulo que importa `three` y
+ * Escena 3D de una tirada de dados. Es el único módulo que importa `three` y
  * `@react-three/fiber`; `DiceCinematic` lo carga con `import()` en la primera
- * tirada. Las trayectorias vienen ya simuladas por el servidor: aquí solo se
+ * tirada. Las trayectorias vienen simuladas por el servidor: aquí solo se
  * reproducen los frames.
  *
- * Con un d20 la cámara se acerca a la cara del resultado. Con varios, se abre
- * a una vista de grupo y cada dado recibe una etiqueta flotante con su número,
- * porque no hay una sola cámara que mire de frente a cinco caras a la vez.
+ * Un solo cuerpo: primer plano de la cara (o del vértice, en d4). Varios
+ * cuerpos (multi-dado o pareja de d100): vista de grupo y una etiqueta por
+ * cuerpo. La pareja de d100 añade una etiqueta con el número combinado.
  */
 
-export interface D20SceneProps {
+export interface DiceSceneProps {
   roll: DiceRoll;
   /** Saltar: salta al último frame, sin cortar el resultado. */
   skipped: boolean;
@@ -63,16 +70,45 @@ export interface D20SceneProps {
   onError: () => void;
 }
 
-export default function D20Scene({
+function renderSides(sides: DiceSides): BuiltDieSides {
+  return (sides === 100 ? 10 : sides) as BuiltDieSides;
+}
+
+function definitionFor(roll: DiceRoll): DieDefinition {
+  return getDieDefinition(renderSides(roll.sides));
+}
+
+function labelModeFor(sides: DiceSides, index: number): DieLabelMode {
+  if (sides === 100) {
+    return index % 2 === 0 ? "d100-tens" : "d100-units";
+  }
+  return "face";
+}
+
+function labelTextFor(
+  sides: DiceSides,
+  trajectory: DiceTrajectory,
+  index: number,
+): string {
+  if (sides === 100) {
+    return index % 2 === 0
+      ? d100TensLabel(trajectory.face)
+      : d100UnitsLabel(trajectory.face);
+  }
+  return String(trajectory.face);
+}
+
+export default function DiceScene({
   roll,
   skipped,
   skin = DEFAULT_DICE_SKIN,
   onLanded,
   onError,
-}: D20SceneProps) {
+}: DiceSceneProps) {
   const errorRef = useRef(onError);
   const activeRef = useRef(true);
   const trajectories = useMemo(() => rollTrajectories(roll), [roll]);
+  const definition = useMemo(() => definitionFor(roll), [roll]);
 
   useEffect(() => {
     errorRef.current = onError;
@@ -116,6 +152,8 @@ export default function D20Scene({
       }}
     >
       <DiceArena
+        roll={roll}
+        definition={definition}
         trajectories={trajectories}
         skipped={skipped}
         skin={skin}
@@ -136,57 +174,84 @@ function cameraSmoothstep(value: number): number {
 }
 
 /* ------------------------------------------------------------------------- */
-/* Recursos compartidos por todos los dados                                   */
+/* Recursos compartidos por todos los cuerpos                                 */
 /* ------------------------------------------------------------------------- */
 
-interface SharedResources {
-  geometry: BufferGeometry;
-  edgeGeometry: BufferGeometry;
+interface DieResource {
   atlas: CanvasTexture;
-  shadowTexture: CanvasTexture;
-  poolTexture: CanvasTexture;
+  geometry: BufferGeometry;
+  material: MeshStandardMaterial;
 }
 
-function useSharedResources(skin: DiceSkin): SharedResources {
-  const geometry = useMemo(buildDieGeometry, []);
-  const edgeGeometry = useMemo(buildEdgeGeometry, []);
-  const atlas = useMemo(
-    () =>
-      createD20Atlas(8, {
-        background: skin.faceBackground,
-        ink: skin.faceInk,
-      }),
-    [skin],
+interface SharedResources {
+  edgeGeometry: BufferGeometry;
+  shadowTexture: CanvasTexture;
+  poolTexture: CanvasTexture;
+  byMode: Map<DieLabelMode, DieResource>;
+}
+
+function useDiceResources(
+  definition: DieDefinition,
+  modes: readonly DieLabelMode[],
+  skin: DiceSkin,
+): SharedResources {
+  const modeKey = modes.join(",");
+  const edgeGeometry = useMemo(
+    () => buildDieEdgeGeometry(definition),
+    [definition],
   );
   const shadowTexture = useMemo(createShadowTexture, []);
   const poolTexture = useMemo(createContactPoolTexture, []);
 
+  const byMode = useMemo(() => {
+    const map = new Map<DieLabelMode, DieResource>();
+    for (const mode of modeKey.split(",") as DieLabelMode[]) {
+      const atlas = createDieAtlas(definition, skin, mode);
+      const geometry = buildDieGeometry(definition, atlas.uvs);
+      const material = new MeshStandardMaterial({
+        map: atlas.texture,
+        color: skin.materialColor,
+        roughness: skin.roughness,
+        metalness: skin.metalness,
+        emissive: new Color(skin.emissiveColor),
+        emissiveIntensity: 0,
+      });
+      map.set(mode, { atlas: atlas.texture, geometry, material });
+    }
+    return map;
+  }, [definition, skin, modeKey]);
+
   useEffect(
     () => () => {
-      geometry.dispose();
+      for (const resource of byMode.values()) {
+        resource.atlas.dispose();
+        resource.geometry.dispose();
+        resource.material.dispose();
+      }
       edgeGeometry.dispose();
       shadowTexture.dispose();
       poolTexture.dispose();
     },
-    [geometry, edgeGeometry, shadowTexture, poolTexture],
+    [byMode, edgeGeometry, shadowTexture, poolTexture],
   );
 
-  // El atlas cambia con la skin; se libera el anterior sin tocar la malla.
-  useEffect(() => () => atlas.dispose(), [atlas]);
-
-  return { geometry, edgeGeometry, atlas, shadowTexture, poolTexture };
+  return { edgeGeometry, shadowTexture, poolTexture, byMode };
 }
 
 /* ------------------------------------------------------------------------- */
-/* Arena: reloj compartido, cámara y dados                                    */
+/* Arena: reloj compartido, cámara y cuerpos                                  */
 /* ------------------------------------------------------------------------- */
 
 function DiceArena({
+  roll,
+  definition,
   trajectories,
   skipped,
   skin,
   onLanded,
 }: {
+  roll: DiceRoll;
+  definition: DieDefinition;
   trajectories: DiceTrajectory[];
   skipped: boolean;
   skin: DiceSkinId;
@@ -196,14 +261,21 @@ function DiceArena({
     () => Math.max(...trajectories.map((trajectory) => trajectory.durationMs)),
     [trajectories],
   );
-  const multi = trajectories.length > 1;
   const elapsed = useRef(0);
   const skippedRef = useRef(skipped);
   const landedRef = useRef(false);
   const landedCallback = useRef(onLanded);
   const [landed, setLanded] = useState(false);
   const config = DICE_SKINS[skin] ?? DICE_SKINS[DEFAULT_DICE_SKIN];
-  const shared = useSharedResources(config);
+  const modes = useMemo(
+    () => trajectories.map((_, index) => labelModeFor(roll.sides, index)),
+    [roll.sides, trajectories],
+  );
+  const shared = useDiceResources(definition, modes, config);
+  const restY = restHeight(definition, DIE_SCALE);
+  const showLabels =
+    landed &&
+    (trajectories.length > 1 || definition.resultMode === "top-vertex");
 
   useEffect(() => {
     skippedRef.current = skipped;
@@ -221,7 +293,7 @@ function DiceArena({
       // avanzamos 50 ms por frame.
       elapsed.current = Math.min(
         elapsed.current + Math.min(delta, 0.05) * 1000,
-        durationMs + 500,
+        durationMs + CLOSEUP_MS,
       );
     }
 
@@ -243,21 +315,36 @@ function DiceArena({
         color="#d4a72c"
       />
 
-      {trajectories.map((trajectory, index) => (
-        <Die
-          key={index}
-          trajectory={trajectory}
-          elapsed={elapsed}
-          skin={config}
-          shared={shared}
-        />
-      ))}
+      {trajectories.map((trajectory, index) => {
+        const mode = labelModeFor(roll.sides, index);
+        const resource = shared.byMode.get(mode);
+        if (!resource) return null;
+        return (
+          <Die
+            key={index}
+            trajectory={trajectory}
+            elapsed={elapsed}
+            skin={config}
+            resource={resource}
+            edgeGeometry={shared.edgeGeometry}
+            shadowTexture={shared.shadowTexture}
+            poolTexture={shared.poolTexture}
+            restY={restY}
+          />
+        );
+      })}
 
-      {multi && landed ? (
-        <ResultLabels trajectories={trajectories} skin={config} />
+      {showLabels ? (
+        <ResultLabels
+          roll={roll}
+          definition={definition}
+          trajectories={trajectories}
+          skin={config}
+        />
       ) : null}
 
       <CameraRig
+        definition={definition}
         trajectories={trajectories}
         durationMs={durationMs}
         elapsed={elapsed}
@@ -271,10 +358,12 @@ function DiceArena({
 /* ------------------------------------------------------------------------- */
 
 function CameraRig({
+  definition,
   trajectories,
   durationMs,
   elapsed,
 }: {
+  definition: DieDefinition;
   trajectories: DiceTrajectory[];
   durationMs: number;
   elapsed: { current: number };
@@ -283,10 +372,12 @@ function CameraRig({
 
   const view = useMemo(() => {
     if (trajectories.length === 1) {
-      return singleCloseup(trajectories[0]!);
+      return definition.resultMode === "top-vertex"
+        ? vertexCloseup(trajectories[0]!)
+        : faceCloseup(definition, trajectories[0]!);
     }
     return groupView(trajectories);
-  }, [trajectories]);
+  }, [definition, trajectories]);
 
   useFrame(() => {
     if (elapsed.current <= durationMs) {
@@ -319,30 +410,49 @@ interface CameraView {
   up: Vector3;
 }
 
+function finalFrame(trajectory: DiceTrajectory) {
+  return trajectory.frames[trajectory.frames.length - 1]!;
+}
+
 /**
- * Primer plano de un dado: la cámara se pone delante de la cara del resultado,
- * con el "arriba" de la etiqueta como arriba de la pantalla. No se rota el
- * dado a la fuerza: sigue apoyado donde lo dejó la física.
+ * Primer plano de una cara: la cámara se pone delante de la cara del resultado,
+ * con el "arriba" de la etiqueta como arriba de la pantalla.
  */
-function singleCloseup(trajectory: DiceTrajectory): CameraView {
-  const last = trajectory.frames[trajectory.frames.length - 1]!;
+function faceCloseup(
+  definition: DieDefinition,
+  trajectory: DiceTrajectory,
+): CameraView {
+  const last = finalFrame(trajectory);
   const finalQuaternion = new Quaternion(
     last.q[0],
     last.q[1],
     last.q[2],
     last.q[3],
   );
-  const face = faceForNumber(trajectory.face);
-  const normal = face.normal.clone().applyQuaternion(finalQuaternion).normalize();
-  const labelUp = face.labelUp.clone().applyQuaternion(finalQuaternion).normalize();
-  const labelRight = face.labelRight
-    .clone()
+  const face: DieFace | undefined = definition.faces.find(
+    (candidate) => candidate.number === trajectory.face,
+  );
+  const center = new Vector3(last.p[0], last.p[1], last.p[2]);
+  if (!face) {
+    return {
+      position: center.clone().add(new Vector3(0, 1.6, 1.2)),
+      target: center,
+      up: CAMERA_WORLD_UP.clone(),
+    };
+  }
+
+  const normal = new Vector3(...face.normal)
     .applyQuaternion(finalQuaternion)
     .normalize();
-  const center = new Vector3(last.p[0], last.p[1], last.p[2]);
+  const labelUp = new Vector3(...face.labelUp)
+    .applyQuaternion(finalQuaternion)
+    .normalize();
+  const labelRight = new Vector3(...face.labelRight)
+    .applyQuaternion(finalQuaternion)
+    .normalize();
   const faceCenter = center
     .clone()
-    .addScaledVector(normal, DIE_INRADIUS * DIE_SCALE);
+    .addScaledVector(normal, definition.inradius * DIE_SCALE);
   const position = faceCenter
     .clone()
     .addScaledVector(
@@ -357,17 +467,31 @@ function singleCloseup(trajectory: DiceTrajectory): CameraView {
 }
 
 /**
- * Vista de grupo: encuadra todos los dados en su pose final, desde arriba y en
- * ángulo de mesa, sin acercarse tanto como para dejar fuera los de los bordes.
+ * Primer plano de un d4: se encuadra el vértice superior, que es el resultado.
+ * Los tres números de ese vértice se ven en las caras que lo rodean.
+ */
+function vertexCloseup(trajectory: DiceTrajectory): CameraView {
+  const last = finalFrame(trajectory);
+  const center = new Vector3(last.p[0], last.p[1], last.p[2]);
+  // Vista casi cenital: el vértice superior del tetraedro queda en el centro y
+  // los tres números que lo rodean se leen a la vez.
+  return {
+    position: center.clone().add(new Vector3(0, 1.85, 0.7)),
+    target: center.clone().add(new Vector3(0, 0.06, 0)),
+    up: CAMERA_WORLD_UP.clone(),
+  };
+}
+
+/**
+ * Vista de grupo: encuadra todos los cuerpos en su pose final, desde arriba y
+ * en ángulo de mesa, sin acercarse tanto como para dejar fuera los del borde.
  */
 function groupView(trajectories: DiceTrajectory[]): CameraView {
   const finals = trajectories.map((trajectory) => {
-    const last = trajectory.frames[trajectory.frames.length - 1]!;
+    const last = finalFrame(trajectory);
     return new Vector3(last.p[0], last.p[1], last.p[2]);
   });
 
-  // Centro de la caja envolvente, no la media: un dado desplazado no debe
-  // arrastrar el encuadre y dejar a los demás fuera.
   const bounds = finals.reduce(
     (box, final) => {
       box.min.x = Math.min(box.min.x, final.x);
@@ -402,19 +526,27 @@ function groupView(trajectories: DiceTrajectory[]): CameraView {
 }
 
 /* ------------------------------------------------------------------------- */
-/* Un dado                                                                    */
+/* Un cuerpo                                                                  */
 /* ------------------------------------------------------------------------- */
 
 function Die({
   trajectory,
   elapsed,
   skin,
-  shared,
+  resource,
+  edgeGeometry,
+  shadowTexture,
+  poolTexture,
+  restY,
 }: {
   trajectory: DiceTrajectory;
   elapsed: { current: number };
   skin: DiceSkin;
-  shared: SharedResources;
+  resource: DieResource;
+  edgeGeometry: BufferGeometry;
+  shadowTexture: CanvasTexture;
+  poolTexture: CanvasTexture;
+  restY: number;
 }) {
   const group = useRef<Group>(null);
   const shadow = useRef<Mesh>(null);
@@ -423,20 +555,14 @@ function Die({
   const poolMaterial = useRef<MeshBasicMaterial>(null);
   const ring = useRef<Mesh>(null);
   const ringMaterial = useRef<MeshBasicMaterial>(null);
-  const dieMaterial = useRef<MeshStandardMaterial>(null);
 
-  const material = useMemo(
-    () =>
-      new MeshStandardMaterial({
-        map: shared.atlas,
-        color: skin.materialColor,
-        roughness: skin.roughness,
-        metalness: skin.metalness,
-        emissive: new Color(skin.emissiveColor),
-        emissiveIntensity: 0,
-      }),
-    [shared.atlas, skin],
-  );
+  const material = useMemo(() => {
+    const clone = resource.material.clone();
+    clone.emissiveIntensity = 0;
+    return clone;
+  }, [resource.material]);
+
+  useEffect(() => () => material.dispose(), [material]);
   const lineMaterial = useMemo(
     () =>
       new LineBasicMaterial({
@@ -449,23 +575,23 @@ function Die({
   const floorMaterial = useMemo(
     () =>
       new MeshBasicMaterial({
-        map: shared.shadowTexture,
+        map: shadowTexture,
         transparent: true,
         depthWrite: false,
         opacity: 0.7,
       }),
-    [shared.shadowTexture],
+    [shadowTexture],
   );
   const contactMaterial = useMemo(
     () =>
       new MeshBasicMaterial({
-        map: shared.poolTexture,
+        map: poolTexture,
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,
         opacity: 0.2,
       }),
-    [shared.poolTexture],
+    [poolTexture],
   );
   const impactMaterial = useMemo(
     () =>
@@ -482,13 +608,12 @@ function Die({
 
   useEffect(
     () => () => {
-      material.dispose();
       lineMaterial.dispose();
       floorMaterial.dispose();
       contactMaterial.dispose();
       impactMaterial.dispose();
     },
-    [material, lineMaterial, floorMaterial, contactMaterial, impactMaterial],
+    [lineMaterial, floorMaterial, contactMaterial, impactMaterial],
   );
 
   useFrame((state) => {
@@ -496,6 +621,7 @@ function Die({
     const pose = sampleTrajectory(
       Math.min(elapsed.current, trajectory.durationMs),
       trajectory,
+      restY,
     );
     const current = group.current;
     if (current) {
@@ -503,12 +629,10 @@ function Die({
       current.quaternion.copy(pose.quaternion);
     }
 
-    if (dieMaterial.current) {
-      dieMaterial.current.emissiveIntensity = finished
-        ? skin.emissiveBoost +
-          Math.sin(state.clock.elapsedTime * 5) * skin.emissiveBoost * 0.16
-        : pose.glow * skin.emissiveBoost;
-    }
+    material.emissiveIntensity = finished
+      ? skin.emissiveBoost +
+        Math.sin(state.clock.elapsedTime * 5) * skin.emissiveBoost * 0.16
+      : pose.glow * skin.emissiveBoost;
     if (pool.current) {
       pool.current.position.set(pose.position.x, 0.001, pose.position.z);
     }
@@ -528,8 +652,8 @@ function Die({
   return (
     <>
       <group ref={group} scale={DIE_SCALE}>
-        <mesh geometry={shared.geometry} material={material} />
-        <lineSegments geometry={shared.edgeGeometry} material={lineMaterial} />
+        <mesh geometry={resource.geometry} material={material} />
+        <lineSegments geometry={edgeGeometry} material={lineMaterial} />
       </group>
 
       <mesh
@@ -566,37 +690,113 @@ function Die({
 }
 
 /* ------------------------------------------------------------------------- */
-/* Etiquetas de resultado para varios dados                                   */
+/* Etiquetas de resultado para varios cuerpos                                 */
 /* ------------------------------------------------------------------------- */
 
 function ResultLabels({
+  roll,
+  definition,
   trajectories,
   skin,
 }: {
+  roll: DiceRoll;
+  definition: DieDefinition;
   trajectories: DiceTrajectory[];
   skin: DiceSkin;
 }) {
-  const textures = useMemo(() => {
-    const map = new Map<number, CanvasTexture>();
-    for (const trajectory of trajectories) {
-      if (map.has(trajectory.face)) continue;
-      map.set(trajectory.face, createResultLabelTexture(trajectory.face, skin));
+  const labels = useMemo(() => {
+    const map = new Map<string, CanvasTexture>();
+    const ensure = (text: string): CanvasTexture => {
+      const existing = map.get(text);
+      if (existing) return existing;
+      const texture = createResultLabelTexture(text, skin);
+      map.set(text, texture);
+      return texture;
+    };
+
+    // En d100 los números de cada d10 ya están en sus caras; las etiquetas
+    // flotantes se reservan para el resultado combinado de cada pareja. En un
+    // d4 único se coloca una etiqueta pequeña sobre el vértice superior.
+    const vertexBadge =
+      definition.resultMode === "top-vertex" && trajectories.length === 1;
+    const entries =
+      roll.sides === 100 || vertexBadge
+        ? []
+        : trajectories.map((trajectory, index) => {
+            const text = labelTextFor(roll.sides, trajectory, index);
+            ensure(text);
+            return { text, trajectory, index };
+          });
+
+    const combined: Array<{ text: string; position: Vector3 }> = [];
+    if (roll.sides === 100) {
+      for (let index = 0; index < roll.count; index += 1) {
+        const tens = trajectories[index * 2];
+        const units = trajectories[index * 2 + 1];
+        if (!tens || !units) continue;
+        const a = finalFrame(tens).p;
+        const b = finalFrame(units).p;
+        combined.push({
+          text: String(roll.results[index] ?? roll.result),
+          position: new Vector3(
+            (a[0] + b[0]) / 2,
+            (a[1] + b[1]) / 2 + 0.78,
+            (a[2] + b[2]) / 2,
+          ),
+        });
+      }
     }
-    return map;
-  }, [trajectories, skin]);
+    for (const entry of combined) ensure(entry.text);
+
+    let vertexPosition: Vector3 | null = null;
+    if (vertexBadge) {
+      const last = finalFrame(trajectories[0]!);
+      const quaternion = new Quaternion(
+        last.q[0],
+        last.q[1],
+        last.q[2],
+        last.q[3],
+      );
+      const center = new Vector3(last.p[0], last.p[1], last.p[2]);
+      let top = center.clone();
+      let best = -Infinity;
+      for (const vertex of definition.vertices) {
+        const world = new Vector3(...vertex)
+          .applyQuaternion(quaternion)
+          .multiplyScalar(DIE_SCALE)
+          .add(center);
+        if (world.y > best) {
+          best = world.y;
+          top = world;
+        }
+      }
+      vertexPosition = top.add(new Vector3(0, 0.12, 0));
+      ensure(String(roll.result));
+    }
+
+    return { entries, combined, vertexPosition, textures: map };
+  }, [
+    definition,
+    roll.count,
+    roll.result,
+    roll.results,
+    roll.sides,
+    skin,
+    trajectories,
+  ]);
 
   useEffect(
     () => () => {
-      for (const texture of textures.values()) texture.dispose();
+      for (const texture of labels.textures.values()) texture.dispose();
     },
-    [textures],
+    [labels],
   );
 
   return (
     <>
-      {trajectories.map((trajectory, index) => {
-        const last = trajectory.frames[trajectory.frames.length - 1]!;
-        const texture = textures.get(trajectory.face);
+      {labels.entries.map(({ text, trajectory, index }) => {
+        const last = finalFrame(trajectory);
+        const texture = labels.textures.get(text);
         if (!texture) return null;
         return (
           <sprite
@@ -614,83 +814,44 @@ function ResultLabels({
           </sprite>
         );
       })}
+
+      {labels.vertexPosition ? (
+        <sprite position={labels.vertexPosition} scale={[0.14, 0.07, 1]}>
+          <spriteMaterial
+            map={labels.textures.get(String(roll.result))}
+            transparent
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </sprite>
+      ) : null}
+
+      {labels.combined.map((entry, index) => (
+        <sprite key={`combined-${index}`} position={entry.position} scale={[0.46, 0.23, 1]}>
+          <spriteMaterial
+            map={labels.textures.get(entry.text)}
+            transparent
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </sprite>
+      ))}
     </>
   );
 }
 
-function createResultLabelTexture(
-  number: number,
-  skin: DiceSkin,
-): CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 128;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("No se pudo crear la etiqueta del resultado");
-
-  const radius = 22;
-  context.beginPath();
-  context.roundRect(6, 6, 244, 116, radius);
-  context.fillStyle = skin.labelBackground;
-  context.fill();
-  context.lineWidth = 5;
-  context.strokeStyle = `#${skin.edgeColor.toString(16).padStart(6, "0")}`;
-  context.stroke();
-
-  context.fillStyle = skin.labelInk;
-  context.font =
-    '900 78px "Arial Black", "Liberation Sans", "DejaVu Sans", Arial, sans-serif';
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(String(number), 128, 68);
-
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  return texture;
-}
-
 /* ------------------------------------------------------------------------- */
-/* Construcción de mallas y texturas                                          */
+/* Texturas de sombra y contacto                                              */
 /* ------------------------------------------------------------------------- */
-
-function buildDieGeometry(): BufferGeometry {
-  const positions: number[] = [];
-  const uvs: number[] = [];
-
-  for (const face of D20_FACES) {
-    const tile = faceUv(face.number);
-    face.vertices.forEach((vertex, index) => {
-      positions.push(vertex.x, vertex.y, vertex.z);
-      const point = tile[index];
-      if (point) uvs.push(point[0], point[1]);
-    });
-  }
-
-  const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
-  geometry.computeVertexNormals();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
-function buildEdgeGeometry(): BufferGeometry {
-  const positions: number[] = [];
-  for (const [a, b] of D20_EDGES) {
-    positions.push(a.x * 1.003, a.y * 1.003, a.z * 1.003);
-    positions.push(b.x * 1.003, b.y * 1.003, b.z * 1.003);
-  }
-  const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
-  return geometry;
-}
 
 function createContactPoolTexture(): CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
   canvas.height = 256;
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("No se pudo crear la luz de contacto del d20");
+  if (!context) throw new Error("No se pudo crear la luz de contacto");
 
   const gradient = context.createRadialGradient(128, 128, 4, 128, 128, 126);
   gradient.addColorStop(0, "rgba(212, 167, 44, 0.95)");
@@ -710,7 +871,7 @@ function createShadowTexture(): CanvasTexture {
   canvas.width = 128;
   canvas.height = 128;
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("No se pudo crear la sombra del d20");
+  if (!context) throw new Error("No se pudo crear la sombra");
 
   const gradient = context.createRadialGradient(64, 64, 2, 64, 64, 63);
   gradient.addColorStop(0, "rgba(0, 0, 0, 0.82)");

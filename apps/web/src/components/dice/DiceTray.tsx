@@ -15,6 +15,7 @@ import { usePlayerStore } from "../../store/usePlayerStore";
 import { useLiveStore } from "../../store/useLiveStore";
 import { useDiceSkinStore } from "../../store/useDiceSkinStore";
 import { DRAG_THRESHOLD_PX, throwFromDrag } from "../../lib/diceThrow";
+import { uniformBounces } from "../../lib/dice3d/roll";
 import {
   DICE_SKINS,
   DICE_SKIN_ORDER,
@@ -43,9 +44,9 @@ function breakdown(roll: DiceRoll): string {
 }
 
 function bouncesLabel(roll: DiceRoll | null): string | null {
-  if (!roll || roll.sides !== 20 || roll.count !== 1) return null;
-  const bounces = roll.trajectory?.bounces;
-  if (bounces === undefined || bounces < 1) return null;
+  if (!roll) return null;
+  const bounces = uniformBounces(roll);
+  if (bounces === null || bounces < 1) return null;
   return `${bounces} rebote${bounces === 1 ? "" : "s"}`;
 }
 
