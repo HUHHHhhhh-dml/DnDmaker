@@ -249,11 +249,14 @@ la mesa conectada recibe un pop de 5 segundos con el dado, el resultado y quién
 lo tiró; las últimas 5 tiradas quedan en un log efímero del cliente. El DM tiene
 la misma bandeja en el panel lateral de **Mesa**.
 
-La lista **Aspecto** cambia la skin del dado 3D y de la bandeja. Hay cinco:
+La lista **Aspecto** cambia la skin del dado 3D y de la bandeja. Hay seis:
 **Hueso** (clara), **Negra** (cuerpo oscuro con números marfil), **Ámbar**
-(resina cálida), **Jade** (verde profundo con números menta) y **Carmesí**
-(vino con números crema y acentos cobre). Se guarda en el navegador y se aplica
-también al primer plano del resultado y a las etiquetas de multi-dado.
+(resina cálida), **Jade** (verde profundo con números menta), **Carmesí**
+(vino con números crema y acentos cobre) y **Volcánica** (basalto oscuro con
+grietas de lava incandescente). Se guarda en el navegador y se aplica también al
+primer plano del resultado y a las etiquetas de multi-dado. Las grietas de la
+volcánica son procedurales y usan el atlas como mapa emisivo, así que brillan
+sin necesidad de animación.
 
 El botón de **altavoz** de la cabecera de dados activa o silencia los sonidos.
 Son sintetizados con Web Audio (sin ficheros): un roce al lanzar y un chasquido

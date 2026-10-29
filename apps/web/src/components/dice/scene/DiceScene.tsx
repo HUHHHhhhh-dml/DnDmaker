@@ -227,9 +227,15 @@ function useDiceResources(
         color: skin.materialColor,
         roughness: skin.roughness,
         metalness: skin.metalness,
-        emissive: new Color(skin.emissiveColor),
+        emissive: new Color(
+          skin.emissiveFromAtlas ? 0xffffff : skin.emissiveColor,
+        ),
         emissiveIntensity: 0,
       });
+      if (skin.emissiveFromAtlas) {
+        material.emissiveMap = atlas.texture;
+        material.needsUpdate = true;
+      }
       map.set(mode, { atlas: atlas.texture, geometry, material });
     }
     return map;

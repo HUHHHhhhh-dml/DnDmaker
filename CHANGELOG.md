@@ -1,5 +1,20 @@
 # Changelog
 
+## Fase 4E+ — skin Volcánica (2026-10-29)
+
+### Añadido
+
+- **Skin Volcánica**: basalto oscuro con grietas de lava procedurales, brasas y
+  vetas incandescentes. El patrón se genera por cara en el atlas (determinista,
+  sin imágenes) y el propio atlas se usa como `emissiveMap`, de modo que las
+  grietas y los números brillan de forma estática.
+- **Contorno de tinta** opcional para números sobre texturas complejas; la
+  volcánica lo usa para mantener el número legible sobre las grietas.
+- La bandeja se tiñe de basalto y naranja lava; el selector **Aspecto** pasa a
+  seis opciones y la elección sigue persistiendo.
+- Tests de contraste, patrón de lava, `emissiveFromAtlas`, contorno y lista
+  estable de seis skins.
+
 ## Fase 4E+ — skins Ámbar, Jade y Carmesí (2026-10-29)
 
 ### Añadido

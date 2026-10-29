@@ -12,7 +12,8 @@ export type DiceSkinId =
   | "obsidian"
   | "amber"
   | "jade"
-  | "crimson";
+  | "crimson"
+  | "volcanic";
 
 export interface DiceSkin {
   id: DiceSkinId;
@@ -32,6 +33,12 @@ export interface DiceSkin {
   /** Etiqueta flotante del resultado en tiradas múltiples. */
   labelBackground: string;
   labelInk: string;
+  /** Patrón procedural del atlas; `lava` pinta grietas incandescentes. */
+  pattern?: "plain" | "lava";
+  /** Contorno oscuro bajo el número para que se lea sobre texturas. */
+  inkOutline?: string;
+  /** Usa el propio atlas como mapa emisivo (grietas que brillan). */
+  emissiveFromAtlas?: boolean;
 }
 
 export const DICE_SKIN_ORDER: readonly DiceSkinId[] = [
@@ -40,6 +47,7 @@ export const DICE_SKIN_ORDER: readonly DiceSkinId[] = [
   "amber",
   "jade",
   "crimson",
+  "volcanic",
 ];
 
 export const DEFAULT_DICE_SKIN: DiceSkinId = "bone";
@@ -119,6 +127,24 @@ export const DICE_SKINS: Record<DiceSkinId, DiceSkin> = {
     emissiveBoost: 0.05,
     labelBackground: "#24070a",
     labelInk: "#ffe2c4",
+  },
+  volcanic: {
+    id: "volcanic",
+    label: "Volcánica",
+    faceBackground: "#171311",
+    faceInk: "#ffe6c2",
+    materialColor: 0xffffff,
+    roughness: 0.78,
+    metalness: 0.08,
+    edgeColor: 0xff6a1f,
+    edgeOpacity: 0.8,
+    emissiveColor: 0xffffff,
+    emissiveBoost: 0.45,
+    labelBackground: "#120b08",
+    labelInk: "#ffd9a0",
+    pattern: "lava",
+    inkOutline: "rgba(8, 4, 2, 0.85)",
+    emissiveFromAtlas: true,
   },
 };
 

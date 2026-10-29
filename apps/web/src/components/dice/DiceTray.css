@@ -666,3 +666,64 @@
   background: rgba(232, 160, 90, 0.14);
   color: #ffe2c4;
 }
+
+/* Volcánica: basalto oscuro con vetas de lava incandescente. */
+.dice-tray.is-skin-volcanic .dice-main {
+  border-color: #5a2a12;
+  background:
+    radial-gradient(circle at 52% 68%, rgba(255, 106, 31, 0.22), transparent 58%),
+    linear-gradient(180deg, #1d1714, #0b0806);
+}
+
+.dice-tray.is-skin-volcanic .dice-main:hover:not(:disabled),
+.dice-tray.is-skin-volcanic .dice-main.is-dragging {
+  border-color: #ff7a2f;
+  background:
+    radial-gradient(circle at 52% 68%, rgba(255, 106, 31, 0.34), transparent 60%),
+    linear-gradient(180deg, #261d18, #0e0a08);
+}
+
+.dice-tray.is-skin-volcanic .dice-main-icon {
+  color: #ff8a3c;
+  filter: drop-shadow(0 0 13px rgba(255, 106, 31, 0.42));
+}
+
+.dice-tray.is-skin-volcanic .dice-main-label {
+  color: #ff9a4d;
+}
+
+.dice-tray.is-skin-volcanic .dice-main-result {
+  color: #ffd0a0;
+}
+
+.dice-tray.is-skin-volcanic .dice-choice {
+  border-color: #3a2418;
+  background: #120d0a;
+  color: #d9b9a2;
+}
+
+.dice-tray.is-skin-volcanic .dice-choice:hover:not(:disabled) {
+  border-color: #5a2a12;
+  color: #ffd9b0;
+}
+
+.dice-tray.is-skin-volcanic .dice-choice.is-active {
+  border-color: #ff7a2f;
+  background: rgba(255, 122, 47, 0.16);
+  color: #ffd9b0;
+}
+
+.dice-tray.is-skin-volcanic .dice-log-result {
+  color: #ff8a3c;
+}
+
+.dice-tray.is-skin-volcanic .dice-log-row {
+  border-color: #33221a;
+  background: #120d0a;
+}
+
+.dice-tray.is-skin-volcanic .dice-sound-toggle.is-on {
+  border-color: #ff7a2f;
+  background: rgba(255, 122, 47, 0.16);
+  color: #ffd9b0;
+}

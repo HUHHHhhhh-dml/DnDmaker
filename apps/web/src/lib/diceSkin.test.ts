@@ -46,7 +46,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe("skins de los dados", () => {
-  it("hay hueso por defecto y una lista estable de cinco skins", () => {
+  it("hay hueso por defecto y una lista estable de seis skins", () => {
     expect(DEFAULT_DICE_SKIN).toBe("bone");
     expect(DICE_SKIN_ORDER).toEqual([
       "bone",
@@ -54,6 +54,7 @@ describe("skins de los dados", () => {
       "amber",
       "jade",
       "crimson",
+      "volcanic",
     ]);
     expect(Object.keys(DICE_SKINS).sort()).toEqual([
       "amber",
@@ -61,17 +62,19 @@ describe("skins de los dados", () => {
       "crimson",
       "jade",
       "obsidian",
+      "volcanic",
     ]);
     expect(DICE_SKINS.bone.label).toBe("Hueso");
     expect(DICE_SKINS.obsidian.label).toBe("Negra");
     expect(DICE_SKINS.amber.label).toBe("Ámbar");
     expect(DICE_SKINS.jade.label).toBe("Jade");
     expect(DICE_SKINS.crimson.label).toBe("Carmesí");
+    expect(DICE_SKINS.volcanic.label).toBe("Volcánica");
 
     for (const skin of Object.values(DICE_SKINS)) {
       expect(skin.id).toBe(DICE_SKIN_ORDER.find((id) => DICE_SKINS[id] === skin));
     }
-    expect(new Set(Object.values(DICE_SKINS).map((skin) => skin.faceBackground)).size).toBe(5);
+    expect(new Set(Object.values(DICE_SKINS).map((skin) => skin.faceBackground)).size).toBe(6);
   });
 
   it("los números se leen con contraste alto en todas las skins", () => {
@@ -86,6 +89,17 @@ describe("skins de los dados", () => {
     // La negra es de cuerpo oscuro y números claros, no al revés.
     expect(luminance(DICE_SKINS.obsidian.faceBackground)).toBeLessThan(0.05);
     expect(luminance(DICE_SKINS.obsidian.faceInk)).toBeGreaterThan(0.5);
+    expect(luminance(DICE_SKINS.volcanic.faceBackground)).toBeLessThan(0.05);
+    expect(luminance(DICE_SKINS.volcanic.faceInk)).toBeGreaterThan(0.5);
+  });
+
+  it("la volcánica usa patrón de lava y brillo desde el atlas", () => {
+    const skin = DICE_SKINS.volcanic;
+    expect(skin.pattern).toBe("lava");
+    expect(skin.emissiveFromAtlas).toBe(true);
+    expect(skin.inkOutline).toBeTruthy();
+    expect(skin.edgeColor).toBe(0xff6a1f);
+    expect(skin.emissiveBoost).toBeGreaterThan(0.3);
   });
 
   it("parsea ids válidos y cae al valor por defecto con basura", () => {
@@ -94,6 +108,7 @@ describe("skins de los dados", () => {
     expect(parseDiceSkin("amber")).toBe("amber");
     expect(parseDiceSkin("jade")).toBe("jade");
     expect(parseDiceSkin("crimson")).toBe("crimson");
+    expect(parseDiceSkin("volcanic")).toBe("volcanic");
     expect(parseDiceSkin("negra")).toBe("bone");
     expect(parseDiceSkin("")).toBe("bone");
     expect(parseDiceSkin(null)).toBe("bone");
@@ -103,6 +118,7 @@ describe("skins de los dados", () => {
     expect(isDiceSkinId("amber")).toBe(true);
     expect(isDiceSkinId("jade")).toBe(true);
     expect(isDiceSkinId("crimson")).toBe(true);
+    expect(isDiceSkinId("volcanic")).toBe(true);
     expect(isDiceSkinId("gold")).toBe(false);
     expect(isDiceSkinId(42)).toBe(false);
   });
