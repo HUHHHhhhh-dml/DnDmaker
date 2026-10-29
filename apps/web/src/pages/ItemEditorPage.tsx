@@ -156,23 +156,19 @@ export function ItemEditorPage() {
     ) as Partial<Stats>;
     return {
       name: draft.name.trim(),
-      code: draft.code.trim() || undefined,
-      description: draft.description.trim() || undefined,
+      // Enviamos cadenas vacías/arrays vacíos en vez de `undefined` para que
+      // el PATCH del servidor pueda limpiar campos opcionales existentes.
+      code: draft.code.trim(),
+      description: draft.description.trim(),
       slot: draft.slot,
-      rarity: draft.rarity.trim() || undefined,
+      rarity: draft.rarity.trim(),
       unlocked: draft.unlocked,
-      image: draft.image,
-      stats: Object.keys(cleanStats).length > 0 ? cleanStats : undefined,
-      effects: draft.effects.length > 0 ? draft.effects : undefined,
-      startCombatEffects:
-        draft.startCombatEffects.length > 0
-          ? draft.startCombatEffects
-          : undefined,
-      uses: draft.slot === "utility" ? draft.uses : undefined,
-      useEffect:
-        draft.slot === "utility" && draft.useEffect.length > 0
-          ? draft.useEffect
-          : undefined,
+      image: draft.image ?? "",
+      stats: cleanStats,
+      effects: draft.effects,
+      startCombatEffects: draft.startCombatEffects,
+      uses: draft.slot === "utility" ? (draft.uses ?? 0) : 0,
+      useEffect: draft.slot === "utility" ? draft.useEffect : [],
       tags: draft.tags
         .split(",")
         .map((tag) => tag.trim())

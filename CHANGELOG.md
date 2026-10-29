@@ -18,6 +18,13 @@
 - Test de snapshot que comprueba que un mismo efecto puede existir como pasivo
   (1 stack permanente) y como activo (3 stacks consumibles).
 
+### Corregido
+
+- El editor de objetos ahora envía arrays vacíos (`effects`, `startCombatEffects`,
+  `useEffect`) en lugar de omitirlos, y limpia también campos de texto/imagen
+  vacíos. Antes, al quitar el último efecto de un objeto y guardar, el PATCH
+  conservaba el array anterior y el efecto reaparecía.
+
 ## Efectos aplicados al rival (2026-10-28)
 
 ### Añadido

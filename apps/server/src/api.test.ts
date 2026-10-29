@@ -213,6 +213,33 @@ describe("Fase 1 — API", () => {
     expect(updated.skills[0]).not.toBeNull();
   });
 
+  it("permite limpiar los efectos de un objeto con arrays vacíos", async () => {
+    const campaign = (
+      await app.inject({ method: "GET", url: `/api/campaigns/${campaignId}` })
+    ).json() as Campaign;
+    const item = campaign.content.items[0]!;
+    expect(item.effects?.length).toBeGreaterThan(0);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/content/items/${item.id}`,
+      payload: { effects: [], startCombatEffects: [] },
+    });
+    expect(response.statusCode).toBe(200);
+    const updated = response.json() as {
+      effects?: unknown[];
+      startCombatEffects?: unknown[];
+    };
+    expect(updated.effects).toEqual([]);
+    expect(updated.startCombatEffects).toEqual([]);
+
+    const persisted = (
+      await app.inject({ method: "GET", url: `/api/campaigns/${campaignId}` })
+    ).json() as Campaign;
+    expect(persisted.content.items[0]?.effects).toEqual([]);
+    expect(persisted.content.items[0]?.startCombatEffects).toEqual([]);
+  });
+
   it("rechaza reglas de campaña incoherentes con 422", async () => {
     const response = await app.inject({
       method: "PATCH",
