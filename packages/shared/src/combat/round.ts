@@ -157,14 +157,18 @@ export function resolveRound(
     unitId: Id,
     when: EffectTrigger,
     depth = 0,
+    targetId?: Id,
   ): void => {
     if (depth > MAX_TRIGGER_DEPTH) return;
     const unit = current(unitId);
     if (!unit) return;
 
+    // El rival del trigger permite acciones `applyEffect.target: "opponent"`.
     for (const group of collectTriggers(unit, when, content)) {
       const latest = current(unitId);
       if (!latest) break;
+      const triggerTarget =
+        targetId && targetId !== unitId ? current(targetId) : undefined;
       const result = executeEffectActions(
         latest,
         group.trigger.actions,
@@ -174,15 +178,25 @@ export function resolveRound(
           effectId: group.effect.effectId,
           actorId: group.effect.sourceId ?? unitId,
         },
+        triggerTarget,
       );
       setUnit(result.unit);
+      if (result.target) setUnit(result.target);
       for (const event of result.events) emit(event);
-      if (result.events.some((event) => event.type === "defeated")) {
-        defeatedAnnounced.add(unitId);
+      for (const event of result.events) {
+        if (event.type === "defeated" && event.targetId) {
+          defeatedAnnounced.add(event.targetId);
+        }
       }
       if (result.damageApplied) runTriggers(unitId, "onTakeDamage", depth + 1);
       const after = current(unitId);
       if (after && after.hpCurrent <= 0) markDefeated(unitId, depth + 1);
+      if (result.target) {
+        const afterTarget = current(result.target.id);
+        if (afterTarget && afterTarget.hpCurrent <= 0) {
+          markDefeated(result.target.id, depth + 1);
+        }
+      }
     }
   };
 
@@ -214,8 +228,25 @@ export function resolveRound(
         ...source,
       },
     });
-    runTriggers(targetId, "onTakeDamage", 0);
+    // Solo un atacante enemigo cuenta como rival del daño: el autodaño o el
+    // fuego amigo no deben disparar acciones dirigidas al rival.
+    const sourceUnit = source.actorId ? current(source.actorId) : undefined;
+    const rivalId =
+      sourceUnit && sourceUnit.team !== target.team
+        ? sourceUnit.id
+        : undefined;
+
+    runTriggers(targetId, "onTakeDamage", 0, rivalId);
     if (hpAfter <= 0) markDefeated(targetId);
+
+    // El atacante golpea: sus efectos con `Al golpear` reciben al rival como
+    // objetivo del trigger.
+    if (rivalId) {
+      const attacker = current(rivalId);
+      if (attacker && alive(attacker)) {
+        runTriggers(rivalId, "onDealDamage", 0, targetId);
+      }
+    }
   };
 
   const applySkillEffects = (
@@ -325,11 +356,19 @@ export function resolveRound(
     const attackerNow = current(attacker.id);
     const defenderNow = current(defender.id);
     if (result.winner === "attacker") {
-      if (attackerNow) runTriggers(attacker.id, "onClashWin", 0);
-      if (defenderNow) runTriggers(defender.id, "onClashLose", 0);
+      if (attackerNow) {
+        runTriggers(attacker.id, "onClashWin", 0, defender.id);
+      }
+      if (defenderNow) {
+        runTriggers(defender.id, "onClashLose", 0, attacker.id);
+      }
     } else if (result.winner === "defender") {
-      if (defenderNow) runTriggers(defender.id, "onClashWin", 0);
-      if (attackerNow) runTriggers(attacker.id, "onClashLose", 0);
+      if (defenderNow) {
+        runTriggers(defender.id, "onClashWin", 0, attacker.id);
+      }
+      if (attackerNow) {
+        runTriggers(attacker.id, "onClashLose", 0, defender.id);
+      }
     }
   };
 
@@ -439,7 +478,12 @@ export function resolveRound(
           defeatedAnnounced.add(target.id);
         }
         if (result.damageApplied) {
-          runTriggers(target.id, "onTakeDamage", 0);
+          runTriggers(
+            target.id,
+            "onTakeDamage",
+            0,
+            caster.team !== target.team ? caster.id : undefined,
+          );
         }
         const after = current(target.id);
         if (after && after.hpCurrent <= 0) markDefeated(target.id);
@@ -525,7 +569,12 @@ export function resolveRound(
         defeatedAnnounced.add(target.id);
       }
       if (result.damageApplied) {
-        runTriggers(target.id, "onTakeDamage", 0);
+        runTriggers(
+          target.id,
+          "onTakeDamage",
+          0,
+          caster.team !== target.team ? caster.id : undefined,
+        );
       }
       const after = current(target.id);
       if (after && after.hpCurrent <= 0) markDefeated(target.id);
@@ -581,7 +630,13 @@ export function resolveRound(
       : undefined;
     if (!skill || !target || !alive(target)) return;
 
-    runTriggers(attacker.id, "onUseSkill", 0);
+    // Solo un objetivo enemigo cuenta como rival para los efectos dirigidos.
+    runTriggers(
+      attacker.id,
+      "onUseSkill",
+      0,
+      target.team !== attacker.team ? target.id : undefined,
+    );
     const attackerNow = current(attacker.id);
     if (!attackerNow || !alive(attackerNow)) {
       markAllResolved(attacker.id);
@@ -605,7 +660,7 @@ export function resolveRound(
         },
       });
 
-      runTriggers(redirect.unit.id, "onUseSkill", 0);
+      runTriggers(redirect.unit.id, "onUseSkill", 0, attacker.id);
       const redirectorNow = current(redirect.unit.id);
       if (redirectorNow && alive(redirectorNow)) {
         resolveClashBetween(
@@ -626,7 +681,7 @@ export function resolveRound(
     );
     if (defenderEntry) {
       defenderEntry.resolved = true;
-      runTriggers(target.id, "onUseSkill", 0);
+      runTriggers(target.id, "onUseSkill", 0, attacker.id);
       const defenderNow = current(target.id);
       // Si el propio Bleed/trigger la mata antes del clash, el ataque se
       // pierde: no hay un objetivo vivo al que golpear.

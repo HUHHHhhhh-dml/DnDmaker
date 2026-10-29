@@ -58,6 +58,7 @@ export type EffectTrigger =
   | "roundStart"
   | "roundEnd"
   | "onUseSkill"
+  | "onDealDamage"
   | "onTakeDamage"
   | "onClashWin"
   | "onClashLose"
@@ -85,10 +86,18 @@ export interface EffectActionModifyStat {
   perStack?: number;
 }
 
+export type EffectActionTarget = "self" | "opponent";
+
 export interface EffectActionApplyEffect {
   type: "applyEffect";
   effectId: Id;
   stacks?: number;
+  /**
+   * A quién se aplica: al portador del efecto (default) o al rival del
+   * trigger. `opponent` solo tiene efecto en triggers con un rival asociado
+   * (al golpear, al ganar/perder clash, al usar skill o al recibir daño).
+   */
+  target?: EffectActionTarget;
 }
 
 export interface EffectActionConsumeStacks {

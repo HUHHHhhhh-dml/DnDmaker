@@ -57,6 +57,7 @@ export type EffectTrigger =
   | "roundStart"
   | "roundEnd"
   | "onUseSkill"
+  | "onDealDamage"
   | "onTakeDamage"
   | "onClashWin"
   | "onClashLose"
@@ -90,6 +91,8 @@ export interface EffectActionApplyEffect {
   type: "applyEffect";
   effectId: Id;
   stacks?: number;
+  /** `self` (default) o `opponent`, si el trigger tiene un rival. */
+  target?: "self" | "opponent";
 }
 
 export interface EffectActionConsumeStacks {

@@ -350,11 +350,16 @@ export function collectTriggers(
 }
 
 /**
- * Ejecuta las acciones de un trigger sobre la propia unidad.
+ * Ejecuta las acciones de un trigger sobre la propia unidad y, opcionalmente,
+ * sobre el rival del trigger.
  *
  * `modifyStat` no se aplica aquí: `effectiveStats` lo calcula de forma
  * continua mientras el efecto exista. Así Protection/Haste no se acumulan una
  * vez por ronda ni hace falta revertir deltas al caducar.
+ *
+ * Solo `applyEffect` admite `target: "opponent"`; el resto de acciones siguen
+ * afectando al portador. Si no hay rival asociado, las acciones al rival se
+ * ignoran.
  */
 export function executeEffectActions(
   unit: CombatUnit,
@@ -362,8 +367,13 @@ export function executeEffectActions(
   stacks: number,
   context: EffectContext,
   source: ActionSource = {},
+  targetUnit?: CombatUnit,
 ): EffectResult {
   let current = refreshUnitStats(unit, context);
+  let targetCurrent =
+    targetUnit && targetUnit.id !== unit.id
+      ? refreshUnitStats(targetUnit, context)
+      : undefined;
   const events: EngineEvent[] = [];
   let damageApplied = false;
 
@@ -431,14 +441,19 @@ export function executeEffectActions(
         data: { amount: hpAfter - hpBefore, hpBefore, hpAfter, ...source },
       });
     } else if (action.type === "applyEffect") {
+      const applyToOpponent = action.target === "opponent";
+      const destination = applyToOpponent ? targetCurrent : current;
+      // Sin rival asociado al trigger, una acción al rival no tiene destino.
+      if (!destination || (applyToOpponent && destination.defeated)) continue;
       const applied = applyEffect(
-        current,
+        destination,
         action.effectId,
         action.stacks ?? 1,
         context,
         source.actorId ?? source.effectId,
       );
-      current = applied.unit;
+      if (applyToOpponent) targetCurrent = applied.unit;
+      else current = applied.unit;
       events.push(...applied.events);
     } else if (action.type === "consumeStacks") {
       const effectId = source.effectId ?? source.specialId;
@@ -450,7 +465,13 @@ export function executeEffectActions(
   }
 
   current = refreshUnitStats(current, context);
-  return { unit: current, events, damageApplied };
+  if (targetCurrent) targetCurrent = refreshUnitStats(targetCurrent, context);
+  return {
+    unit: current,
+    ...(targetCurrent ? { target: targetCurrent } : {}),
+    events,
+    damageApplied,
+  };
 }
 
 function characterFor(unit: CombatUnit): Character {

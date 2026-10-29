@@ -46,6 +46,37 @@ describe("validación de contenido", () => {
     expect(result.issues.some((i) => i.path.includes(".effects"))).toBe(true);
   });
 
+  it("avisa si se aplica un efecto al rival en un trigger sin rival", () => {
+    const content = cloneContent();
+    const base = content.effects[0]!;
+    content.effects.push({
+      ...base,
+      id: "eff_opponent_warning",
+      name: "Aviso",
+      triggers: [
+        {
+          when: "roundStart",
+          actions: [
+            {
+              type: "applyEffect",
+              effectId: base.id,
+              target: "opponent" as const,
+            },
+          ],
+        },
+      ],
+    });
+    const result = validateContent(content);
+    expect(result.valid).toBe(true);
+    expect(
+      result.issues.some(
+        (issue) =>
+          issue.severity === "warning" &&
+          issue.path.includes("triggers[0].actions[0]"),
+      ),
+    ).toBe(true);
+  });
+
   it("detecta IDs duplicados", () => {
     const content = cloneContent();
     content.items.push(structuredClone(content.items[0]!));

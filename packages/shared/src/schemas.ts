@@ -67,6 +67,7 @@ export const effectTriggerSchema = z.enum([
   "roundStart",
   "roundEnd",
   "onUseSkill",
+  "onDealDamage",
   "onTakeDamage",
   "onClashWin",
   "onClashLose",
@@ -126,6 +127,8 @@ export const effectActionSchema = z.discriminatedUnion("type", [
     type: z.literal("applyEffect"),
     effectId: idSchema,
     stacks: integer(1, 99).optional(),
+    /** `opponent` aplica al rival del trigger; ausente = portador. */
+    target: z.enum(["self", "opponent"]).optional(),
   }),
   z.object({
     type: z.literal("consumeStacks"),

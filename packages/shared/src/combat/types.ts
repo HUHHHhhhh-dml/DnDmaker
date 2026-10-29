@@ -78,6 +78,11 @@ export interface ActionSource {
 
 export interface EffectResult {
   unit: CombatUnit;
+  /**
+   * Unidad secundaria modificada por una acción con `target: "opponent"`.
+   * Solo aparece si el trigger tenía un rival asociado.
+   */
+  target?: CombatUnit;
   events: EngineEvent[];
   /** true si la ejecución hizo daño (para disparar onTakeDamage). */
   damageApplied: boolean;

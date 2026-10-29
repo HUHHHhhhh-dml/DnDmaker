@@ -187,6 +187,7 @@ export const EFFECT_TRIGGER_LABELS: Record<EffectTrigger, string> = {
   roundStart: "Inicio de ronda",
   roundEnd: "Fin de ronda",
   onUseSkill: "Al usar skill",
+  onDealDamage: "Al golpear",
   onTakeDamage: "Al recibir daño",
   onClashWin: "Al ganar clash",
   onClashLose: "Al perder clash",

@@ -344,7 +344,10 @@ export function EffectEditorPage() {
             <p className="mb-4 mt-2 text-[11px] text-ui-faint">
               Cada trigger escucha un momento del combate y ejecuta sus acciones. Para la
               ficha, los <code className="font-mono">modifyStat</code> se aplican como
-              pasivos mientras el efecto está activo.
+              pasivos mientras el efecto está activo. En «Aplicar efecto» puedes elegir
+              <strong> Rival</strong> para aplicar el efecto al enemigo; solo funciona en
+              triggers que tienen un rival (al golpear, al ganar/perder clash, al usar
+              skill o al recibir daño).
             </p>
 
             <div className="space-y-3">

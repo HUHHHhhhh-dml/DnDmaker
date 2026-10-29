@@ -985,6 +985,133 @@ describe("3B — estados, utilidad y dominios", () => {
     expect(winnerOf(deathResult.state)).toBe("players");
   });
 
+  it("aplica un efecto al rival con onDealDamage y target opponent", () => {
+    const mark = makeEffect("mark_on_hit", { triggers: [] });
+    const onDealDamage = makeEffect("on_deal_damage", {
+      triggers: [
+        {
+          when: "onDealDamage",
+          actions: [
+            {
+              type: "applyEffect",
+              effectId: mark.id,
+              stacks: 2,
+              target: "opponent",
+            },
+          ],
+        },
+      ],
+    });
+    const skill = makeSkill("skl_hit", {
+      baseClash: 10,
+      baseDamage: 10,
+      coinDamage: 0,
+    });
+    const content = makeContent({
+      skills: [skill],
+      effects: [mark, onDealDamage],
+    });
+
+    const attacker = makeUnit({
+      id: "attacker",
+      baseStats: { hpMax: 100, atk: 0 },
+      skills: [skill.id, null, null],
+      effects: [
+        {
+          effectId: onDealDamage.id,
+          stacks: 1,
+          passive: true,
+          sourceId: "itm_passive_test",
+        },
+      ],
+    });
+    const target = makeUnit({
+      id: "target",
+      team: "enemies",
+      baseStats: { hpMax: 100, def: 0 },
+      hpCurrent: 100,
+    });
+    const state = makeState([attacker, target], {
+      attacker: [
+        act("attacker", 1, { skillId: skill.id, targetId: target.id }),
+      ],
+    });
+
+    const result = resolveRound(state, state.actions, content, DEFAULT_RULES);
+    const marked = unitFromState(result.state, target.id);
+    expect(
+      marked.effects.find((effect) => effect.effectId === mark.id)?.stacks,
+    ).toBe(2);
+    expect(
+      result.events.some(
+        (event) =>
+          event.type === "effectApplied" && event.targetId === target.id,
+      ),
+    ).toBe(true);
+  });
+
+  it("aplica un efecto al rival con onClashWin y target opponent", () => {
+    const mark = makeEffect("mark_on_win", { triggers: [] });
+    const onWin = makeEffect("on_win_target", {
+      triggers: [
+        {
+          when: "onClashWin",
+          actions: [
+            {
+              type: "applyEffect",
+              effectId: mark.id,
+              stacks: 1,
+              target: "opponent",
+            },
+          ],
+        },
+      ],
+    });
+    const strong = makeSkill("skl_strong", {
+      baseClash: 9999,
+      baseDamage: 1,
+      coinDamage: 0,
+    });
+    const weak = makeSkill("skl_weak", {
+      baseClash: 0,
+      baseDamage: 1,
+      coinDamage: 0,
+    });
+    const content = makeContent({
+      skills: [strong, weak],
+      effects: [mark, onWin],
+    });
+
+    const a = makeUnit({
+      id: "a",
+      baseStats: { hpMax: 100, atk: 0 },
+      skills: [strong.id, null, null],
+      effects: [{ effectId: onWin.id, stacks: 1 }],
+    });
+    const b = makeUnit({
+      id: "b",
+      team: "enemies",
+      baseStats: { hpMax: 100, def: 0 },
+      skills: [weak.id, null, null],
+    });
+    const state = makeState([a, b], {
+      a: [act("a", 1, { skillId: strong.id, targetId: b.id })],
+      b: [act("b", 1, { skillId: weak.id, targetId: a.id })],
+    });
+
+    const result = resolveRound(state, state.actions, content, DEFAULT_RULES);
+    const marked = unitFromState(result.state, b.id);
+    expect(
+      marked.effects.find((effect) => effect.effectId === mark.id)?.stacks,
+    ).toBe(1);
+    expect(
+      result.events.some(
+        (event) =>
+          event.type === "effectApplied" && event.targetId === b.id,
+      ),
+    ).toBe(true);
+  });
+
   it("un dominio se aplica al equipo una sola vez por combate", () => {
     const domain = makeSpecial("spc_domain", {
       name: "Dominio",

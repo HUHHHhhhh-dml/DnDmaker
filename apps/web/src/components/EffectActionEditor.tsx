@@ -22,7 +22,7 @@ const ACTION_HINTS: Record<EffectAction["type"], string> = {
   damage: "Daño fijo + daño por stack.",
   heal: "Cura HP fijo + cura por stack.",
   modifyStat: "Modifica un stat mientras el efecto esté activo.",
-  applyEffect: "Aplica otro efecto a la unidad.",
+  applyEffect: "Aplica otro efecto al portador o al rival del trigger.",
   consumeStacks: "Resta stacks al efecto actual.",
 };
 
@@ -35,7 +35,12 @@ export function defaultAction(type: EffectAction["type"], effects: EffectDefinit
     case "modifyStat":
       return { type: "modifyStat", stat: "atk", mode: "flat", amount: 1, perStack: 0 };
     case "applyEffect":
-      return { type: "applyEffect", effectId: effects[0]?.id ?? "", stacks: 1 };
+      return {
+        type: "applyEffect",
+        effectId: effects[0]?.id ?? "",
+        stacks: 1,
+        target: "self",
+      };
     case "consumeStacks":
       return { type: "consumeStacks", amount: 1 };
   }
@@ -201,7 +206,7 @@ export function EffectActionEditor({
             ) : null}
 
             {action.type === "applyEffect" ? (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <Field
                   label="Efecto"
                   hint={effects.length === 0 ? "Crea primero algún efecto." : undefined}
@@ -226,6 +231,22 @@ export function EffectActionEditor({
                     min={1}
                     max={99}
                   />
+                </Field>
+                <Field
+                  label="Objetivo"
+                  hint="Rival solo funciona en triggers con un rival."
+                >
+                  <Select
+                    value={action.target ?? "self"}
+                    onValueChange={(value) =>
+                      update(index, {
+                        target: value as "self" | "opponent",
+                      })
+                    }
+                  >
+                    <option value="self">Portador</option>
+                    <option value="opponent">Rival</option>
+                  </Select>
                 </Field>
               </div>
             ) : null}

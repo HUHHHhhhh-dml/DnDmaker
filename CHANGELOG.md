@@ -1,5 +1,23 @@
 # Changelog
 
+## Efectos aplicados al rival (2026-10-28)
+
+### Añadido
+
+- Nuevo trigger **«Al golpear»** (`onDealDamage`): se dispara en el atacante
+  cuando su golpe causa daño, con el enemigo golpeado como rival del trigger.
+- **`applyEffect` con objetivo**: cada acción «Aplicar efecto» puede dirigirse
+  al **portador** (default) o al **rival** del trigger. Esto permite que un
+  objeto equipado aplique un efecto al enemigo al golpearlo.
+- Los triggers **`onClashWin`**, **`onClashLose`**, **`onUseSkill`** y
+  **`onTakeDamage`** también pasan su rival cuando existe, así que el selector
+  «Rival» funciona en todos ellos.
+- El editor de efectos añade el selector **Objetivo: Portador / Rival** y avisa
+  si se elige Rival en un trigger sin rival (`roundStart`, `roundEnd`,
+  `onDefeat`).
+- Tests de efecto pasivo de objeto aplicando al rival al golpear, al ganar
+  clash y de validación del aviso.
+
 ## Niveles, Soul Points y OVERCHARGED (2026-10-28)
 
 ### Añadido
