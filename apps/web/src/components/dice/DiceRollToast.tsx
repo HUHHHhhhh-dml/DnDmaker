@@ -79,6 +79,14 @@ export function DiceRollToast({ rolls }: { rolls: DiceRoll[] }) {
             {current.results.join(" + ")}
           </div>
         ) : null}
+        {current.count === 1 &&
+        current.trajectory &&
+        current.trajectory.bounces > 0 ? (
+          <div className="dice-toast-breakdown">
+            {current.trajectory.bounces} rebote
+            {current.trajectory.bounces === 1 ? "" : "s"} en la mesa
+          </div>
+        ) : null}
       </div>
       <div className="dice-toast-progress" aria-hidden="true" />
     </div>,

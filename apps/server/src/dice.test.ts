@@ -256,6 +256,92 @@ describe("Dados de mesa compartidos", () => {
     );
   });
 
+  it("el gesto pide rebotes y la simulación los clava", async () => {
+    const fixture = await makeFixture();
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/sessions/${fixture.sessionCode}/dice`,
+      headers: withToken(fixture.playerToken),
+      payload: {
+        sides: 20,
+        throw: {
+          velocity: [3.2, -3, 0],
+          angular: [0, 5, 1],
+          start: [-1.35, 0],
+          bounces: 4,
+        },
+      },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const dice = response.json() as DiceRoll;
+    expect(dice.trajectory).toBeDefined();
+    expect(dice.trajectory!.bounces).toBe(4);
+    expect(dice.trajectory!.impacts).toHaveLength(5);
+    expect(dice.result).toBe(dice.trajectory!.face);
+  });
+
+  it("rechaza bounces fuera de 1..4", async () => {
+    const fixture = await makeFixture();
+    for (const bounces of [0, 5, 1.5]) {
+      const response = await app.inject({
+        method: "POST",
+        url: `/api/sessions/${fixture.sessionCode}/dice`,
+        headers: withToken(fixture.playerToken),
+        payload: { sides: 20, throw: { bounces } },
+      });
+      expect(response.statusCode, response.body).toBe(400);
+      expect(
+        (response.json() as { error?: { code?: string } }).error?.code,
+      ).toBe("invalid_payload");
+    }
+  });
+
+  it("tira varios d20 en la misma mesa con trayectorias y suma", async () => {
+    const fixture = await makeFixture();
+    const before = Date.now();
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/sessions/${fixture.sessionCode}/dice`,
+      headers: withToken(fixture.playerToken),
+      payload: { sides: 20, count: 4 },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const dice = response.json() as DiceRoll;
+    const elapsed = Date.now() - before;
+    expect(dice.count).toBe(4);
+    expect(dice.results).toHaveLength(4);
+    expect(dice.result).toBe(
+      dice.results.reduce((sum, value) => sum + value, 0),
+    );
+    expect(dice.trajectory).toBeUndefined();
+    expect(dice.trajectories).toHaveLength(4);
+    expect(dice.trajectories!.map((trajectory) => trajectory.face)).toEqual(
+      dice.results,
+    );
+    for (const trajectory of dice.trajectories!) {
+      expect(trajectory.frames.length).toBeGreaterThan(10);
+      expect(trajectory.durationMs).toBeGreaterThan(500);
+    }
+    // La simulación de 4 dados debe seguir siendo interactiva en local.
+    expect(elapsed).toBeLessThan(5_000);
+  });
+
+  it("por encima del techo físico cae al pop, sin trayectorias", async () => {
+    const fixture = await makeFixture();
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/sessions/${fixture.sessionCode}/dice`,
+      headers: withToken(fixture.playerToken),
+      payload: { sides: 20, count: 13 },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    const dice = response.json() as DiceRoll;
+    expect(dice.count).toBe(13);
+    expect(dice.results).toHaveLength(13);
+    expect(dice.trajectory).toBeUndefined();
+    expect(dice.trajectories).toBeUndefined();
+  });
+
   it("aplica un cooldown por jugador", async () => {
     const fixture = await makeFixture();
     const first = await roll(fixture, fixture.playerToken, 20);
@@ -295,8 +381,16 @@ describe("Dados de mesa compartidos", () => {
         if (sides === 20 && index === 0) {
           expect(dice.trajectory).toBeDefined();
           expect(dice.result).toBe(dice.trajectory!.face);
+          expect(dice.trajectories).toBeUndefined();
+        } else if (sides === 20 && index + 1 <= 12) {
+          expect(dice.trajectory).toBeUndefined();
+          expect(dice.trajectories).toHaveLength(index + 1);
+          expect(dice.trajectories!.map((trajectory) => trajectory.face)).toEqual(
+            dice.results,
+          );
         } else {
           expect(dice.trajectory).toBeUndefined();
+          expect(dice.trajectories).toBeUndefined();
         }
       }
     }

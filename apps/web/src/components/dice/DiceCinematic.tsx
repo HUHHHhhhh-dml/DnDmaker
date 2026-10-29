@@ -12,23 +12,26 @@ import { createPortal } from "react-dom";
 import type { DiceRoll } from "@protocol-life/shared";
 import {
   disableD20Cinematic,
-  isSingleD20,
   markFailed,
   markLanded,
   registerCinematic,
   supportsD20Cinematic,
 } from "../../lib/diceCinematic";
+import { isPhysicalD20Roll } from "../../lib/dice3d/roll";
+import { useDiceSkinStore } from "../../store/useDiceSkinStore";
+import type { DiceSkinId } from "../../lib/diceSkin";
 import { DiceIcon } from "./DiceIcon";
 import "./DiceCinematic.css";
 
 /**
- * Overlay 3D de una tirada de d20.
+ * Overlay 3D de una tirada de d20 (uno o varios dados).
  *
  * - La escena 3D (three + fiber) se carga con `import()` en la primera tirada.
- * - La pantalla hace de mesa: el dado cae sobre la página, sin backdrop ni
- *   viñeta, y se queda posado unos instantes con la cara del resultado arriba.
- * - El resultado lo decide el servidor; aquí solo se elige la cara y se
- *   interpola la pose final.
+ * - La pantalla hace de mesa: los dados caen sobre la página, sin backdrop ni
+ *   viñeta, y se quedan posados con sus resultados. Con varios, la cámara
+ *   encuadra el grupo y cada dado lleva una etiqueta con su cara.
+ * - El resultado lo decide el servidor; aquí solo se reproducen las
+ *   trayectorias grabadas.
  * - Mientras la tirada está "retenida" por el overlay, el toast y la
  *   celebración la ignoran; al aterrizar se marcan y siguen su curso.
  * - Sin WebGL, con reduced-motion o si el chunk falla, todo cae al pop actual.
@@ -37,6 +40,7 @@ import "./DiceCinematic.css";
 type D20SceneComponent = ComponentType<{
   roll: DiceRoll;
   skipped: boolean;
+  skin?: DiceSkinId;
   onLanded: () => void;
   onError: () => void;
 }>;
@@ -57,6 +61,7 @@ function loadScene(): Promise<typeof import("./d20/D20Scene")> {
 }
 
 export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
+  const skin = useDiceSkinStore((state) => state.skin);
   const [capable, setCapable] = useState(false);
   const [current, setCurrent] = useState<DiceRoll | null>(null);
   const [Scene, setScene] = useState<D20SceneComponent | null>(null);
@@ -156,7 +161,7 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
   useEffect(() => {
     if (!capable || current || !supportsD20Cinematic()) return;
     const next = rolls.find(
-      (roll) => isSingleD20(roll) && !seenCinematicIds.has(roll.id),
+      (roll) => isPhysicalD20Roll(roll) && !seenCinematicIds.has(roll.id),
     );
     if (!next) return;
     seenCinematicIds.add(next.id);
@@ -240,6 +245,7 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
             <Scene
               roll={current}
               skipped={skipped}
+              skin={skin}
               onLanded={handleLanded}
               onError={handleSceneError}
             />
@@ -247,7 +253,10 @@ export function DiceCinematic({ rolls }: { rolls: DiceRoll[] }) {
         ) : (
           <div className="dice-cinematic-pending">
             <DiceIcon sides={20} size={64} />
-            <span>Preparando dado 3D…</span>
+            <span>
+              Preparando {current.count > 1 ? `${current.count} dados` : "dado"}{" "}
+              3D…
+            </span>
           </div>
         )}
       </div>

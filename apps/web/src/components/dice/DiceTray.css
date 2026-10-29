@@ -341,3 +341,106 @@
   letter-spacing: 0.02em;
   color: var(--ui-text-faint);
 }
+
+/* ------------------------------------------------------------------------- */
+/* Skin del dado: la bandeja acompaña al 3D                                   */
+/* ------------------------------------------------------------------------- */
+
+.dice-skin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-surface-2);
+  padding: 5px 7px;
+}
+
+.dice-skin-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-text-faint);
+}
+
+.dice-skin-select {
+  width: auto;
+  max-width: 130px;
+  padding: 4px 24px 4px 9px;
+  border-color: var(--ui-line-strong);
+  background-color: var(--ui-surface-3);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text);
+}
+
+.dice-skin-select:hover:not(:disabled) {
+  border-color: var(--ui-accent);
+}
+
+/* Hueso: el color de recompensa actual. */
+.dice-tray.is-skin-bone .dice-main-icon {
+  color: var(--ui-gold);
+}
+
+/* Negra: cuerpo oscuro y números marfil; la bandeja se tiñe para que el
+   cambio se note también fuera de la mesa 3D. */
+.dice-tray.is-skin-obsidian .dice-main {
+  border-color: #5a4a24;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(232, 197, 106, 0.16), transparent 62%),
+    linear-gradient(180deg, #1c1a20, #0d0c10);
+}
+
+.dice-tray.is-skin-obsidian .dice-main:hover:not(:disabled),
+.dice-tray.is-skin-obsidian .dice-main.is-dragging {
+  border-color: #e8c56a;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(232, 197, 106, 0.24), transparent 62%),
+    linear-gradient(180deg, #24212a, #100e14);
+}
+
+.dice-tray.is-skin-obsidian .dice-main-icon {
+  color: #f2e2b3;
+  filter: drop-shadow(0 0 12px rgba(242, 226, 179, 0.28));
+}
+
+.dice-tray.is-skin-obsidian .dice-main-label {
+  color: #e8c56a;
+}
+
+.dice-tray.is-skin-obsidian .dice-main-result {
+  color: #d8ccb0;
+}
+
+.dice-tray.is-skin-obsidian .dice-choice {
+  border-color: #3a3327;
+  background: #141217;
+  color: #bdb39c;
+}
+
+.dice-tray.is-skin-obsidian .dice-choice:hover:not(:disabled) {
+  border-color: #6a5830;
+  color: #f2e2b3;
+}
+
+.dice-tray.is-skin-obsidian .dice-choice.is-active {
+  border-color: #e8c56a;
+  background: rgba(232, 197, 106, 0.14);
+  color: #f6e7ba;
+}
+
+.dice-tray.is-skin-obsidian .dice-log-result {
+  color: #f2e2b3;
+}
+
+.dice-tray.is-skin-obsidian .dice-log-row {
+  border-color: #332d22;
+  background: #141217;
+}

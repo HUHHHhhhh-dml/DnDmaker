@@ -6,7 +6,7 @@ import {
   type DiceThrowInput,
   type DiceTrajectory,
 } from "@protocol-life/shared";
-import { simulateD20Throw } from "./dicePhysics";
+import { simulateD20Roll } from "./dicePhysics";
 import { HttpError } from "./repository";
 import type { SessionService } from "./sessions";
 
@@ -14,14 +14,23 @@ import type { SessionService } from "./sessions";
  * Dados de mesa (Fase 4E+).
  *
  * El servidor decide el resultado para que la tirada sea compartida y no
- * dependa del cliente. Para un d20 único, el resultado **sale de la simulación
- * física**: el servidor construye el dado, lo lanza, lo deja caer y la cara que
- * queda arriba es el número. La trayectoria grabada viaja con la tirada para
- * que todos los clientes reproduzcan la misma caída.
+ * dependa del cliente. Para cualquier cantidad de d20, los resultados **salen
+ * de la simulación física**: el servidor construye los dados, los lanza, los
+ * deja caer y la cara que queda arriba de cada uno es su número. Las
+ * trayectorias grabadas viajan con la tirada para que todos los clientes
+ * reproduzcan la misma caída.
  *
- * El resto de dados (u otras cantidades) siguen usando `crypto.randomInt` y el
- * pop del cliente. No se persiste: el evento `dice:rolled` es efímero.
+ * El resto de dados siguen usando `crypto.randomInt` y el pop del cliente. No
+ * se persiste: el evento `dice:rolled` es efímero.
  */
+
+/**
+ * Techo de dados simulados en un mismo mundo. Con 12 la simulación sigue siendo
+ * rápida y fiable; por encima el coste por tirada se dispara (y alguna cara
+ * puede no quedar plana), así que esos casos usan el pop clásico.
+ */
+const MAX_PHYSICAL_DICE = 12;
+
 export class DiceService {
   private readonly lastRollAt = new Map<string, number>();
 
@@ -56,13 +65,14 @@ export class DiceService {
     this.lastRollAt.set(key, now);
 
     const physical =
-      sides === 20 && count === 1
-        ? this.rollPhysicalD20(throwInput)
+      sides === 20 && count <= MAX_PHYSICAL_DICE
+        ? this.rollPhysicalD20(count, throwInput)
         : null;
     const results =
       physical?.results ??
       Array.from({ length: count }, () => randomInt(1, sides + 1));
-    const trajectory = physical?.trajectory;
+    const trajectories = physical?.trajectories;
+    const trajectory = count === 1 ? trajectories?.[0] : undefined;
 
     return {
       id: newId("dice"),
@@ -76,22 +86,35 @@ export class DiceService {
           : { role: "player", name: identity.player.name },
       at: new Date(now).toISOString(),
       ...(trajectory ? { trajectory } : {}),
+      ...(trajectories && count > 1 ? { trajectories } : {}),
     };
   }
 
   /**
-   * La simulación puede fallar (el dado no se detiene o el número no queda
-   * legible); en ese caso se cae al número aleatorio y el cliente usa el pop.
+   * La simulación puede fallar (el dado no se detiene, queda de canto o el
+   * número no es legible); en ese caso se cae al número aleatorio y el cliente
+   * usa el pop.
    */
-  private rollPhysicalD20(throwInput?: DiceThrowInput): {
+  private rollPhysicalD20(
+    count: number,
+    throwInput?: DiceThrowInput,
+  ): {
     results: number[];
-    trajectory?: DiceTrajectory;
+    trajectories?: DiceTrajectory[];
   } {
-    const simulated = simulateD20Throw({
+    const simulated = simulateD20Roll({
       seed: randomInt(0, 0x7fffffff),
+      count,
       throw: throwInput,
     });
-    if (!simulated) return { results: [randomInt(1, 21)] };
-    return { results: [simulated.face], trajectory: simulated };
+    if (!simulated) {
+      return {
+        results: Array.from({ length: count }, () => randomInt(1, 21)),
+      };
+    }
+    return {
+      results: simulated.results,
+      trajectories: simulated.trajectories,
+    };
   }
 }

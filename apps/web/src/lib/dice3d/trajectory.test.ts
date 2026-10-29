@@ -19,6 +19,7 @@ function trajectory(): DiceTrajectory {
     durationMs: 1000,
     face: 17,
     impacts: [{ atMs: 500, x: 0, z: 0, strength: 1 }],
+    bounces: 0,
   };
 }
 

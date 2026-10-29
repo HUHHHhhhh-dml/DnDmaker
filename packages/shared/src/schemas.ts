@@ -522,6 +522,8 @@ export const diceRollInputSchema = z.object({
       start: z
         .tuple([z.number().min(-3).max(3), z.number().min(-3).max(3)])
         .optional(),
+      /** Rebotes contra la mesa que pide el gesto (1..4). */
+      bounces: z.number().int().min(1).max(4).optional(),
     })
     .optional(),
 });

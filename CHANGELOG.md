@@ -1,5 +1,34 @@
 # Changelog
 
+## Fase 4E+ — dados físicos, rebotes y skins (2026-10-28)
+
+### Añadido
+
+- **d20 con física real en el servidor**: caída, rebotes y cara superior
+  simulados con `cannon-es`; la trayectoria grabada reproduce la misma tirada en
+  todos los clientes y la cámara se acerca al número del resultado.
+- **Lanzar arrastrando**: el dado grande de la bandeja se arrastra para orientar
+  el lanzamiento. La distancia marca la fuerza y los **rebotes** contra la mesa
+  (1..4); el servidor los usa como objetivo visual y ajusta la restitución sin
+  tocar la cara final. El pop y la bandeja muestran «N rebotes en la mesa».
+- **Skins Hueso/Negra**: lista desplegable bajo los dados, persistida en
+  `localStorage`; cambia el atlas, material, aristas y emisivo del dado 3D y los
+  colores/iconos de la bandeja. La negra usa cuerpo oscuro y números marfil.
+- **Varios d20 en la mesa**: de 2 a 12 dados simulados en el mismo mundo con
+  colisiones; `DiceRoll.trajectories` lleva una trayectoria por dado, la escena
+  los reproduce juntos, la cámara encuadra el grupo y cada dado muestra su
+  resultado en una etiqueta. El pop resume suma y desglose; Nat 20/1 por cara
+  individual, cola y saltar se mantienen. Por encima de 12 dados se usa el pop.
+
+### Cambios
+
+- `DiceThrowInput` y el schema de la API aceptan `bounces` (1..4); los frames de
+  trayectoria se redondean a 0,1 mm para reducir el payload (≈30 KB con 5 dados).
+- El anillo de impacto solo aparece en contactos contra la mesa; las paredes y
+  los choques entre dados no cuentan como rebote.
+- El resultado sigue siendo autoridad del servidor: la simulación es la única
+  fuente de las caras; si falla, la tirada cae al pop clásico.
+
 ## Fase 4 — Contenido avanzado y operación (2026-10-28)
 
 ### Añadido

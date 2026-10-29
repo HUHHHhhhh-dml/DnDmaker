@@ -13,7 +13,13 @@ import {
 } from "@protocol-life/shared";
 import { usePlayerStore } from "../../store/usePlayerStore";
 import { useLiveStore } from "../../store/useLiveStore";
+import { useDiceSkinStore } from "../../store/useDiceSkinStore";
 import { DRAG_THRESHOLD_PX, throwFromDrag } from "../../lib/diceThrow";
+import {
+  DICE_SKINS,
+  DICE_SKIN_ORDER,
+  type DiceSkinId,
+} from "../../lib/diceSkin";
 import { DiceIcon } from "./DiceIcon";
 import { cx } from "../ui";
 import "./DiceTray.css";
@@ -36,6 +42,13 @@ function breakdown(roll: DiceRoll): string {
   return roll.results.join(" + ");
 }
 
+function bouncesLabel(roll: DiceRoll | null): string | null {
+  if (!roll || roll.sides !== 20 || roll.count !== 1) return null;
+  const bounces = roll.trajectory?.bounces;
+  if (bounces === undefined || bounces < 1) return null;
+  return `${bounces} rebote${bounces === 1 ? "" : "s"}`;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -45,6 +58,8 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
   const playerRolls = usePlayerStore((state) => state.diceRolls);
   const dmRoll = useLiveStore((state) => state.rollDice);
   const dmRolls = useLiveStore((state) => state.diceRolls);
+  const skin = useDiceSkinStore((state) => state.skin);
+  const setSkin = useDiceSkinStore((state) => state.setSkin);
 
   const rollDice = viewer === "player" ? playerRoll : dmRoll;
   const rolls = viewer === "player" ? playerRolls : dmRolls;
@@ -62,7 +77,8 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
     pointerId: number;
   } | null>(null);
   const dragged = useRef(false);
-  const suppressClick = useRef(false);
+  const suppressClickUntil = useRef(0);
+  const cleanupDrag = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     try {
@@ -99,8 +115,31 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
     window.setTimeout(() => setRolling(false), 1000);
   }
 
+  function releasePointer(element: HTMLElement, pointerId: number): void {
+    try {
+      if (element.hasPointerCapture(pointerId)) {
+        element.releasePointerCapture(pointerId);
+      }
+    } catch {
+      // El puntero ya no está activo: no hay nada que liberar.
+    }
+  }
+
+  function endDrag(): void {
+    cleanupDrag.current?.();
+    cleanupDrag.current = null;
+  }
+
+  useEffect(
+    () => () => {
+      endDrag();
+    },
+    [],
+  );
+
   function handlePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (rolling || event.button !== 0) return;
+    if (rolling || event.button !== 0 || cleanupDrag.current) return;
+    const main = event.currentTarget;
     dragStart.current = {
       x: event.clientX,
       y: event.clientY,
@@ -108,53 +147,63 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
     };
     dragged.current = false;
     try {
-      event.currentTarget.setPointerCapture(event.pointerId);
+      main.setPointerCapture(event.pointerId);
     } catch {
-      // Sin captura el gesto sigue funcionando mientras el puntero no salga.
+      // Sin captura los listeners de window siguen el gesto igual.
     }
-  }
 
-  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
-    const start = dragStart.current;
-    if (!start || start.pointerId !== event.pointerId || rolling) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    if (!dragged.current && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
-      dragged.current = true;
-    }
-    if (dragged.current) setDrag({ dx, dy });
-  }
+    const move = (native: PointerEvent): void => {
+      const start = dragStart.current;
+      if (!start || start.pointerId !== native.pointerId) return;
+      const dx = native.clientX - start.x;
+      const dy = native.clientY - start.y;
+      if (!dragged.current && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+        dragged.current = true;
+      }
+      if (dragged.current) setDrag({ dx, dy });
+    };
 
-  function handlePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
-    const start = dragStart.current;
-    if (!start || start.pointerId !== event.pointerId) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    dragStart.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDrag(null);
-    if (!dragged.current) return; // El click normal se encarga.
-    dragged.current = false;
-    suppressClick.current = true;
-    void handleRoll(throwFromDrag(dx, dy) ?? undefined);
-  }
+    const up = (native: PointerEvent): void => {
+      const start = dragStart.current;
+      if (!start || start.pointerId !== native.pointerId) return;
+      const dx = native.clientX - start.x;
+      const dy = native.clientY - start.y;
+      releasePointer(main, native.pointerId);
+      endDrag();
+      dragStart.current = null;
+      setDrag(null);
+      if (!dragged.current) return; // El click normal se encarga.
+      dragged.current = false;
+      // El click sintético posterior al arrastre no debe repetir la tirada.
+      suppressClickUntil.current = Date.now() + 400;
+      void handleRoll(throwFromDrag(dx, dy) ?? undefined);
+    };
 
-  function handlePointerCancel() {
-    dragStart.current = null;
-    dragged.current = false;
-    suppressClick.current = false;
-    setDrag(null);
+    const cancel = (native: PointerEvent): void => {
+      const start = dragStart.current;
+      if (!start || start.pointerId !== native.pointerId) return;
+      releasePointer(main, native.pointerId);
+      endDrag();
+      dragStart.current = null;
+      dragged.current = false;
+      setDrag(null);
+    };
+
+    const cleanup = (): void => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+    };
+    cleanupDrag.current = cleanup;
+    // El gesto se sigue en window: así soltar fuera del dado también lanza.
+    window.addEventListener("pointermove", move, { passive: true });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
   }
 
   function handleClick() {
-    if (suppressClick.current) {
-      suppressClick.current = false;
-      return;
-    }
-    if (dragged.current) {
-      dragged.current = false;
+    if (Date.now() < suppressClickUntil.current) {
+      suppressClickUntil.current = 0;
       return;
     }
     void handleRoll();
@@ -171,9 +220,13 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
     : undefined;
 
   const recent = rolls.slice(-5).reverse();
+  const bounces = bouncesLabel(last);
 
   return (
-    <section className="panel dice-tray p-4" aria-label="Dados de mesa">
+    <section
+      className={cx("panel", "dice-tray", "p-4", `is-skin-${skin}`)}
+      aria-label="Dados de mesa"
+    >
       <div className="dice-tray-head">
         <div>
           <div className="mono-label">{viewer === "dm" ? "Mesa" : "Jugador"}</div>
@@ -191,9 +244,6 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
         )}
         onClick={handleClick}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
         disabled={rolling}
         aria-label={`Tirar ${count}d${sides}: clic para tirar o arrastra el dado para lanzar`}
       >
@@ -211,7 +261,7 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
               : last
                 ? last.count > 1
                   ? `Total ${last.result} · ${breakdown(last)}`
-                  : `Último: ${last.result}`
+                  : `Último: ${last.result}${bounces ? ` · ${bounces}` : ""}`
                 : "Clic o arrastra para tirar"}
         </span>
       </button>
@@ -264,6 +314,25 @@ export function DiceTray({ viewer }: { viewer: "player" | "dm" }) {
             <span>d{option}</span>
           </button>
         ))}
+      </div>
+
+      <div className="dice-skin">
+        <label className="dice-skin-label" htmlFor="dice-skin-select">
+          Aspecto
+        </label>
+        <select
+          id="dice-skin-select"
+          className="field dice-skin-select"
+          value={skin}
+          onChange={(event) => setSkin(event.target.value as DiceSkinId)}
+          disabled={rolling}
+        >
+          {DICE_SKIN_ORDER.map((id) => (
+            <option key={id} value={id}>
+              {DICE_SKINS[id].label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="dice-log">

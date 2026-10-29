@@ -23,8 +23,15 @@ const TILE = 256;
 const ATLAS_WIDTH = COLUMNS * TILE;
 const ATLAS_HEIGHT = ROWS * TILE;
 
-const FACE_BACKGROUND = "#d8cbb0";
-const FACE_INK = "#1b160f";
+export interface D20AtlasColors {
+  background: string;
+  ink: string;
+}
+
+export const BONE_ATLAS: D20AtlasColors = {
+  background: "#d8cbb0",
+  ink: "#1b160f",
+};
 
 /** Triángulo de la etiqueta dentro de cada tile, en UV local (v hacia arriba). */
 const LABEL_TRIANGLE_UV: ReadonlyArray<readonly [number, number]> = [
@@ -48,7 +55,10 @@ export function faceUv(number: number): Array<[number, number]> {
 }
 
 /** Crea la textura del atlas. Solo se llama dentro de la escena 3D (browser). */
-export function createD20Atlas(anisotropy = 1): CanvasTexture {
+export function createD20Atlas(
+  anisotropy = 1,
+  colors: D20AtlasColors = BONE_ATLAS,
+): CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = ATLAS_WIDTH;
   canvas.height = ATLAS_HEIGHT;
@@ -63,7 +73,7 @@ export function createD20Atlas(anisotropy = 1): CanvasTexture {
     const x = (index % COLUMNS) * TILE;
     const y = Math.floor(index / COLUMNS) * TILE;
 
-    context.fillStyle = FACE_BACKGROUND;
+    context.fillStyle = colors.background;
     context.fillRect(x, y, TILE, TILE);
 
     // Luz muy leve de arriba a abajo: la iluminación 3D hace el resto.
@@ -73,14 +83,14 @@ export function createD20Atlas(anisotropy = 1): CanvasTexture {
     context.fillStyle = gradient;
     context.fillRect(x, y, TILE, TILE);
 
-    context.fillStyle = FACE_INK;
+    context.fillStyle = colors.ink;
     context.font = `900 ${fontSize}px "Arial Black", "Liberation Sans", "DejaVu Sans", Arial, sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(String(number), x + TILE * 0.5, y + TILE * 0.635);
 
     if (number === 6 || number === 9) {
-      context.strokeStyle = FACE_INK;
+      context.strokeStyle = colors.ink;
       context.lineWidth = Math.max(3, TILE * 0.018);
       context.lineCap = "round";
       context.beginPath();

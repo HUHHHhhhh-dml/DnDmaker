@@ -11,6 +11,7 @@ function trajectory(face: number) {
     durationMs: 500,
     face,
     impacts: [],
+    bounces: 1,
   };
 }
 

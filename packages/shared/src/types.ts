@@ -590,6 +590,11 @@ export interface DiceTrajectory {
   /** Cara que queda arriba; coincide con `DiceRoll.result`. */
   face: number;
   impacts: DiceTrajectoryImpact[];
+  /**
+   * Rebotes visibles contra la mesa: contactos posteriores al primero. Es la
+   * restricción que pide el gesto de arrastre; como mínimo 0.
+   */
+  bounces: number;
 }
 
 /** Entrada opcional del lanzamiento (arrastrar y soltar) para la simulación. */
@@ -600,6 +605,11 @@ export interface DiceThrowInput {
   angular?: [number, number, number];
   /** Punto de salida sobre la mesa [x, z]. */
   start?: [number, number];
+  /**
+   * Rebotes deseados contra la mesa (1..4). Cuanto más se arrastra, más
+   * rebotes. Solo se aplica a un d20 único; el resto de tiradas lo ignoran.
+   */
+  bounces?: number;
 }
 
 /** Una tirada compartida. Efímera: no se persiste en SQLite. */
@@ -615,10 +625,15 @@ export interface DiceRoll {
   roller: DiceRoller;
   at: IsoDate;
   /**
-   * Trayectoria física del d20. Solo la genera el servidor para un d20 único;
-   * el resto de tiradas siguen usando el pop.
+   * Trayectoria física del d20 único. Se mantiene por compatibilidad: para
+   * `count === 1` es la primera (y única) entrada de `trajectories`.
    */
   trajectory?: DiceTrajectory;
+  /**
+   * Una trayectoria física por dado, en el mismo orden que `results`. Solo la
+   * genera el servidor para tiradas de d20 con física; las demás usan el pop.
+   */
+  trajectories?: DiceTrajectory[];
 }
 
 /* ========================================================================== */

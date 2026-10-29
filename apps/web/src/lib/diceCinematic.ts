@@ -1,13 +1,15 @@
 import { useSyncExternalStore } from "react";
 import type { DiceRoll } from "@protocol-life/shared";
+import { isPhysicalD20Roll } from "./dice3d/roll";
 
 /**
  * Coordinación entre el overlay 3D y los pops actuales (toast y celebración).
  *
- * El overlay solo anima tiradas de **un d20**. Mientras una tirada está en
- * manos del overlay, el toast y la celebración la ignoran; cuando aterriza (o
- * falla), se marca y vuelven a procesarla. Si no hay WebGL o el usuario prefiere
- * movimiento reducido, `isHeld` es siempre `false` y todo funciona como antes.
+ * El overlay anima tiradas de **d20 con física** (uno o varios dados). Mientras
+ * una tirada está en manos del overlay, el toast y la celebración la ignoran;
+ * cuando aterriza (o falla), se marca y vuelven a procesarla. Si no hay WebGL o
+ * el usuario prefiere movimiento reducido, `isHeld` es siempre `false` y todo
+ * funciona como antes.
  *
  * El estado vive a nivel de módulo porque el header se remonta al cambiar de
  * vista, igual que los `Set` de ids de los pops existentes.
@@ -15,8 +17,10 @@ import type { DiceRoll } from "@protocol-life/shared";
 
 type RollKey = Pick<
   DiceRoll,
-  "id" | "sides" | "count" | "results" | "trajectory"
+  "id" | "sides" | "count" | "results" | "trajectory" | "trajectories"
 >;
+
+export { isSingleD20 } from "./dice3d/roll";
 
 const REMEMBER_LIMIT = 40;
 
@@ -39,32 +43,6 @@ function remember(target: Set<string>, id: string): void {
   if (target.size <= REMEMBER_LIMIT) return;
   const oldest = target.values().next().value;
   if (oldest !== undefined) target.delete(oldest);
-}
-
-/**
- * La escena 3D solo se monta para un d20 único que trae una trayectoria física
- * del servidor y cuya cara final coincide con el resultado.
- */
-export function isSingleD20(roll: RollKey): boolean {
-  if (roll.sides !== 20 || roll.count !== 1 || roll.results.length !== 1) {
-    return false;
-  }
-  const [value] = roll.results;
-  if (
-    typeof value !== "number" ||
-    !Number.isInteger(value) ||
-    value < 1 ||
-    value > 20
-  ) {
-    return false;
-  }
-  const trajectory = roll.trajectory;
-  return Boolean(
-    trajectory &&
-      trajectory.face === value &&
-      trajectory.durationMs > 0 &&
-      trajectory.frames.length > 1,
-  );
 }
 
 /**
@@ -116,7 +94,7 @@ export function registerCinematic(): () => void {
  */
 export function isHeld(roll: RollKey): boolean {
   if (directors === 0) return false;
-  if (!isSingleD20(roll)) return false;
+  if (!isPhysicalD20Roll(roll)) return false;
   if (!supportsD20Cinematic()) return false;
   return !landed.has(roll.id) && !failed.has(roll.id);
 }
