@@ -144,6 +144,25 @@ describe("Fase 1 — API", () => {
     const skill = skillResponse.json() as { id: string; target: string };
     expect(skill.target).toBe("single");
 
+    const specialResponse = await app.inject({
+      method: "POST",
+      url: `/api/campaigns/${campaignId}/specials`,
+      payload: {
+        name: "Dominio de prueba",
+        kind: "domain",
+        duration: 2,
+        oncePerCombat: true,
+        effects: [],
+        target: "team",
+        allyEffects: [{ type: "applyEffect", effectId: effect.id, stacks: 1 }],
+        enemyEffects: [{ type: "damage", base: 3 }],
+        scene: { floor: "/assets/dominio.png", theme: "night" },
+      },
+    });
+    expect(specialResponse.statusCode).toBe(201);
+    const special = specialResponse.json() as { id: string; kind?: string };
+    expect(special.kind).toBe("domain");
+
     const characterResponse = await app.inject({
       method: "POST",
       url: `/api/campaigns/${campaignId}/characters`,
@@ -339,6 +358,16 @@ describe("Fase 1 — API", () => {
     );
     expect(imported.content.items[0]!.startCombatEffects?.[0]?.effectId).toBe(
       imported.content.effects[0]!.id,
+    );
+    expect(imported.content.specials).toHaveLength(1);
+    expect(imported.content.specials[0]!.id).not.toBe(
+      exported.content.specials[0]!.id,
+    );
+    expect(imported.content.specials[0]!.allyEffects?.[0]).toMatchObject({
+      effectId: imported.content.effects[0]!.id,
+    });
+    expect(imported.content.specials[0]!.scene?.floor).toBe(
+      "/assets/dominio.png",
     );
 
     const sheetResponse = await app.inject({

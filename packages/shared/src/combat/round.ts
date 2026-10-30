@@ -1,13 +1,16 @@
 import type {
   CampaignContent,
   CombatEvent,
+  CombatSceneOverride,
   CombatState,
   CombatUnit,
   DeclaredAction,
+  EffectAction,
   EffectTrigger,
   Id,
   Ruleset,
   Skill,
+  SpecialAbility,
 } from "../types";
 import { resolveClash } from "./clash";
 import { rollCoins } from "./coins";
@@ -467,6 +470,85 @@ export function resolveRound(
     return best;
   };
 
+  /** Aplica un special a una unidad: efecto sintético + acciones puntuales. */
+  const applySpecialToTarget = (
+    special: SpecialAbility,
+    caster: CombatUnit,
+    target: CombatUnit,
+    actions: EffectAction[],
+    variant?: "ally" | "enemy",
+  ): void => {
+    const applied = applyEffect(
+      target,
+      special.id,
+      1,
+      context,
+      caster.id,
+      variant,
+    );
+    setUnit(applied.unit);
+    for (const event of applied.events) emit(event);
+    const afterApply = current(target.id);
+    if (afterApply && afterApply.hpCurrent <= 0) markDefeated(target.id);
+
+    const nonStatActions = actions.filter(
+      (entry) => entry.type !== "modifyStat",
+    );
+    if (nonStatActions.length === 0) return;
+
+    const latest = current(target.id);
+    if (!latest) return;
+    const result = executeEffectActions(
+      latest,
+      nonStatActions,
+      1,
+      context,
+      { specialId: special.id, actorId: caster.id },
+      undefined,
+      [...units.values()],
+    );
+    setUnit(result.unit);
+    for (const event of result.events) emit(event);
+    if (result.events.some((event) => event.type === "defeated")) {
+      defeatedAnnounced.add(target.id);
+    }
+    if (result.damageApplied) {
+      runTriggers(
+        target.id,
+        "onTakeDamage",
+        0,
+        caster.team !== target.team ? caster.id : undefined,
+      );
+    }
+    const after = current(target.id);
+    if (after && after.hpCurrent <= 0) markDefeated(target.id);
+  };
+
+  /** Guarda la escena previa y aplica la temporal del dominio/hábitat. */
+  const applySpecialScene = (
+    special: SpecialAbility,
+    caster: CombatUnit,
+  ): void => {
+    if (!special.scene) return;
+    const scene = special.scene;
+    if (!scene.floor && !scene.wall && !scene.theme) return;
+    const previous = { ...(draft.scene ?? {}) };
+    const override: CombatSceneOverride = {
+      specialId: special.id,
+      casterId: caster.id,
+      scene: { ...scene },
+      previous,
+    };
+    draft.scene = { ...previous, ...scene };
+    draft.sceneOverrides = [...(draft.sceneOverrides ?? []), override];
+    emit({
+      type: "effectTick",
+      actorId: caster.id,
+      message: `${special.name} cambia el escenario.`,
+      data: { specialId: special.id, scene: draft.scene },
+    });
+  };
+
   const resolveSpecial = (
     caster: CombatUnit,
     action: DeclaredAction,
@@ -490,51 +572,46 @@ export function resolveRound(
     }
 
     markSpecialUsed(draft, caster.id, special);
-    const targets = specialTargets(draft, caster, special);
-    const nonStatActions = special.effects.filter(
-      (entry) => entry.type !== "modifyStat",
-    );
 
-    for (const target of targets) {
-      const applied = applyEffect(
-        target,
-        special.id,
-        1,
-        context,
-        caster.id,
+    const bandMode =
+      special.allyEffects !== undefined || special.enemyEffects !== undefined;
+    let targetIds: Id[] = [];
+
+    if (bandMode) {
+      const allies = [...units.values()].filter(
+        (unit) => unit.team === caster.team && alive(unit),
       );
-      setUnit(applied.unit);
-      for (const event of applied.events) emit(event);
-      const afterApply = current(target.id);
-      if (afterApply && afterApply.hpCurrent <= 0) markDefeated(target.id);
-
-      if (nonStatActions.length > 0) {
-        const latest = current(target.id);
-        if (!latest) continue;
-        const result = executeEffectActions(
-          latest,
-          nonStatActions,
-          1,
-          context,
-          { specialId: special.id, actorId: caster.id },
+      const enemies = [...units.values()].filter(
+        (unit) => unit.team !== caster.team && alive(unit),
+      );
+      for (const target of allies) {
+        applySpecialToTarget(
+          special,
+          caster,
+          target,
+          special.allyEffects ?? [],
+          "ally",
         );
-        setUnit(result.unit);
-        for (const event of result.events) emit(event);
-        if (result.events.some((event) => event.type === "defeated")) {
-          defeatedAnnounced.add(target.id);
-        }
-        if (result.damageApplied) {
-          runTriggers(
-            target.id,
-            "onTakeDamage",
-            0,
-            caster.team !== target.team ? caster.id : undefined,
-          );
-        }
-        const after = current(target.id);
-        if (after && after.hpCurrent <= 0) markDefeated(target.id);
       }
+      for (const target of enemies) {
+        applySpecialToTarget(
+          special,
+          caster,
+          target,
+          special.enemyEffects ?? [],
+          "enemy",
+        );
+      }
+      targetIds = [...allies, ...enemies].map((target) => target.id);
+    } else {
+      const targets = specialTargets(draft, caster, special);
+      for (const target of targets) {
+        applySpecialToTarget(special, caster, target, special.effects);
+      }
+      targetIds = targets.map((target) => target.id);
     }
+
+    applySpecialScene(special, caster);
 
     emit({
       type: "special",
@@ -543,9 +620,46 @@ export function resolveRound(
       data: {
         specialId: special.id,
         target: special.target,
+        bandMode,
         duration: special.duration,
-        targetIds: targets.map((target) => target.id),
+        scene: special.scene,
+        targetIds,
       },
+    });
+  };
+
+  /**
+   * Escenas temporales de dominios/hábitats: se restaura la anterior cuando el
+   * efecto deja de estar activo en todas las unidades afectadas. Se evalúa al
+   * final de la ronda, antes de descontar duraciones, para que un dominio de
+   * duración 1 se vea al menos esa ronda.
+   */
+  const syncSceneOverrides = (): void => {
+    const overrides = draft.sceneOverrides ?? [];
+    if (overrides.length === 0) return;
+    const isActive = (override: CombatSceneOverride): boolean =>
+      [...units.values()].some((unit) =>
+        unit.effects.some(
+          (effect) =>
+            !effect.passive &&
+            effect.effectId === override.specialId &&
+            effect.sourceId === override.casterId,
+        ),
+      );
+    const active = overrides.filter(isActive);
+    if (active.length === overrides.length) return;
+
+    const baseScene = { ...overrides[0]!.previous };
+    draft.sceneOverrides = active;
+    draft.scene =
+      active.length > 0 ? { ...active[active.length - 1]!.scene } : baseScene;
+    emit({
+      type: "effectTick",
+      message:
+        active.length > 0
+          ? "El escenario cambia de nuevo."
+          : "El escenario vuelve a la normalidad.",
+      data: { scene: draft.scene },
     });
   };
 
@@ -848,6 +962,9 @@ export function resolveRound(
     message: `Termina la ronda ${draft.round}.`,
     data: { round: draft.round },
   });
+
+  // Antes de descontar duraciones: un dominio de duración 1 se ve esa ronda.
+  syncSceneOverrides();
 
   for (const unit of [...units.values()]) {
     const result = tickEffects(unit, context);

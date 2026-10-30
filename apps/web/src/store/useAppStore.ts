@@ -5,6 +5,7 @@ import type {
   ContentType,
   EffectDefinition,
   Item,
+  SpecialAbility,
 } from "@protocol-life/shared";
 import {
   ApiError,
@@ -100,6 +101,7 @@ function countsFor(campaign: Campaign): CampaignCounts {
     items: campaign.content.items.length,
     skills: campaign.content.skills.length,
     effects: campaign.content.effects.length,
+    specials: campaign.content.specials.length,
     characters: campaign.content.characters.length,
     encounters: campaign.content.encounters.length,
     shops: campaign.content.shops.length,
@@ -140,6 +142,14 @@ function upsertContent(
         content: {
           ...campaign.content,
           effects: replace<EffectDefinition>(campaign.content.effects),
+        },
+      };
+    case "specials":
+      return {
+        ...campaign,
+        content: {
+          ...campaign.content,
+          specials: replace<SpecialAbility>(campaign.content.specials),
         },
       };
     case "characters":
@@ -189,6 +199,14 @@ function removeContentFromCampaign(
         content: {
           ...campaign.content,
           effects: campaign.content.effects.filter((entry) => entry.id !== id),
+        },
+      };
+    case "specials":
+      return {
+        ...campaign,
+        content: {
+          ...campaign.content,
+          specials: campaign.content.specials.filter((entry) => entry.id !== id),
         },
       };
     case "characters":

@@ -36,6 +36,14 @@ import type {
 
 const TURNS_DURATION = "turns" as const;
 
+/** Trigger continuo de stats para una lista de acciones de dominio/hábitat. */
+function statTriggers(actions: EffectAction[]): EffectDefinition["triggers"] {
+  const statActions = actions.filter((action) => action.type === "modifyStat");
+  return statActions.length > 0
+    ? [{ when: "roundStart", actions: statActions }]
+    : [];
+}
+
 export function buildEffectCatalog(
   content: EffectContext["content"],
 ): Map<Id, EffectDefinition> {
@@ -43,30 +51,43 @@ export function buildEffectCatalog(
   for (const effect of content.effects) catalog.set(effect.id, effect);
 
   // Los dominios/hábitats se representan como efectos sintéticos para poder
-  // Reutilizar duración, triggers y modifyStat sin un tipo aparte en el estado.
+  // reutilizar duración, triggers y modifyStat sin un tipo aparte en el estado.
+  // En modo por bandos hay una definición por bando (`#ally`/`#enemy`) para que
+  // los modifyStat de aliados y enemigos no se mezclen.
   for (const special of content.specials) {
     if (catalog.has(special.id)) continue;
-    const statActions = special.effects.filter(
-      (action) => action.type === "modifyStat",
-    );
-    catalog.set(special.id, {
+    const base = {
       id: special.id,
       code: special.code,
       name: special.name,
       description: special.description,
       icon: special.image,
       maxStacks: 1,
-      stackMode: "refresh",
+      stackMode: "refresh" as const,
       duration: {
         type: TURNS_DURATION,
         default: Math.max(1, Math.trunc(special.duration)),
       },
-      triggers:
-        statActions.length > 0
-          ? [{ when: "roundStart", actions: statActions }]
-          : [],
       tags: ["special"],
+    };
+    catalog.set(special.id, {
+      ...base,
+      triggers: statTriggers(special.effects),
     });
+
+    if (
+      special.allyEffects !== undefined ||
+      special.enemyEffects !== undefined
+    ) {
+      catalog.set(`${special.id}#ally`, {
+        ...base,
+        triggers: statTriggers(special.allyEffects ?? []),
+      });
+      catalog.set(`${special.id}#enemy`, {
+        ...base,
+        triggers: statTriggers(special.enemyEffects ?? []),
+      });
+    }
   }
 
   // Buffs de utilidad: si el useEffect toca stats, se representa como un
@@ -124,7 +145,10 @@ export function effectiveStats(
 
   for (const effect of unit.effects) {
     if (effect.passive) continue;
-    const definition = catalog.get(effect.effectId);
+    const definition =
+      (effect.variant
+        ? catalog.get(`${effect.effectId}#${effect.variant}`)
+        : undefined) ?? catalog.get(effect.effectId);
     if (!definition) continue;
     for (const trigger of definition.triggers) {
       for (const action of trigger.actions) {
@@ -186,6 +210,7 @@ export function applyEffect(
   stacks: number,
   context: EffectContext,
   sourceId?: Id,
+  variant?: "ally" | "enemy",
 ): EffectResult {
   const incoming = Math.max(1, Math.trunc(stacks));
   const catalog = buildEffectCatalog(context.content);
@@ -206,11 +231,13 @@ export function applyEffect(
     if (mode === "add") nextStacks = existing.stacks + incoming;
     else if (mode === "refresh") nextStacks = Math.max(existing.stacks, incoming);
     else nextStacks = incoming;
+    const nextVariant = variant ?? existing.variant;
     effects[index] = {
       ...existing,
       stacks: clamp(nextStacks, 1, maxStacks),
       remainingTurns: duration,
       sourceId: sourceId ?? existing.sourceId,
+      ...(nextVariant ? { variant: nextVariant } : {}),
     };
   } else {
     effects.push({
@@ -218,6 +245,7 @@ export function applyEffect(
       stacks: clamp(incoming, 1, maxStacks),
       remainingTurns: duration,
       sourceId,
+      ...(variant ? { variant } : {}),
     });
   }
 

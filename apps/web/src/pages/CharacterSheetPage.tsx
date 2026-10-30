@@ -733,11 +733,17 @@ export function CharacterSheetPage() {
                       onValueChange={(value) => patchSpecial("domainId", value || null)}
                     >
                       <option value="">— Vacío —</option>
-                      {campaign.content.specials.map((special) => (
-                        <option key={special.id} value={special.id}>
-                          {special.name}
-                        </option>
-                      ))}
+                      {campaign.content.specials
+                        .filter(
+                          (special) =>
+                            (special.kind ?? "domain") === "domain" ||
+                            special.id === draft.special?.domainId,
+                        )
+                        .map((special) => (
+                          <option key={special.id} value={special.id}>
+                            {special.name}
+                          </option>
+                        ))}
                     </Select>
                   </Field>
                   <Field label="Hábitat">
@@ -746,11 +752,17 @@ export function CharacterSheetPage() {
                       onValueChange={(value) => patchSpecial("habitatId", value || null)}
                     >
                       <option value="">— Vacío —</option>
-                      {campaign.content.specials.map((special) => (
-                        <option key={special.id} value={special.id}>
-                          {special.name}
-                        </option>
-                      ))}
+                      {campaign.content.specials
+                        .filter(
+                          (special) =>
+                            special.kind === "habitat" ||
+                            special.id === draft.special?.habitatId,
+                        )
+                        .map((special) => (
+                          <option key={special.id} value={special.id}>
+                            {special.name}
+                          </option>
+                        ))}
                     </Select>
                   </Field>
                 </div>

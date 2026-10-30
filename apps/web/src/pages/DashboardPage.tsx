@@ -31,6 +31,7 @@ export function DashboardPage() {
     { key: "shops", label: "Tiendas", icon: "book" as IconName, to: "/shops", value: campaign.content.shops.length },
     { key: "skills", label: "Skills", icon: "sword" as IconName, to: "/skills", value: campaign.content.skills.length },
     { key: "effects", label: "Efectos", icon: "flame" as IconName, to: "/effects", value: campaign.content.effects.length },
+    { key: "specials", label: "Dominios", icon: "spark" as IconName, to: "/specials", value: campaign.content.specials.length },
     { key: "characters", label: "Personajes", icon: "users" as IconName, to: "/characters", value: campaign.content.characters.length },
     { key: "encounters", label: "Encuentros", icon: "skull" as IconName, to: "/encounters", value: campaign.content.encounters.length },
     { key: "dungeons", label: "Mazmorras", icon: "shield" as IconName, to: "/dungeons", value: campaign.content.dungeons.length },

@@ -27,6 +27,7 @@ import type {
   Shop,
   ShopScene,
   Skill,
+  SpecialAbility,
   ValidationIssue,
 } from "@protocol-life/shared";
 import { getSessionToken } from "./sessionAuth";
@@ -37,6 +38,7 @@ export interface ContentEntityMap {
   items: Item;
   skills: Skill;
   effects: EffectDefinition;
+  specials: SpecialAbility;
   characters: Character;
   encounters: Encounter;
 }

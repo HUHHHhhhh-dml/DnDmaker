@@ -24,6 +24,7 @@ import {
   validateItem,
   validateShop,
   validateSkill,
+  validateSpecial,
   walletAdjustInputSchema,
   type Campaign,
   type CampaignContent,
@@ -109,11 +110,18 @@ type EntityByType = {
   items: Item;
   skills: Skill;
   effects: EffectDefinition;
+  specials: SpecialAbility;
   characters: Character;
   encounters: Encounter;
 };
 
-type ContentEntity = Item | Skill | EffectDefinition | Character | Encounter;
+type ContentEntity =
+  | Item
+  | Skill
+  | EffectDefinition
+  | SpecialAbility
+  | Character
+  | Encounter;
 
 /** Contenido que vive en el JSON de `campaigns.extras` (Fase 4). */
 interface CampaignExtras {
@@ -126,6 +134,7 @@ const PREFIX: Record<ContentType, string> = {
   items: "itm",
   skills: "skl",
   effects: "eff",
+  specials: "spc",
   characters: "chr",
   encounters: "enc",
 };
@@ -181,6 +190,8 @@ function validateEntity(
       return validateSkill(entity as Skill, content);
     case "effects":
       return validateEffect(entity as EffectDefinition, content);
+    case "specials":
+      return validateSpecial(entity as SpecialAbility, content);
     case "characters":
       return validateCharacter(entity as Character, content, rules, settings);
     case "encounters":
@@ -225,6 +236,7 @@ export class Repository {
         items: this.countRows(items, row.id),
         skills: this.countRows(skills, row.id),
         effects: this.countRows(effects, row.id),
+        specials: this.countRows(specials, row.id),
         characters: this.countRows(characters, row.id),
         encounters: this.countRows(encounters, row.id),
         shops: (row.extras?.shops ?? []).length,
@@ -402,6 +414,8 @@ export class Repository {
           .orderBy(encounters.createdAt)
           .all()
           .map((row) => row.data) as EntityByType[T][];
+      case "specials":
+        return this.listSpecials(campaignId) as EntityByType[T][];
       default: {
         const exhaustive: never = type;
         throw new Error(`Tipo de contenido desconocido: ${String(exhaustive)}`);
@@ -542,6 +556,9 @@ export class Repository {
           break;
         case "encounters":
           this.db.delete(encounters).where(eq(encounters.id, id)).run();
+          break;
+        case "specials":
+          this.db.delete(specials).where(eq(specials.id, id)).run();
           break;
       }
       this.touchCampaign(campaign.id, now);
@@ -1254,7 +1271,13 @@ export class Repository {
   /* ---------------------------------------------------------------------- */
 
   private countRows(
-    table: typeof items | typeof skills | typeof effects | typeof characters | typeof encounters,
+    table:
+      | typeof items
+      | typeof skills
+      | typeof effects
+      | typeof specials
+      | typeof characters
+      | typeof encounters,
     campaignId: string,
   ): number {
     const row = this.db
@@ -1290,6 +1313,10 @@ export class Repository {
         const row = this.db.select().from(encounters).where(eq(encounters.id, id)).get();
         return (row?.data ?? null) as EntityByType[T] | null;
       }
+      case "specials": {
+        const row = this.db.select().from(specials).where(eq(specials.id, id)).get();
+        return (row?.data ?? null) as EntityByType[T] | null;
+      }
       default: {
         const exhaustive: never = type;
         throw new Error(`Tipo de contenido desconocido: ${String(exhaustive)}`);
@@ -1309,6 +1336,8 @@ export class Repository {
         return this.db.select().from(characters).where(eq(characters.id, id)).get();
       case "encounters":
         return this.db.select().from(encounters).where(eq(encounters.id, id)).get();
+      case "specials":
+        return this.db.select().from(specials).where(eq(specials.id, id)).get();
     }
   }
 
@@ -1501,6 +1530,22 @@ export class Repository {
           .run();
         break;
       }
+      case "specials": {
+        const special = entity as SpecialAbility;
+        this.db
+          .insert(specials)
+          .values({
+            id: special.id,
+            campaignId,
+            name: special.name,
+            code: special.code ?? null,
+            data: special,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+        break;
+      }
     }
   }
 
@@ -1581,6 +1626,20 @@ export class Repository {
             updatedAt: now,
           })
           .where(eq(encounters.id, id))
+          .run();
+        break;
+      }
+      case "specials": {
+        const special = entity as SpecialAbility;
+        this.db
+          .update(specials)
+          .set({
+            name: special.name,
+            code: special.code ?? null,
+            data: special,
+            updatedAt: now,
+          })
+          .where(eq(specials.id, id))
           .run();
         break;
       }
@@ -1732,6 +1791,12 @@ function remapContent(content: CampaignContent): CampaignContent {
       ...special,
       id: mapIdRequired(special.id),
       effects: mapActions(special.effects),
+      allyEffects: special.allyEffects
+        ? mapActions(special.allyEffects)
+        : undefined,
+      enemyEffects: special.enemyEffects
+        ? mapActions(special.enemyEffects)
+        : undefined,
     })),
     shops: content.shops.map((shop) => ({
       ...shop,

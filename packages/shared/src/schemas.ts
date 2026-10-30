@@ -253,11 +253,25 @@ const specialFields = {
   name: nameSchema,
   description: descriptionSchema.optional(),
   image: imageSchema.optional(),
+  /** Dominio o hábitat; ausente = dominio. */
+  kind: z.enum(["domain", "habitat"]).optional(),
   duration: integer(1, 99),
   cooldown: integer(0, 99).optional(),
   oncePerCombat: z.boolean().optional(),
+  /** Legacy: efectos con `target`; ignorado si hay listas por bando. */
   effects: z.array(effectActionSchema).max(20),
   target: z.enum(["self", "team", "field"]).default("team"),
+  /** Modo por bandos. */
+  allyEffects: z.array(effectActionSchema).max(20).optional(),
+  enemyEffects: z.array(effectActionSchema).max(20).optional(),
+  /** Escena temporal mientras dura el efecto. */
+  scene: z
+    .object({
+      floor: imageSchema.optional(),
+      wall: imageSchema.optional(),
+      theme: sceneThemeSchema.optional(),
+    })
+    .optional(),
 };
 
 export const specialInputSchema = z.object(specialFields);
@@ -766,6 +780,8 @@ export const appliedEffectSchema = z.object({
   sourceId: idSchema.optional(),
   /** Pasivo del equipo ya incluido en los stats del snapshot. */
   passive: z.boolean().optional(),
+  /** Variante por bando de un dominio/hábitat aplicado. */
+  variant: z.enum(["ally", "enemy"]).optional(),
 });
 
 export const teamSchema = z.enum(["players", "enemies"]);
@@ -893,6 +909,18 @@ export const combatStateSchema = z.object({
   ),
   /** Escena visual; opcional para estados antiguos sin capas/tema. */
   scene: combatSceneSchema.optional(),
+  /** Escenas temporales de dominios/hábitats activos. */
+  sceneOverrides: z
+    .array(
+      z.object({
+        specialId: idSchema,
+        casterId: idSchema,
+        scene: combatSceneSchema,
+        previous: combatSceneSchema,
+      }),
+    )
+    .max(12)
+    .optional(),
   log: z.array(combatEventSchema).max(50_000),
   winner: teamSchema.optional(),
   /** Fase 4: el botín ya se pagó; evita duplicarlo al reabrir el cierre. */
@@ -991,6 +1019,7 @@ export const CONTENT_TYPES = [
   "items",
   "skills",
   "effects",
+  "specials",
   "characters",
   "encounters",
 ] as const;
@@ -1001,6 +1030,7 @@ export const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   items: "objeto",
   skills: "skill",
   effects: "efecto",
+  specials: "dominio o hábitat",
   characters: "personaje",
   encounters: "encuentro",
 };
@@ -1020,6 +1050,11 @@ export const CONTENT_SCHEMAS = {
     input: effectInputSchema,
     patch: effectPatchSchema,
     entity: effectSchema,
+  },
+  specials: {
+    input: specialInputSchema,
+    patch: specialPatchSchema,
+    entity: specialSchema,
   },
   characters: {
     input: characterInputSchema,

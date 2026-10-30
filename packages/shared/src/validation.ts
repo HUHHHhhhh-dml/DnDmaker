@@ -17,6 +17,7 @@ import type {
   Ruleset,
   Shop,
   Skill,
+  SpecialAbility,
 } from "./types";
 import { DEFAULT_RULES } from "./defaults";
 
@@ -193,11 +194,97 @@ export function validateSkill(
   return result(issues);
 }
 
+/**
+ * Dominios y hábitats: referencias de efectos y avisos de uso.
+ *
+ * Si hay listas por bando, `effects`/`target` son legado y se ignoran.
+ * «Rival» no tiene sentido dentro de una lista de bando: el otro bando se
+ * configura en su propio apartado.
+ */
+export function validateSpecial(
+  special: SpecialAbility,
+  content: Pick<CampaignContent, "effects">,
+): ValidationResult {
+  const issues: ValidationIssue[] = [];
+  const effects = groupById(content.effects);
+  const path = `specials[${special.id}]`;
+  const ally = special.allyEffects;
+  const enemy = special.enemyEffects;
+  const usesBands = ally !== undefined || enemy !== undefined;
+
+  for (const action of special.effects) {
+    if (action.type === "applyEffect" && !effects.has(action.effectId)) {
+      issues.push(
+        issue(
+          `${path}.effects`,
+          "El efecto referenciado no existe en la campaña.",
+        ),
+      );
+      break;
+    }
+  }
+
+  const checkActions = (actions: EffectAction[] | undefined, list: string) => {
+    if (!actions) return;
+    actions.forEach((action, index) => {
+      if (action.type === "applyEffect" && !effects.has(action.effectId)) {
+        issues.push(
+          issue(
+            `${path}.${list}[${index}]`,
+            "El efecto referenciado no existe en la campaña.",
+          ),
+        );
+      }
+      if (
+        (action.type === "damage" || action.type === "applyEffect") &&
+        action.target === "opponent"
+      ) {
+        issues.push(
+          issue(
+            `${path}.${list}[${index}]`,
+            "«Rival» no se aplica en dominios/hábitats: usa el apartado del otro bando.",
+            "warning",
+          ),
+        );
+      }
+    });
+  };
+
+  checkActions(ally, "allyEffects");
+  checkActions(enemy, "enemyEffects");
+
+  if (usesBands && special.effects.length > 0) {
+    issues.push(
+      issue(
+        `${path}.effects`,
+        "Los efectos legacy se ignoran cuando hay efectos por bando.",
+        "warning",
+      ),
+    );
+  }
+
+  if (
+    special.scene &&
+    !special.scene.floor &&
+    !special.scene.wall &&
+    !special.scene.theme
+  ) {
+    issues.push(
+      issue(
+        `${path}.scene`,
+        "La escena está vacía: no cambiará el escenario.",
+        "warning",
+      ),
+    );
+  }
+
+  return result(issues);
+}
+
 export function validateEffect(
   effect: EffectDefinition,
   content: Pick<CampaignContent, "effects">,
-): ValidationResult {
-  const effects = groupById(content.effects);
+): ValidationResult {  const effects = groupById(content.effects);
   const issues = checkActionRefs(
     effect.triggers.flatMap((trigger) => trigger.actions),
     effects,
@@ -650,13 +737,7 @@ export function validateContent(
     issues.push(...validateDungeon(dungeon, content).issues);
   }
   for (const special of content.specials) {
-    issues.push(
-      ...checkActionRefs(
-        special.effects,
-        groupById(content.effects),
-        `specials[${special.id}]`,
-      ).map((entry) => issue(entry.path, entry.message, "error")),
-    );
+    issues.push(...validateSpecial(special, content).issues);
   }
 
   return result(issues);
@@ -745,8 +826,13 @@ export function findReferences(id: string, content: CampaignContent): ReferenceI
   }
 
   for (const special of content.specials) {
+    const actions = [
+      ...special.effects,
+      ...(special.allyEffects ?? []),
+      ...(special.enemyEffects ?? []),
+    ];
     if (
-      special.effects.some(
+      actions.some(
         (action) => action.type === "applyEffect" && action.effectId === id,
       )
     ) {

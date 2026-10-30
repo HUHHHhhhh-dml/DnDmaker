@@ -15,6 +15,7 @@ interface NavItem {
     | "items"
     | "skills"
     | "effects"
+    | "specials"
     | "characters"
     | "encounters"
     | "shops"
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/shops", label: "Tiendas", icon: "book", countKey: "shops" },
   { to: "/skills", label: "Skills", icon: "sword", countKey: "skills" },
   { to: "/effects", label: "Efectos", icon: "flame", countKey: "effects" },
+  { to: "/specials", label: "Dominios", icon: "spark", countKey: "specials" },
   { to: "/characters", label: "Personajes", icon: "users", countKey: "characters" },
   { to: "/encounters", label: "Encuentros", icon: "skull", countKey: "encounters" },
   { to: "/dungeons", label: "Mazmorras", icon: "shield", countKey: "dungeons" },
@@ -107,6 +109,7 @@ export function Layout() {
     items: campaign.content.items.length,
     skills: campaign.content.skills.length,
     effects: campaign.content.effects.length,
+    specials: campaign.content.specials.length,
     characters: campaign.content.characters.length,
     encounters: campaign.content.encounters.length,
     shops: campaign.content.shops.length,

@@ -150,6 +150,8 @@ export interface AppliedEffect {
    * debe reaplicar sus `modifyStat` al iniciar el combate.
    */
   passive?: boolean;
+  /** Variante por bando de un dominio/hábitat aplicado. */
+  variant?: "ally" | "enemy";
 }
 
 /* ========================================================================== */
@@ -241,21 +243,39 @@ export interface Skill {
 /* Habilidades especiales (dominios / hábitats)                               */
 /* ========================================================================== */
 
+export type SpecialKind = "domain" | "habitat";
+
+/** Escena visual reutilizable por encuentros, la mesa y los dominios. */
+export interface CombatScene {
+  floor?: string;
+  wall?: string;
+  theme?: "paper" | "night";
+}
+
 export interface SpecialAbility {
   id: Id;
   code?: string;
   name: string;
   description?: string;
   image?: string;
+  /** Dominio o hábitat; ausente = dominio (compatibilidad). */
+  kind?: SpecialKind;
   /** Turnos que dura el efecto. */
   duration: number;
   /** Rondas de espera tras terminar la duración. Solo aplica si oncePerCombat = false. */
   cooldown?: number;
   /** Si es true, solo se puede usar una vez por combate. Default true en v0.1. */
   oncePerCombat?: boolean;
-  /** Acciones que aplica (buff de stats, efectos, etc.). */
+  /** Legacy: acciones con `target`. Ignorado si hay listas por bando. */
   effects: EffectAction[];
+  /** Legacy: bando de `effects`. */
   target: "self" | "team" | "field";
+  /** Efectos para el equipo del lanzador (incluido él). */
+  allyEffects?: EffectAction[];
+  /** Efectos para el equipo contrario. */
+  enemyEffects?: EffectAction[];
+  /** Escena temporal mientras dura; se restaura al expirar. */
+  scene?: CombatScene;
 }
 
 /* ========================================================================== */
@@ -597,6 +617,13 @@ export interface CombatState {
   lockedUnits?: Record<Id, boolean>;
   /** Cooldowns de habilidades especiales por unidad. */
   specialCooldowns: Record<Id, Record<Id, number>>;
+  /** Escena temporal de dominios/hábitats activos. */
+  sceneOverrides?: {
+    specialId: Id;
+    casterId: Id;
+    scene: CombatScene;
+    previous: CombatScene;
+  }[];
   log: CombatEvent[];
   winner?: Team;
 }

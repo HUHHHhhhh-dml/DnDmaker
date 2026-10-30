@@ -156,6 +156,11 @@ export interface AppliedEffect {
    * stats del snapshot. El motor no debe volver a aplicarlos al iniciar.
    */
   passive?: boolean;
+  /**
+   * Variante de un dominio/hábitat aplicado por bando (`ally`/`enemy`). Solo
+   * decide qué `modifyStat` del special cuentan para esta unidad.
+   */
+  variant?: "ally" | "enemy";
 }
 
 /* ========================================================================== */
@@ -250,17 +255,39 @@ export interface Skill {
 /* Habilidades especiales (dominios / hábitats)                               */
 /* ========================================================================== */
 
+/** Tipo de habilidad especial: dominio o hábitat. */
+export type SpecialKind = "domain" | "habitat";
+
 export interface SpecialAbility {
   id: Id;
   code?: string;
   name: string;
   description?: string;
   image?: string;
+  /** Dominio o hábitat; ausente = dominio (compatibilidad). */
+  kind?: SpecialKind;
   duration: number;
   cooldown?: number;
   oncePerCombat?: boolean;
+  /**
+   * Efectos legacy. Si `allyEffects` o `enemyEffects` están definidos, el
+   * motor usa las listas nuevas y **ignora** esta.
+   */
   effects: EffectAction[];
+  /** Legacy: bando de `effects`. Ausente en las habilidades nuevas. */
   target: "self" | "team" | "field";
+  /**
+   * Efectos que se aplican a los aliados vivos del lanzador (incluido él).
+   * Definir esta lista (aunque sea vacía) activa el modo por bandos.
+   */
+  allyEffects?: EffectAction[];
+  /** Efectos que se aplican a los enemigos vivos del lanzador. */
+  enemyEffects?: EffectAction[];
+  /**
+   * Escena temporal que sustituye la del encuentro mientras dure el efecto.
+   * Al expirar (o al terminar el combate) se restaura la escena anterior.
+   */
+  scene?: CombatScene;
 }
 
 /* ========================================================================== */
@@ -953,6 +980,19 @@ export interface CombatScene {
 /** Patch parcial de escena; al menos un campo. `""` limpia una capa. */
 export type CombatScenePatch = Partial<CombatScene>;
 
+/**
+ * Escena temporal puesta por un dominio/hábitat. Se apila: el último gana y,
+ * al expirar, se restaura la escena de la entrada anterior o `previous`.
+ */
+export interface CombatSceneOverride {
+  specialId: Id;
+  casterId: Id;
+  /** Escena que impone el dominio mientras dura. */
+  scene: CombatScene;
+  /** Escena que había justo antes de activarlo. */
+  previous: CombatScene;
+}
+
 export interface CombatState {
   id: Id;
   encounterId: Id;
@@ -974,6 +1014,11 @@ export interface CombatState {
    * por el DM en vivo. Ausente en estados antiguos: el cliente usa fallback.
    */
   scene?: CombatScene;
+  /**
+   * Pila de escenas temporales de dominios/hábitats activos. El motor la
+   * sincroniza al final de cada ronda; ausente en estados antiguos.
+   */
+  sceneOverrides?: CombatSceneOverride[];
   log: CombatEvent[];
   winner?: Team;
   /**

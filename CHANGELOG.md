@@ -1,5 +1,52 @@
 # Changelog
 
+## Dominios y hábitats: editor, bandos y escena (2026-10-29)
+
+### Añadido
+
+- **Biblioteca y editor de Dominios y Hábitats** en `/specials`: crear, editar
+  y borrar habilidades especiales, con buscador y filtro por tipo. `specials`
+  entra en `CONTENT_TYPES`, así que reutiliza la API CRUD, la validación, los
+  permisos, los contadores y el export/import.
+- **Tipo dominio/hábitat** (`kind`), duración, una vez por combate o cooldown,
+  imagen y descripción.
+- **Efectos por bando**: `allyEffects` se aplica a todas las unidades vivas del
+  equipo del lanzador (incluido él) y `enemyEffects` al equipo contrario. Los
+  `modifyStat` de cada lista solo cuentan para su bando (variante `ally`/
+  `enemy` en `AppliedEffect`).
+- **Escena temporal** (`scene`): piso, pared y tema que sustituyen la escena del
+  encuentro mientras duran y se restauran al expirar. Las escenas de varios
+  dominios se apilan y gana la última.
+- **Sin clash**: el dominio se declara, ocupa 1 Skill Slot y se resuelve en la
+  ronda, como hasta ahora. No hay ataque cruzado.
+- El editor de ficha separa los selectores de **Dominio** y **Hábitat** por
+  tipo, y conserva el valor ya asignado aunque se cambie el tipo.
+
+### Compatibilidad
+
+- `effects`/`target` siguen existiendo como formato antiguo: si no hay listas
+  por bando, el motor los usa igual que antes. Al editar una habilidad antigua,
+  sus efectos pasan a la lista de aliados.
+- Todos los campos nuevos son opcionales: las campañas y los guardados
+  anteriores siguen cargando sin migraciones.
+
+### Notas
+
+- El cambio de escena se publica con el estado de la ronda, así que se ve al
+  cerrar la ronda en la que se activa el dominio.
+- Si el DM cambia la escena a mano durante un dominio, al expirar se restaura la
+  escena que había antes del dominio (limitación de esta versión).
+
+### Tests
+
+- Motor: aliados/enemigos con variante de stats, curación y daño por bando, sin
+  eventos de clash, escena temporal de duración 1 y 2, restauración de la escena
+  del encuentro y pila de escenas.
+- Validación: referencias de las listas por bando, aviso de «Rival» y de
+  efectos legacy conviviendo con las listas nuevas.
+- API: creación de un dominio con escena y remapeo de `allyEffects`/`enemyEffects`
+  en export/import.
+
 ## Efectos al portador al usar una skill (2026-10-29)
 
 ### Añadido

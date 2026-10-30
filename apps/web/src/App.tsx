@@ -18,6 +18,8 @@ import { ShopEditorPage } from "./pages/ShopEditorPage";
 import { ShopsPage } from "./pages/ShopsPage";
 import { SkillEditorPage } from "./pages/SkillEditorPage";
 import { SkillsPage } from "./pages/SkillsPage";
+import { SpecialEditorPage } from "./pages/SpecialEditorPage";
+import { SpecialsPage } from "./pages/SpecialsPage";
 import { TablePage } from "./pages/TablePage";
 import { LinkButton, PageHeader } from "./components/ui";
 
@@ -70,6 +72,9 @@ export function App() {
         <Route path="effects" element={<EffectsPage />} />
         <Route path="effects/new" element={<EffectEditorPage />} />
         <Route path="effects/:effectId" element={<EffectEditorPage />} />
+        <Route path="specials" element={<SpecialsPage />} />
+        <Route path="specials/new" element={<SpecialEditorPage />} />
+        <Route path="specials/:specialId" element={<SpecialEditorPage />} />
         <Route path="characters" element={<CharactersPage />} />
         <Route path="characters/new" element={<CharacterSheetPage />} />
         <Route path="characters/:characterId" element={<CharacterSheetPage />} />

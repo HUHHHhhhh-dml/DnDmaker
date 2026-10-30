@@ -8,7 +8,7 @@
 
 ### Estudio del DM
 
-- Campañas con objetos, skills, efectos, personajes, encuentros, tiendas y mazmorras.
+- Campañas con objetos, skills, efectos, dominios y hábitats, personajes, encuentros, tiendas y mazmorras.
 - Fichas con equipo por capas, stats derivados en vivo, imágenes locales y export/import JSON.
 - Enemigos y **jefes enemigos** con cambio de fase configurable.
 - Validación de referencias, contenido bloqueado/desbloqueado y editor de reglas.
@@ -27,6 +27,7 @@
 - Side-view con party a la derecha y enemigos a la izquierda, sprites únicos o por capas.
 - Cinemática de clash, log de combate y HP persistente entre encuentros.
 - **Capas de skill** delantera y trasera, además de la capa de arma heredada.
+- **Dominios y hábitats** editables: efectos para aliados y para enemigos, y cambio de escenario temporal mientras duran.
 
 ### Progresión y Soul Points
 

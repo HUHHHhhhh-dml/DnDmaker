@@ -256,12 +256,16 @@ CombatUnit 1─* AppliedEffect ──1 EffectDefinition
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `id`, `code`, `name`, `description` | | |
-| `duration` | `number` | Turnos que dura el efecto. |
-| `cooldown` | `number?` | Solo para habilidades reutilizables (`oncePerCombat: false`); no se usa en v0.1. |
-| `oncePerCombat` | `boolean?` | Default `true` en v0.1. |
-| `target` | `"self" \| "team" \| "field"` | Default `team`. |
-| `effects` | `EffectAction[]` | Buffs/efectos que aplica. |
+| `id`, `code`, `name`, `description`, `image` | | |
+| `kind` | `"domain" \| "habitat"?` | Ausente = dominio. |
+| `duration` | `number` | Rondas que dura el efecto y la escena. |
+| `cooldown` | `number?` | Solo para habilidades reutilizables (`oncePerCombat: false`). |
+| `oncePerCombat` | `boolean?` | Default `true`. |
+| `allyEffects` | `EffectAction[]?` | Efectos a los aliados vivos del lanzador. |
+| `enemyEffects` | `EffectAction[]?` | Efectos a los enemigos vivos. |
+| `scene` | `CombatScene?` | Piso, pared y tema temporales; se restauran al expirar. |
+| `target` | `"self" \| "team" \| "field"` | **Legacy**; bando de `effects`. |
+| `effects` | `EffectAction[]` | **Legacy**; si hay listas por bando, se ignoran. |
 
 #### EffectDefinition
 

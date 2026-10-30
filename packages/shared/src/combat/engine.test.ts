@@ -1471,3 +1471,211 @@ describe("3F — efectos al usar la skill (portador)", () => {
     expect(run(ghost).effects).toHaveLength(0);
   });
 });
+
+describe("3G — dominios y hábitats por bandos", () => {
+  it("aplica los efectos a aliados y a enemigos con su variante", () => {
+    const special = makeSpecial("spc_bands", {
+      name: "Dominio de prueba",
+      duration: 3,
+      allyEffects: [
+        { type: "modifyStat", stat: "def", mode: "flat", amount: 5 },
+        { type: "heal", base: 4 },
+      ],
+      enemyEffects: [
+        { type: "damage", base: 10, damageType: "physical" },
+      ],
+    });
+    const content = makeContent({ specials: [special] });
+    const caster = makeUnit({
+      id: "caster",
+      baseStats: { def: 0, hpMax: 50 },
+      hpCurrent: 40,
+      special: { domainId: special.id },
+    });
+    const ally = makeUnit({
+      id: "ally",
+      baseStats: { def: 0, hpMax: 50 },
+      hpCurrent: 40,
+    });
+    const enemy = makeUnit({
+      id: "enemy",
+      team: "enemies",
+      baseStats: { def: 0, hpMax: 50 },
+      hpCurrent: 50,
+    });
+    const actions = { caster: [act("caster", 1, { special: "domain" })] };
+
+    const result = resolveRound(
+      makeState([caster, ally, enemy], actions),
+      actions,
+      content,
+      DEFAULT_RULES,
+    );
+
+    // No hay clash: el dominio se resuelve sin ataque cruzado.
+    expect(result.events.some((event) => event.type === "clash")).toBe(false);
+
+    const casterAfter = unitFromState(result.state, "caster");
+    const allyAfter = unitFromState(result.state, "ally");
+    const enemyAfter = unitFromState(result.state, "enemy");
+
+    expect(
+      casterAfter.effects.find((entry) => entry.effectId === special.id)
+        ?.variant,
+    ).toBe("ally");
+    expect(
+      allyAfter.effects.find((entry) => entry.effectId === special.id)?.variant,
+    ).toBe("ally");
+    expect(
+      enemyAfter.effects.find((entry) => entry.effectId === special.id)
+        ?.variant,
+    ).toBe("enemy");
+
+    // Buff de aliados: solo cuenta en el equipo del lanzador.
+    expect(
+      effectiveStats(allyAfter, { content, rules: DEFAULT_RULES }).def,
+    ).toBe(5);
+    expect(
+      effectiveStats(casterAfter, { content, rules: DEFAULT_RULES }).def,
+    ).toBe(5);
+    expect(
+      effectiveStats(enemyAfter, { content, rules: DEFAULT_RULES }).def,
+    ).toBe(0);
+
+    // Curación a aliados y daño a enemigos.
+    expect(allyAfter.hpCurrent).toBe(44);
+    expect(casterAfter.hpCurrent).toBe(44);
+    expect(enemyAfter.hpCurrent).toBe(40);
+  });
+
+  it("cambia la escena mientras dura y la restaura al expirar", () => {
+    const special = makeSpecial("spc_scene", {
+      name: "Dominio del eco",
+      duration: 2,
+      scene: { floor: "/assets/dominio.png", theme: "night" },
+      allyEffects: [
+        { type: "modifyStat", stat: "atk", mode: "flat", amount: 1 },
+      ],
+      enemyEffects: [],
+    });
+    const content = makeContent({ specials: [special] });
+    const caster = makeUnit({
+      id: "caster",
+      special: { domainId: special.id },
+    });
+    const enemy = makeUnit({ id: "enemy", team: "enemies" });
+    const actions = { caster: [act("caster", 1, { special: "domain" })] };
+
+    const first = resolveRound(
+      makeState([caster, enemy], actions),
+      actions,
+      content,
+      DEFAULT_RULES,
+    );
+    expect(first.state.scene).toMatchObject({
+      floor: "/assets/dominio.png",
+      theme: "night",
+    });
+    expect(first.state.sceneOverrides).toHaveLength(1);
+
+    const second = resolveRound(first.state, {}, content, DEFAULT_RULES);
+    expect(second.state.scene?.floor).toBe("/assets/dominio.png");
+
+    const third = resolveRound(second.state, {}, content, DEFAULT_RULES);
+    expect(third.state.scene?.floor).toBeUndefined();
+    expect(third.state.sceneOverrides).toHaveLength(0);
+    expect(
+      third.events.some((event) =>
+        event.message.includes("vuelve a la normalidad"),
+      ),
+    ).toBe(true);
+  });
+
+  it("restaura la escena anterior del encuentro, no una vacía", () => {
+    const special = makeSpecial("spc_scene2", {
+      duration: 1,
+      scene: { wall: "/assets/dominio-wall.png" },
+      allyEffects: [],
+      enemyEffects: [],
+    });
+    const content = makeContent({ specials: [special] });
+    const caster = makeUnit({
+      id: "caster",
+      special: { domainId: special.id },
+    });
+    const enemy = makeUnit({ id: "enemy", team: "enemies" });
+    const actions = { caster: [act("caster", 1, { special: "domain" })] };
+    const state = makeState([caster, enemy], actions);
+    state.scene = { floor: "/assets/encuentro.png", theme: "paper" };
+
+    const first = resolveRound(state, actions, content, DEFAULT_RULES);
+    expect(first.state.scene).toMatchObject({
+      floor: "/assets/encuentro.png",
+      wall: "/assets/dominio-wall.png",
+      theme: "paper",
+    });
+
+    const second = resolveRound(first.state, {}, content, DEFAULT_RULES);
+    expect(second.state.scene).toEqual({
+      floor: "/assets/encuentro.png",
+      theme: "paper",
+    });
+    expect(second.state.sceneOverrides).toHaveLength(0);
+  });
+});
+
+describe("3G — pila de escenas de dominios", () => {
+  it("gana la última escena y restaura la base cuando expiran todas", () => {
+    const first = makeSpecial("spc_first", {
+      duration: 2,
+      scene: { floor: "/assets/a.png" },
+      allyEffects: [],
+      enemyEffects: [],
+    });
+    const second = makeSpecial("spc_second", {
+      duration: 2,
+      scene: { theme: "night" },
+      allyEffects: [],
+      enemyEffects: [],
+    });
+    const content = makeContent({ specials: [first, second] });
+    const fast = makeUnit({
+      id: "fast",
+      baseStats: { spd: 20, hpMax: 50 },
+      special: { domainId: first.id },
+    });
+    const slow = makeUnit({
+      id: "slow",
+      baseStats: { spd: 10, hpMax: 50 },
+      special: { domainId: second.id },
+    });
+    const enemy = makeUnit({ id: "enemy", team: "enemies" });
+    const actions = {
+      fast: [act("fast", 1, { special: "domain" })],
+      slow: [act("slow", 1, { special: "domain" })],
+    };
+    const state = makeState([fast, slow, enemy], actions);
+    state.scene = { floor: "/assets/base.png", theme: "paper" };
+
+    const round1 = resolveRound(state, actions, content, DEFAULT_RULES);
+    expect(round1.state.sceneOverrides).toHaveLength(2);
+    // El segundo en resolverse (SPD menor) impone su tema sobre el piso del primero.
+    expect(round1.state.scene).toEqual({
+      floor: "/assets/a.png",
+      theme: "night",
+    });
+
+    const round2 = resolveRound(round1.state, {}, content, DEFAULT_RULES);
+    expect(round2.state.scene).toEqual({
+      floor: "/assets/a.png",
+      theme: "night",
+    });
+
+    const round3 = resolveRound(round2.state, {}, content, DEFAULT_RULES);
+    expect(round3.state.sceneOverrides).toHaveLength(0);
+    expect(round3.state.scene).toEqual({
+      floor: "/assets/base.png",
+      theme: "paper",
+    });
+  });
+});

@@ -17,6 +17,7 @@ import type {
   Dungeon,
   Encounter,
   Shop,
+  SpecialAbility,
 } from "./types";
 import {
   findReferences,
@@ -25,6 +26,7 @@ import {
   validateContent,
   validateDungeon,
   validateShop,
+  validateSpecial,
 } from "./validation";
 
 function cloneContent(): CampaignContent {
@@ -69,6 +71,68 @@ describe("validación de contenido", () => {
     expect(result.valid).toBe(false);
     expect(
       result.issues.some((issue) => issue.path.includes("selfEffects")),
+    ).toBe(true);
+  });
+
+  it("valida los efectos por bando de un dominio y avisa de «Rival»", () => {
+    const content = cloneContent();
+    const special: SpecialAbility = {
+      id: "spc_bandas",
+      name: "Dominio de prueba",
+      kind: "domain",
+      duration: 2,
+      oncePerCombat: true,
+      target: "team",
+      effects: [],
+      allyEffects: [
+        { type: "applyEffect", effectId: "eff_inexistente", stacks: 1 },
+        { type: "damage", base: 4, target: "opponent" },
+      ],
+      enemyEffects: [{ type: "damage", base: 6 }],
+    };
+    content.specials = [special];
+    const result = validateContent(content);
+    expect(result.valid).toBe(false);
+    expect(
+      result.issues.some(
+        (issue) =>
+          issue.severity === "error" && issue.path.includes("allyEffects"),
+      ),
+    ).toBe(true);
+    expect(
+      result.issues.some(
+        (issue) =>
+          issue.severity === "warning" && issue.message.includes("«Rival»"),
+      ),
+    ).toBe(true);
+
+    const refs = findReferences("eff_inexistente", content);
+    expect(
+      refs.some((ref) => ref.label.includes("Dominio de prueba")),
+    ).toBe(true);
+  });
+
+  it("avisa si un dominio define listas por bando y efectos legacy a la vez", () => {
+    const content = cloneContent();
+    const effectId = content.effects[0]!.id;
+    const special: SpecialAbility = {
+      id: "spc_legacy",
+      name: "Dominio mixto",
+      duration: 1,
+      oncePerCombat: true,
+      target: "team",
+      effects: [{ type: "applyEffect", effectId, stacks: 1 }],
+      allyEffects: [],
+      enemyEffects: [],
+    };
+    const result = validateSpecial(special, content);
+    expect(result.valid).toBe(true);
+    expect(
+      result.issues.some(
+        (issue) =>
+          issue.severity === "warning" &&
+          issue.message.includes("efectos legacy"),
+      ),
     ).toBe(true);
   });
 

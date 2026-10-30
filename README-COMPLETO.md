@@ -163,6 +163,10 @@ exige el servidor parado, igual que en Linux.
 - **Efectos al usar la skill** (`Skill.selfEffects`): se aplican al portador
   antes del clash (autobuffs) y se mantienen aunque pierda el clash; los de
   `Skill.effects` siguen yendo al rival impactado.
+- **Dominios y hábitats** editables (`/specials`): una vez por combate o con
+  cooldown, sin clash, con efectos separados para **jugadores y aliados** y para
+  **enemigos**, y una **escena temporal** (piso, pared, tema) que se restaura al
+  expirar. Se asignan en la ficha como dominio/hábitat.
 - **Side-view** con party a la derecha y enemigos a la izquierda, sprites en
   capas o `portrait`, SkillSlots pentagonales, líneas de intención
   (azul/amarillo/rojo/verde) y `targetSlot` visual.
@@ -397,7 +401,7 @@ Todas las respuestas de error usan `{ "error": { "code", "message", "issues?" } 
 | GET | `/api/sessions/:code/dungeon` | Run de mazmorra activa saneada (o `null`). |
 | POST | `/api/sessions/:code/dungeon/start\|encounter\|rest\|chest\|advance\|end` | Acciones del DM sobre la run. |
 | POST | `/api/sessions/:code/dice` | Tirada compartida `{ sides, count?, throw? }` (1–20 dados, se suman); `throw` lleva velocidad/angular/salida/rebotes (1–4) para la física. El servidor decide el resultado y lo emite a la sala; d100 devuelve dos trayectorias de d10 por dado. |
-| GET/POST | `/api/campaigns/:id/:type` | Listar / crear contenido (`items`, `skills`, `effects`, `characters`, `encounters`). |
+| GET/POST | `/api/campaigns/:id/:type` | Listar / crear contenido (`items`, `skills`, `effects`, `specials`, `characters`, `encounters`). |
 | GET/PATCH/DELETE | `/api/content/:type/:id` | Leer / editar / borrar; el jugador solo puede editar su ficha. |
 | GET | `/api/campaigns/:id/characters/:charId/sheet` | Ficha con equipo y stats derivados. |
 | POST | `/api/uploads` | Subir imagen (multipart `file`, máx. 5 MB). |
