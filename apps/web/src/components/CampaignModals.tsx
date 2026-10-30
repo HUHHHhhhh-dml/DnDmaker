@@ -140,6 +140,7 @@ export function NewCampaignModal({
   const [baseCharacterImage, setBaseCharacterImage] = useState<string | undefined>(
     DEFAULT_BASE_CHARACTER_IMAGE,
   );
+  const [allowPlayerSpecials, setAllowPlayerSpecials] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -149,6 +150,7 @@ export function NewCampaignModal({
     setSeed(true);
     setLeveling({ ...DEFAULT_LEVELING });
     setBaseCharacterImage(DEFAULT_BASE_CHARACTER_IMAGE);
+    setAllowPlayerSpecials(false);
     setError(null);
   }, [open]);
 
@@ -165,6 +167,7 @@ export function NewCampaignModal({
         settings: {
           baseCharacterImage: baseCharacterImage ?? "",
           leveling,
+          allowPlayerSpecials,
         },
       });
       onClose();
@@ -220,12 +223,18 @@ export function NewCampaignModal({
           hint="Se usa en el muñeco de equipo. Ideal PNG 200×300 con transparencia; puedes subir otra o quitarla."
           shape="portrait"
         />
-        <div className="border border-ui-line bg-ui-surface-2 p-3">
+        <div className="space-y-3 border border-ui-line bg-ui-surface-2 p-3">
           <Toggle
             checked={seed}
             onCheckedChange={setSeed}
             label="Incluir contenido inicial"
             hint="7 objetos, 5 skills, 4 efectos, 4 personajes y 1 encuentro de ejemplo, todo editable."
+          />
+          <Toggle
+            checked={allowPlayerSpecials}
+            onCheckedChange={setAllowPlayerSpecials}
+            label="Los jugadores pueden elegir dominio y hábitat"
+            hint="Desactivado: solo el DM los asigna desde la ficha."
           />
         </div>
         <LevelingFields value={leveling} onChange={setLeveling} />
@@ -541,6 +550,14 @@ export function EditCampaignModal({
                 checked={settings.allowPlayerEdit}
                 onCheckedChange={(value) => patchSettings({ allowPlayerEdit: value })}
                 label="Los jugadores pueden editar su ficha fuera de combate"
+              />
+              <Toggle
+                checked={settings.allowPlayerSpecials === true}
+                onCheckedChange={(value) =>
+                  patchSettings({ allowPlayerSpecials: value })
+                }
+                label="Los jugadores pueden elegir dominio y hábitat"
+                hint="Desactivado: solo el DM los asigna. Lo que ya lleve una ficha se conserva."
               />
               <Toggle
                 checked={settings.allowPlayerEditDuringCombat}

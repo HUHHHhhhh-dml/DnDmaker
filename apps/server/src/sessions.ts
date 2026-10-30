@@ -380,6 +380,7 @@ export class SessionService {
     );
     const referencedItems = new Set<string>();
     const referencedSkills = new Set<string>();
+    const referencedSpecials = new Set<string>();
     const referencedCharacters = includeCombatReferences
       ? campaign.content.characters
       : party;
@@ -390,6 +391,9 @@ export class SessionService {
       for (const entry of character.inventory) referencedItems.add(entry.itemId);
       for (const skillId of character.skills) {
         if (skillId) referencedSkills.add(skillId);
+      }
+      for (const specialId of Object.values(character.special ?? {})) {
+        if (specialId) referencedSpecials.add(specialId);
       }
       // En combate un jefe puede entrar en fase 2 y cambiar sus skills: sus
       // definiciones viajan al jugador para poder pintarlas en el log/estado.
@@ -413,6 +417,12 @@ export class SessionService {
         ),
         skills: campaign.content.skills.filter(
           (skill) => skill.unlocked === true || referencedSkills.has(skill.id),
+        ),
+        // Igual que objetos/skills: los dominios/hábitats bloqueados que ya
+        // lleva una ficha de la party se conservan para no romper su combate.
+        specials: campaign.content.specials.filter(
+          (special) =>
+            special.unlocked === true || referencedSpecials.has(special.id),
         ),
         characters: party.map((character) => this.sanitizeCharacter(character)),
         encounters: [],

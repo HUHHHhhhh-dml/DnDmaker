@@ -53,6 +53,15 @@ export function PlayerSheetEditor({
     campaign.rules,
     campaign.settings,
   );
+  // El DM decide si el jugador puede elegir dominio/hábitat. Si el ajuste está
+  // apagado no se muestra la sección; lo ya asignado se conserva en la ficha.
+  const specialsEnabled = campaign.settings.allowPlayerSpecials === true;
+  const selectableSpecials = campaign.content.specials.filter(
+    (special) =>
+      special.unlocked === true ||
+      special.id === draft.special?.domainId ||
+      special.id === draft.special?.habitatId,
+  );
   const itemsById = new Map(campaign.content.items.map((item) => [item.id, item]));
   // El estado del jugador incluye lo bloqueado que lleva la party para que los
   // stats de todos se calculen bien. El editor solo ofrece lo desbloqueado más
@@ -344,47 +353,61 @@ export function PlayerSheetEditor({
         />
       </section>
 
-      <section className="panel p-4">
-        <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-          04 · Especiales
-        </h2>
-        <p className="mb-4 mt-2 text-[11px] text-ui-faint">
-          Dominio y hábitat son habilidades especiales de equipo. Tus skills
-          equipadas se eligen desde los pentágonos del muñeco.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Dominio" hint="Habilidad especial de equipo.">
-            <Select
-              value={draft.special?.domainId ?? ""}
-              onValueChange={(value) => patchSpecial("domainId", value || null)}
-            >
-              <option value="">— Vacío —</option>
-              {campaign.content.specials.map((special) => (
-                <option key={special.id} value={special.id}>
-                  {special.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Hábitat">
-            <Select
-              value={draft.special?.habitatId ?? ""}
-              onValueChange={(value) => patchSpecial("habitatId", value || null)}
-            >
-              <option value="">— Vacío —</option>
-              {campaign.content.specials.map((special) => (
-                <option key={special.id} value={special.id}>
-                  {special.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </section>
+      {specialsEnabled ? (
+        <section className="panel p-4">
+          <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+            04 · Especiales
+          </h2>
+          <p className="mb-4 mt-2 text-[11px] text-ui-faint">
+            Dominio y hábitat son habilidades especiales de equipo. Tus skills
+            equipadas se eligen desde los pentágonos del muñeco.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Dominio" hint="Habilidad especial de equipo.">
+              <Select
+                value={draft.special?.domainId ?? ""}
+                onValueChange={(value) => patchSpecial("domainId", value || null)}
+              >
+                <option value="">— Vacío —</option>
+                {selectableSpecials
+                  .filter(
+                    (special) =>
+                      (special.kind ?? "domain") === "domain" ||
+                      special.id === draft.special?.domainId,
+                  )
+                  .map((special) => (
+                    <option key={special.id} value={special.id}>
+                      {special.name}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+            <Field label="Hábitat">
+              <Select
+                value={draft.special?.habitatId ?? ""}
+                onValueChange={(value) => patchSpecial("habitatId", value || null)}
+              >
+                <option value="">— Vacío —</option>
+                {selectableSpecials
+                  .filter(
+                    (special) =>
+                      special.kind === "habitat" ||
+                      special.id === draft.special?.habitatId,
+                  )
+                  .map((special) => (
+                    <option key={special.id} value={special.id}>
+                      {special.name}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel p-4">
         <h2 className="mb-1 border-b border-ui-line-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-          05 · Inventario
+          {specialsEnabled ? "05" : "04"} · Inventario
         </h2>
         <p className="mb-4 mt-2 text-[11px] text-ui-faint">
           Objetos que llevas contigo, además del equipo puesto.

@@ -80,6 +80,7 @@ export const DEFAULT_SETTINGS: CampaignSettings = {
   maxPlayers: 6,
   allowPlayerEdit: true,
   allowPlayerEditDuringCombat: false,
+  allowPlayerSpecials: false,
   requirePin: false,
   baseCharacterImage: DEFAULT_BASE_CHARACTER_IMAGE,
   shareLoot: true,

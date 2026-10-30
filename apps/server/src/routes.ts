@@ -247,6 +247,53 @@ export async function registerRoutes(
         "Esa skill todavía no está desbloqueada para los jugadores.",
       );
     }
+
+    // Dominios y hábitats: el ajuste de campaña decide si el jugador puede
+    // cambiarlos. Guardar la ficha sin tocarlos sigue funcionando.
+    const specialPatch = patch.special;
+    if (specialPatch && typeof specialPatch === "object") {
+      const requested = specialPatch as {
+        domainId?: unknown;
+        habitatId?: unknown;
+      };
+      const currentSpecial = current?.special ?? {};
+      const normalizeId = (value: unknown): string | null =>
+        typeof value === "string" && value ? value : null;
+      const changed = (["domainId", "habitatId"] as const).filter(
+        (field) =>
+          field in requested &&
+          normalizeId(requested[field]) !== normalizeId(currentSpecial[field]),
+      );
+
+      if (changed.length > 0) {
+        if (campaign.settings.allowPlayerSpecials !== true) {
+          throw new HttpError(
+            403,
+            "player_specials_disabled",
+            "Solo el DM puede asignar dominios y hábitats.",
+          );
+        }
+        const allowedSpecials = new Set(
+          campaign.content.specials
+            .filter((special) => special.unlocked === true)
+            .map((special) => special.id),
+        );
+        for (const field of ["domainId", "habitatId"] as const) {
+          const currentId = normalizeId(currentSpecial[field]);
+          if (currentId) allowedSpecials.add(currentId);
+        }
+        const requestedIds = changed
+          .map((field) => normalizeId(requested[field]))
+          .filter((id): id is string => Boolean(id));
+        if (requestedIds.some((id) => !allowedSpecials.has(id))) {
+          throw new HttpError(
+            403,
+            "content_locked",
+            "Ese dominio o hábitat todavía no está desbloqueado para los jugadores.",
+          );
+        }
+      }
+    }
   }
 
   /* ---------------------------------------------------------------------- */

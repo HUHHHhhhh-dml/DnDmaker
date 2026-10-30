@@ -32,6 +32,7 @@ interface SpecialDraft {
   description: string;
   image: string | undefined;
   kind: SpecialKind;
+  unlocked: boolean;
   duration: number;
   oncePerCombat: boolean;
   cooldown: number;
@@ -52,6 +53,7 @@ function emptyDraft(): SpecialDraft {
     description: "",
     image: undefined,
     kind: "domain",
+    unlocked: false,
     duration: 3,
     oncePerCombat: true,
     cooldown: 0,
@@ -74,6 +76,7 @@ function draftFromSpecial(special: SpecialAbility): SpecialDraft {
     description: special.description ?? "",
     image: special.image,
     kind: special.kind ?? "domain",
+    unlocked: special.unlocked === true,
     duration: special.duration,
     oncePerCombat: special.oncePerCombat !== false,
     cooldown: special.cooldown ?? 0,
@@ -159,6 +162,7 @@ export function SpecialEditorPage() {
       description: draft.description.trim() || undefined,
       image: draft.image,
       kind: draft.kind,
+      unlocked: draft.unlocked,
       duration: draft.duration,
       cooldown: draft.oncePerCombat ? undefined : draft.cooldown,
       oncePerCombat: draft.oncePerCombat,
@@ -297,6 +301,14 @@ export function SpecialEditorPage() {
                   placeholder="Qué ocurre cuando se activa…"
                 />
               </Field>
+              <div className="sm:col-span-2 border border-ui-line bg-ui-surface-2 p-3">
+                <Toggle
+                  checked={draft.unlocked}
+                  onCheckedChange={(value) => patch({ unlocked: value })}
+                  label="Visible para jugadores"
+                  hint="Apagada = solo el DM la ve en la biblioteca y no pueden elegirla. Si un personaje ya la lleva asignada, su ficha la conserva."
+                />
+              </div>
               <div className="sm:col-span-2">
                 <ImageField
                   value={draft.image}

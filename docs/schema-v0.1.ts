@@ -260,6 +260,8 @@ export interface SpecialAbility {
   image?: string;
   /** Dominio o hábitat; ausente = dominio (compatibilidad). */
   kind?: SpecialKind;
+  /** Si es true, los jugadores pueden verla/elegirla. Default: solo DM. */
+  unlocked?: boolean;
   /** Turnos que dura el efecto. */
   duration: number;
   /** Rondas de espera tras terminar la duración. Solo aplica si oncePerCombat = false. */
@@ -464,6 +466,8 @@ export interface CampaignSettings {
   pin?: string;
   /** Imagen base para el muñeco de equipo de los jugadores. */
   baseCharacterImage?: string;
+  /** Los jugadores pueden elegir dominio/hábitat; ausente/false = solo DM. */
+  allowPlayerSpecials?: boolean;
   /** Progresión por nivel; ausente = defaults para campañas antiguas. */
   leveling?: LevelingSettings;
 }

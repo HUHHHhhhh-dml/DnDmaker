@@ -89,6 +89,11 @@ function SpecialCard({ special }: { special: SpecialAbility }) {
             </>
           )}
           {special.scene ? <span className="chip chip-accent">Escena</span> : null}
+          {special.unlocked === true ? (
+            <span className="chip">Visible</span>
+          ) : (
+            <span className="chip chip-rust">Solo DM</span>
+          )}
         </div>
       </div>
     </Link>

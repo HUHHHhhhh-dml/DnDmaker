@@ -255,6 +255,8 @@ const specialFields = {
   image: imageSchema.optional(),
   /** Dominio o hábitat; ausente = dominio. */
   kind: z.enum(["domain", "habitat"]).optional(),
+  /** Visibilidad para jugadores; ausente = bloqueada. */
+  unlocked: z.boolean().optional(),
   duration: integer(1, 99),
   cooldown: integer(0, 99).optional(),
   oncePerCombat: z.boolean().optional(),
@@ -676,6 +678,8 @@ export const campaignSettingsSchema = z.object({
   maxPlayers: integer(1, 6),
   allowPlayerEdit: z.boolean(),
   allowPlayerEditDuringCombat: z.boolean(),
+  /** Los jugadores pueden elegir dominio/hábitat; ausente/false = solo DM. */
+  allowPlayerSpecials: z.boolean().optional(),
   requirePin: z.boolean().optional(),
   pin: z.string().max(12).optional(),
   baseCharacterImage: imageSchema.optional(),

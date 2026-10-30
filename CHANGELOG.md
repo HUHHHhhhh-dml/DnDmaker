@@ -1,5 +1,30 @@
 # Changelog
 
+## Visibilidad de dominios y quién los equipa (2026-10-29)
+
+### Añadido
+
+- **`SpecialAbility.unlocked`**: interruptor **Visible para jugadores** en el
+  editor de dominios/hábitats, como en objetos y skills. Apagado = solo el DM lo
+  ve en la biblioteca y los jugadores no pueden elegirlo.
+- **`CampaignSettings.allowPlayerSpecials`**: ajuste de campaña con
+  **«Los jugadores pueden elegir dominio y hábitat»**, disponible al crear la
+  campaña y en sus ajustes. Apagado (default) = solo el DM los asigna.
+- La campaña saneada del jugador filtra los dominios/hábitats bloqueados y
+  conserva los que ya tenga asignados una ficha de la party.
+- El servidor rechaza `player_specials_disabled` si el jugador intenta cambiar
+  su dominio/hábitat con el ajuste apagado, y `content_locked` si el special no
+  está desbloqueado. Guardar la ficha sin tocar los especiales sigue funcionando.
+- La sección **04 · Especiales** del editor del jugador solo aparece si el
+  ajuste está activo y solo ofrece desbloqueados o el valor ya asignado.
+- La biblioteca y las tarjetas muestran **Visible** / **Solo DM**.
+
+### Tests
+
+- Saneado que filtra dominios bloqueados.
+- Permisos: jugador bloqueado con el ajuste apagado, el DM siempre puede, y con
+  el ajuste activo el jugador solo puede elegir dominios desbloqueados.
+
 ## Dominios y hábitats: editor, bandos y escena (2026-10-29)
 
 ### Añadido

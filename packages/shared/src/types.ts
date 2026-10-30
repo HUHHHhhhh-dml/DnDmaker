@@ -266,6 +266,8 @@ export interface SpecialAbility {
   image?: string;
   /** Dominio o hábitat; ausente = dominio (compatibilidad). */
   kind?: SpecialKind;
+  /** Si es true, los jugadores pueden verla/elegirla. Default: solo DM. */
+  unlocked?: boolean;
   duration: number;
   cooldown?: number;
   oncePerCombat?: boolean;
@@ -800,6 +802,11 @@ export interface CampaignSettings {
   pin?: string;
   /** Imagen base para el muñeco de equipo de los jugadores. */
   baseCharacterImage?: string;
+  /**
+   * ¿Los jugadores pueden elegir su dominio/hábitat? Ausente o `false` =
+   * solo el DM los asigna. No afecta a los que ya tenga la ficha.
+   */
+  allowPlayerSpecials?: boolean;
   /**
    * Fase 4: al ganar un encuentro, ¿cada jugador recibe cada objeto del botín
    * (true, por defecto) o se reparte por turnos (false)?

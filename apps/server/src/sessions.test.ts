@@ -29,6 +29,8 @@ let unlockedItemId: string;
 let lockedItemId: string;
 let unlockedSkillId: string;
 let lockedSkillId: string;
+let unlockedSpecialId: string;
+let lockedSpecialId: string;
 let sessionCode: string;
 let dmToken: string;
 let playerToken: string;
@@ -152,6 +154,40 @@ beforeAll(async () => {
     },
   });
   lockedSkillId = (lockedSkill.json() as { id: string }).id;
+
+  const unlockedSpecial = await app.inject({
+    method: "POST",
+    url: `/api/campaigns/${campaign.id}/specials`,
+    payload: {
+      name: "Dominio visible",
+      kind: "domain",
+      duration: 2,
+      oncePerCombat: true,
+      effects: [],
+      target: "team",
+      allyEffects: [],
+      enemyEffects: [],
+      unlocked: true,
+    },
+  });
+  unlockedSpecialId = (unlockedSpecial.json() as { id: string }).id;
+
+  const lockedSpecial = await app.inject({
+    method: "POST",
+    url: `/api/campaigns/${campaign.id}/specials`,
+    payload: {
+      name: "Dominio oculto",
+      kind: "habitat",
+      duration: 2,
+      oncePerCombat: true,
+      effects: [],
+      target: "team",
+      allyEffects: [],
+      enemyEffects: [],
+      unlocked: false,
+    },
+  });
+  lockedSpecialId = (lockedSpecial.json() as { id: string }).id;
 });
 
 afterAll(async () => {
@@ -261,6 +297,12 @@ describe("Fase 2 — sala en vivo", () => {
     expect(state.campaign.content.skills.map((skill) => skill.id)).not.toContain(
       lockedSkillId,
     );
+    expect(state.campaign.content.specials.map((special) => special.id)).toContain(
+      unlockedSpecialId,
+    );
+    expect(state.campaign.content.specials.map((special) => special.id)).not.toContain(
+      lockedSpecialId,
+    );
     expect(stateResponse.body).not.toContain(enemyCharacterId);
   });
 
@@ -281,6 +323,65 @@ describe("Fase 2 — sala en vivo", () => {
       payload: { notes: "El DM también edita" },
     });
     expect(dmEdit.statusCode).toBe(200);
+  });
+
+  it("solo el DM asigna dominios y hábitats si la campaña lo restringe", async () => {
+    // La campaña arranca con allowPlayerSpecials = false (solo DM).
+    const denied = await app.inject({
+      method: "PATCH",
+      url: `/api/content/characters/${playerCharacterId}`,
+      headers: playerHeaders(),
+      payload: { special: { domainId: unlockedSpecialId, habitatId: null } },
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error.code).toBe("player_specials_disabled");
+
+    // El DM sí puede asignarlo.
+    const dmAssign = await app.inject({
+      method: "PATCH",
+      url: `/api/content/characters/${playerCharacterId}`,
+      headers: dmHeaders(),
+      payload: { special: { domainId: unlockedSpecialId, habitatId: null } },
+    });
+    expect(dmAssign.statusCode).toBe(200);
+
+    // El DM habilita que los jugadores elijan.
+    const enabled = await app.inject({
+      method: "PATCH",
+      url: `/api/campaigns/${campaign.id}`,
+      headers: dmHeaders(),
+      payload: { settings: { allowPlayerSpecials: true } },
+    });
+    expect(enabled.statusCode).toBe(200);
+
+    const allowed = await app.inject({
+      method: "PATCH",
+      url: `/api/content/characters/${playerCharacterId}`,
+      headers: playerHeaders(),
+      payload: { special: { domainId: null, habitatId: unlockedSpecialId } },
+    });
+    expect(allowed.statusCode).toBe(200);
+    expect((allowed.json() as Character).special?.habitatId).toBe(
+      unlockedSpecialId,
+    );
+
+    // Sigue sin poder elegir un dominio bloqueado.
+    const locked = await app.inject({
+      method: "PATCH",
+      url: `/api/content/characters/${playerCharacterId}`,
+      headers: playerHeaders(),
+      payload: { special: { domainId: lockedSpecialId, habitatId: unlockedSpecialId } },
+    });
+    expect(locked.statusCode).toBe(403);
+    expect(locked.json().error.code).toBe("content_locked");
+
+    // Restaura el ajuste para no contaminar el resto de la suite.
+    await app.inject({
+      method: "PATCH",
+      url: `/api/campaigns/${campaign.id}`,
+      headers: dmHeaders(),
+      payload: { settings: { allowPlayerSpecials: false } },
+    });
   });
 
   it("el jugador no puede equipar contenido bloqueado", async () => {
