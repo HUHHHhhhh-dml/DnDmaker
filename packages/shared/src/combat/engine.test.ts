@@ -1315,3 +1315,159 @@ describe("3B — determinismo", () => {
     ]);
   });
 });
+
+describe("3F — efectos al usar la skill (portador)", () => {
+  const build = () => {
+    const buff = makeEffect("eff_buff", {
+      name: "Buff",
+      maxStacks: 5,
+      stackMode: "add",
+      duration: { type: "turns", default: 3 },
+      triggers: [],
+    });
+    const mark = makeEffect("eff_mark", {
+      name: "Mark",
+      maxStacks: 5,
+      stackMode: "add",
+      duration: { type: "turns", default: 3 },
+      triggers: [],
+    });
+    return { buff, mark };
+  };
+
+  it("aplica los efectos al portador y los de impacto al rival", () => {
+    const { buff, mark } = build();
+    const skill = makeSkill("skl_self", {
+      baseClash: 20,
+      baseDamage: 10,
+      selfEffects: [{ effectId: buff.id, stacks: 2 }],
+      effects: [{ effectId: mark.id, stacks: 1 }],
+    });
+    const content = makeContent({ skills: [skill], effects: [buff, mark] });
+    const a = makeUnit({
+      id: "a",
+      baseStats: { spd: 20, atk: 10, hpMax: 50 },
+      hpCurrent: 50,
+      skills: [skill.id, null, null],
+    });
+    const b = makeUnit({
+      id: "b",
+      team: "enemies",
+      baseStats: { spd: 10, atk: 10, hpMax: 50 },
+      hpCurrent: 50,
+    });
+    const state = makeState([a, b], {
+      a: [act("a", 1, { skillId: skill.id, targetId: "b" })],
+    });
+
+    const result = resolveRound(state, state.actions, content, DEFAULT_RULES);
+    const actor = unitFromState(result.state, "a");
+    const target = unitFromState(result.state, "b");
+
+    expect(
+      actor.effects.find((entry) => entry.effectId === buff.id)?.stacks,
+    ).toBe(2);
+    expect(
+      target.effects.find((entry) => entry.effectId === mark.id)?.stacks,
+    ).toBe(1);
+    // El portador no recibe el efecto de impacto, ni el rival el autobuff.
+    expect(actor.effects.some((entry) => entry.effectId === mark.id)).toBe(false);
+    expect(target.effects.some((entry) => entry.effectId === buff.id)).toBe(false);
+  });
+
+  it("mantiene el autobuff aunque pierda el clash", () => {
+    const { buff, mark } = build();
+    const weak = makeSkill("skl_weak", {
+      baseClash: 1,
+      coinClash: 0,
+      baseDamage: 5,
+      coinDamage: 0,
+      selfEffects: [{ effectId: buff.id, stacks: 1 }],
+      effects: [{ effectId: mark.id, stacks: 1 }],
+    });
+    const strong = makeSkill("skl_strong", {
+      baseClash: 50,
+      coinClash: 0,
+      baseDamage: 5,
+      coinDamage: 0,
+    });
+    const content = makeContent({
+      skills: [weak, strong],
+      effects: [buff, mark],
+    });
+    const a = makeUnit({
+      id: "a",
+      baseStats: { spd: 20, atk: 10, hpMax: 50 },
+      hpCurrent: 50,
+      skills: [weak.id, null, null],
+    });
+    const b = makeUnit({
+      id: "b",
+      team: "enemies",
+      baseStats: { spd: 10, atk: 10, hpMax: 50 },
+      hpCurrent: 50,
+      skills: [strong.id, null, null],
+    });
+    const state = makeState([a, b], {
+      a: [act("a", 1, { skillId: weak.id, targetId: "b" })],
+      b: [act("b", 1, { skillId: strong.id, targetId: "a" })],
+    });
+
+    const result = resolveRound(state, state.actions, content, DEFAULT_RULES);
+    const actor = unitFromState(result.state, "a");
+    const target = unitFromState(result.state, "b");
+
+    expect(
+      actor.effects.find((entry) => entry.effectId === buff.id)?.stacks,
+    ).toBe(1);
+    // Perdió el clash: su efecto de impacto no llega al rival.
+    expect(target.effects.some((entry) => entry.effectId === mark.id)).toBe(false);
+  });
+
+  it("respeta probabilidad, tope de stacks y efectos inexistentes", () => {
+    const { buff } = build();
+    const never = makeSkill("skl_never", {
+      selfEffects: [{ effectId: buff.id, chance: 0 }],
+    });
+    const capped = makeSkill("skl_capped", {
+      selfEffects: [{ effectId: buff.id, stacks: 99 }],
+    });
+    const ghost = makeSkill("skl_ghost", {
+      selfEffects: [{ effectId: "eff_missing", stacks: 1 }],
+    });
+    const content = makeContent({
+      skills: [never, capped, ghost],
+      effects: [buff],
+    });
+    const run = (skill: Skill) => {
+      const a = makeUnit({
+        id: "a",
+        baseStats: { spd: 20, atk: 10, hpMax: 50 },
+        hpCurrent: 50,
+        skills: [skill.id, null, null],
+      });
+      const b = makeUnit({
+        id: "b",
+        team: "enemies",
+        baseStats: { spd: 10, atk: 10, hpMax: 50 },
+        hpCurrent: 50,
+      });
+      const state = makeState([a, b], {
+        a: [act("a", 1, { skillId: skill.id, targetId: "b" })],
+      });
+      return unitFromState(
+        resolveRound(state, state.actions, content, DEFAULT_RULES).state,
+        "a",
+      );
+    };
+
+    expect(run(never).effects.some((entry) => entry.effectId === buff.id)).toBe(
+      false,
+    );
+    expect(
+      run(capped).effects.find((entry) => entry.effectId === buff.id)?.stacks,
+    ).toBe(5);
+    // Un efecto borrado no rompe la ronda ni crea entradas fantasma.
+    expect(run(ghost).effects).toHaveLength(0);
+  });
+});

@@ -169,6 +169,17 @@ export function validateSkill(
     }
   });
 
+  (skill.selfEffects ?? []).forEach((ref, index) => {
+    if (!effects.has(ref.effectId)) {
+      issues.push(
+        issue(
+          `${path}.selfEffects[${index}]`,
+          "El efecto al usar la skill no existe.",
+        ),
+      );
+    }
+  });
+
   if (skill.coinDamage < 0 || skill.coinClash < 0) {
     issues.push(
       issue(
@@ -715,6 +726,9 @@ export function findReferences(id: string, content: CampaignContent): ReferenceI
   for (const skill of content.skills) {
     if (skill.effects?.some((ref) => ref.effectId === id)) {
       refs.push({ label: `skill "${skill.name}"`, id: skill.id });
+    }
+    if (skill.selfEffects?.some((ref) => ref.effectId === id)) {
+      refs.push({ label: `skill "${skill.name}" (al usarla)`, id: skill.id });
     }
   }
 

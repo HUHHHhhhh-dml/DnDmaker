@@ -296,6 +296,32 @@ export function resolveRound(
     }
   };
 
+  /**
+   * Efectos que la skill aplica a su **portador** al usarla. Se resuelven
+   * antes del clash: un autobuff de stats cuenta para el clash de esa misma
+   * acción y se conserva aunque el clash se pierda o la acción sea redirigida.
+   */
+  const applySkillSelfEffects = (actorId: Id, skill: Skill): void => {
+    for (const ref of skill.selfEffects ?? []) {
+      const latest = current(actorId);
+      if (!latest || latest.defeated) break;
+      const chance = ref.chance ?? 1;
+      if (chance <= 0) continue;
+      if (chance < 1 && rng.next() >= chance) continue;
+      const result = applyEffect(
+        latest,
+        ref.effectId,
+        ref.stacks ?? 1,
+        context,
+        actorId,
+      );
+      setUnit(result.unit);
+      for (const event of result.events) emit(event);
+      const after = current(actorId);
+      if (after && after.hpCurrent <= 0) markDefeated(actorId);
+    }
+  };
+
   const skillOf = (skillId: Id | undefined): Skill | undefined =>
     skillId ? content.skills.find((skill) => skill.id === skillId) : undefined;
 
@@ -663,8 +689,16 @@ export function resolveRound(
       return;
     }
 
+    // Autobuff de la skill: entra antes del clash y sobrevive a perderlo.
+    applySkillSelfEffects(attackerNow.id, skill);
+    const attackerAfterSelf = current(attacker.id);
+    if (!attackerAfterSelf || !alive(attackerAfterSelf)) {
+      markAllResolved(attacker.id);
+      return;
+    }
+
     // Redirección: una por ataque, la del aliado más rápido con SPD mayor.
-    const redirect = findRedirect(attackerNow, target);
+    const redirect = findRedirect(attackerAfterSelf, target);
     if (redirect) {
       redirect.entry.resolved = true;
       emit({
@@ -684,7 +718,7 @@ export function resolveRound(
       const redirectorNow = current(redirect.unit.id);
       if (redirectorNow && alive(redirectorNow)) {
         resolveClashBetween(
-          attackerNow,
+          attackerAfterSelf,
           redirectorNow,
           skill,
           redirect.skill,
@@ -709,7 +743,7 @@ export function resolveRound(
       const defenderSkill = skillOf(defenderEntry.action.skillId);
       if (defenderNow && alive(defenderNow) && defenderSkill) {
         resolveClashBetween(
-          attackerNow,
+          attackerAfterSelf,
           defenderNow,
           skill,
           defenderSkill,
@@ -720,7 +754,7 @@ export function resolveRound(
       }
     }
 
-    resolveOneSided(attackerNow, skill, target, action);
+    resolveOneSided(attackerAfterSelf, skill, target, action);
   };
 
   /* ---------------------------------------------------------------------- */

@@ -121,6 +121,7 @@ describe("Fase 1 — API", () => {
         slot: "hand",
         stats: { hpMax: 5, def: 5, atk: 10 },
         effects: [{ effectId: effect.id, stacks: 2 }],
+        startCombatEffects: [{ effectId: effect.id, stacks: 1 }],
       },
     });
     expect(itemResponse.statusCode).toBe(201);
@@ -136,6 +137,7 @@ describe("Fase 1 — API", () => {
         coinClash: 5,
         baseDamage: 10,
         coinDamage: 5,
+        selfEffects: [{ effectId: effect.id, stacks: 1 }],
       },
     });
     expect(skillResponse.statusCode).toBe(201);
@@ -294,10 +296,30 @@ describe("Fase 1 — API", () => {
     expect(exportResponse.headers["content-disposition"]).toContain("attachment");
     const exported = JSON.parse(exportResponse.body) as Campaign;
 
+    // El test de "vaciar efectos" dejó el objeto sin efectos de inicio:
+    // restauramos uno para cubrir también su remapeo en el import.
+    await app.inject({
+      method: "PATCH",
+      url: `/api/content/items/${exported.content.items[0]!.id}`,
+      payload: {
+        startCombatEffects: [
+          { effectId: exported.content.effects[0]!.id, stacks: 1 },
+        ],
+      },
+    });
+    const refreshed = JSON.parse(
+      (
+        await app.inject({
+          method: "GET",
+          url: `/api/campaigns/${campaignId}/export`,
+        })
+      ).body,
+    ) as Campaign;
+
     const importResponse = await app.inject({
       method: "POST",
       url: "/api/campaigns/import",
-      payload: exported,
+      payload: refreshed,
     });
     expect(importResponse.statusCode).toBe(201);
     const imported = importResponse.json() as Campaign;
@@ -310,6 +332,13 @@ describe("Fase 1 — API", () => {
     );
     expect(imported.content.characters[0]!.skills[0]).toBe(
       imported.content.skills[0]!.id,
+    );
+    // Los efectos referenciados se remapean también en los campos nuevos.
+    expect(imported.content.skills[0]!.selfEffects?.[0]?.effectId).toBe(
+      imported.content.effects[0]!.id,
+    );
+    expect(imported.content.items[0]!.startCombatEffects?.[0]?.effectId).toBe(
+      imported.content.effects[0]!.id,
     );
 
     const sheetResponse = await app.inject({

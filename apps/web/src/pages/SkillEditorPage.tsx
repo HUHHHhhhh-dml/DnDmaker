@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   skillInputSchema,
+  type EffectDefinition,
   type Skill,
 } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
@@ -38,7 +39,10 @@ interface SkillDraft {
   coinDamage: number;
   fullHeadsMultiplier: number | undefined;
   unlocked: boolean;
+  /** Efectos al rival golpeado. */
   effects: { effectId: string; chance: number; stacks: number }[];
+  /** Efectos al portador al usar la skill. */
+  selfEffects: { effectId: string; chance: number; stacks: number }[];
   tags: string;
 }
 
@@ -59,6 +63,7 @@ function emptyDraft(): SkillDraft {
     fullHeadsMultiplier: 2,
     unlocked: false,
     effects: [],
+    selfEffects: [],
     tags: "",
   };
 }
@@ -80,6 +85,11 @@ function draftFromSkill(skill: Skill): SkillDraft {
     fullHeadsMultiplier: skill.fullHeadsMultiplier,
     unlocked: skill.unlocked === true,
     effects: (skill.effects ?? []).map((ref) => ({
+      effectId: ref.effectId,
+      chance: ref.chance ?? 1,
+      stacks: ref.stacks ?? 1,
+    })),
+    selfEffects: (skill.selfEffects ?? []).map((ref) => ({
       effectId: ref.effectId,
       chance: ref.chance ?? 1,
       stacks: ref.stacks ?? 1,
@@ -137,28 +147,34 @@ export function SkillEditorPage() {
     setDraft((current) => ({ ...current, ...update }));
   }
 
-  function toggleEffect(effectId: string) {
+  function toggleEffect(
+    effectId: string,
+    list: "effects" | "selfEffects" = "effects",
+  ) {
     setDraft((current) => {
-      const exists = current.effects.some((ref) => ref.effectId === effectId);
-      return {
-        ...current,
-        effects: exists
-          ? current.effects.filter((ref) => ref.effectId !== effectId)
-          : [...current.effects, { effectId, chance: 1, stacks: 1 }],
-      };
+      const exists = current[list].some((ref) => ref.effectId === effectId);
+      const next = exists
+        ? current[list].filter((ref) => ref.effectId !== effectId)
+        : [...current[list], { effectId, chance: 1, stacks: 1 }];
+      return list === "selfEffects"
+        ? { ...current, selfEffects: next }
+        : { ...current, effects: next };
     });
   }
 
   function updateEffectRef(
     effectId: string,
     update: Partial<{ chance: number; stacks: number }>,
+    list: "effects" | "selfEffects" = "effects",
   ) {
-    setDraft((current) => ({
-      ...current,
-      effects: current.effects.map((ref) =>
+    setDraft((current) => {
+      const next = current[list].map((ref) =>
         ref.effectId === effectId ? { ...ref, ...update } : ref,
-      ),
-    }));
+      );
+      return list === "selfEffects"
+        ? { ...current, selfEffects: next }
+        : { ...current, effects: next };
+    });
   }
 
   function buildPayload() {
@@ -179,6 +195,8 @@ export function SkillEditorPage() {
       unlocked: draft.unlocked,
       target: "single" as const,
       effects: draft.effects.length > 0 ? draft.effects : undefined,
+      selfEffects:
+        draft.selfEffects.length > 0 ? draft.selfEffects : undefined,
       tags: draft.tags
         .split(",")
         .map((tag) => tag.trim())
@@ -415,83 +433,36 @@ export function SkillEditorPage() {
               04 · Efectos al impactar
             </h2>
             <p className="mb-3 mt-2 text-[11px] text-ui-faint">
-              Se aplican si la skill impacta. La probabilidad es 0–100%.
+              Se aplican al rival golpeado cuando la skill impacta. La
+              probabilidad es 0–100%.
             </p>
-            {campaign.content.effects.length === 0 ? (
-              <p className="border border-dashed border-ui-line p-3 text-xs text-ui-muted">
-                No hay efectos en la campaña.{" "}
-                <LinkButton to="/effects/new" variant="ghost" size="sm" className="ml-1">
-                  Crear uno
-                </LinkButton>
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {campaign.content.effects.map((effect) => {
-                  const ref = draft.effects.find((entry) => entry.effectId === effect.id);
-                  return (
-                    <div
-                      key={effect.id}
-                      className={cx(
-                        "border px-3 py-2",
-                        ref ? "border-ui-line-strong bg-amber/10" : "border-ui-line bg-ui-surface-2",
-                      )}
-                    >
-                      <div className="flex flex-wrap items-center gap-3">
-                        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(ref)}
-                            onChange={() => toggleEffect(effect.id)}
-                            className="h-4 w-4 accent-rust"
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-sm font-semibold">{effect.name}</span>
-                            <span className="block truncate text-[10px] text-ui-faint">
-                              {effect.description || "Sin descripción."}
-                            </span>
-                          </span>
-                        </label>
-                        {ref ? (
-                          <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-1">
-                              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
-                                Prob.
-                              </span>
-                              <NumberInput
-                                value={Math.round(ref.chance * 100)}
-                                onValueChange={(value) =>
-                                  updateEffectRef(effect.id, {
-                                    chance: Math.max(0, Math.min(100, value ?? 0)) / 100,
-                                  })
-                                }
-                                min={0}
-                                max={100}
-                                className="w-16 px-1 py-0.5 text-center text-xs"
-                              />
-                              <span className="font-mono text-[9px]">%</span>
-                            </label>
-                            <label className="flex items-center gap-1">
-                              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
-                                Stacks
-                              </span>
-                              <NumberInput
-                                value={ref.stacks}
-                                onValueChange={(value) =>
-                                  updateEffectRef(effect.id, { stacks: value ?? 1 })
-                                }
-                                min={1}
-                                max={99}
-                                className="w-14 px-1 py-0.5 text-center text-xs"
-                              />
-                            </label>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <EffectRefList
+              effects={campaign.content.effects}
+              refs={draft.effects}
+              onToggle={(effectId) => toggleEffect(effectId, "effects")}
+              onUpdate={(effectId, update) =>
+                updateEffectRef(effectId, update, "effects")
+              }
+            />
+          </section>
+
+          <section className="panel p-4">
+            <h2 className="mb-1 border-b border-ui-line pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
+              05 · Efectos al usar (portador)
+            </h2>
+            <p className="mb-3 mt-2 text-[11px] text-ui-faint">
+              Se aplican a quien usa la skill al lanzarla, antes del clash. No
+              dependen de impactar: valen para autobuffs y se mantienen aunque
+              el clash se pierda. La probabilidad es 0–100%.
+            </p>
+            <EffectRefList
+              effects={campaign.content.effects}
+              refs={draft.selfEffects}
+              onToggle={(effectId) => toggleEffect(effectId, "selfEffects")}
+              onUpdate={(effectId, update) =>
+                updateEffectRef(effectId, update, "selfEffects")
+              }
+            />
           </section>
         </div>
 
@@ -579,6 +550,34 @@ export function SkillEditorPage() {
               )}
             </div>
 
+            {draft.selfEffects.length > 0 ? (
+              <div className="panel p-4">
+                <div className="mono-label mb-2">Efectos al usar (portador)</div>
+                <div className="space-y-1.5">
+                  {draft.selfEffects.map((ref) => {
+                    const effect = campaign.content.effects.find(
+                      (entry) => entry.id === ref.effectId,
+                    );
+                    if (!effect) return null;
+                    return (
+                      <div
+                        key={ref.effectId}
+                        className="flex items-center justify-between gap-2 text-xs"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Icon name="flame" size={11} className="text-ui-ok" />
+                          {effect.name}
+                        </span>
+                        <span className="font-mono text-[9px] text-ui-faint">
+                          {Math.round(ref.chance * 100)}% · {ref.stacks} stacks
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             <div className="border border-ui-line p-3">
               <div className="mono-label mb-1">ID interno</div>
               <code className="block break-all font-mono text-[10px] text-ui-muted">
@@ -610,6 +609,104 @@ export function SkillEditorPage() {
         onConfirm={() => void handleDelete()}
         busy={busy}
       />
+    </div>
+  );
+}
+
+/** Lista de efectos con probabilidad y stacks; compartida por las dos secciones. */
+function EffectRefList({
+  effects,
+  refs,
+  onToggle,
+  onUpdate,
+}: {
+  effects: EffectDefinition[];
+  refs: { effectId: string; chance: number; stacks: number }[];
+  onToggle: (effectId: string) => void;
+  onUpdate: (
+    effectId: string,
+    update: Partial<{ chance: number; stacks: number }>,
+  ) => void;
+}) {
+  if (effects.length === 0) {
+    return (
+      <p className="border border-dashed border-ui-line p-3 text-xs text-ui-muted">
+        No hay efectos en la campaña.{" "}
+        <LinkButton to="/effects/new" variant="ghost" size="sm" className="ml-1">
+          Crear uno
+        </LinkButton>
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {effects.map((effect) => {
+        const ref = refs.find((entry) => entry.effectId === effect.id);
+        return (
+          <div
+            key={effect.id}
+            className={cx(
+              "border px-3 py-2",
+              ref
+                ? "border-ui-line-strong bg-amber/10"
+                : "border-ui-line bg-ui-surface-2",
+            )}
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={Boolean(ref)}
+                  onChange={() => onToggle(effect.id)}
+                  className="h-4 w-4 accent-rust"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{effect.name}</span>
+                  <span className="block truncate text-[10px] text-ui-faint">
+                    {effect.description || "Sin descripción."}
+                  </span>
+                </span>
+              </label>
+              {ref ? (
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
+                      Prob.
+                    </span>
+                    <NumberInput
+                      value={Math.round(ref.chance * 100)}
+                      onValueChange={(value) =>
+                        onUpdate(effect.id, {
+                          chance: Math.max(0, Math.min(100, value ?? 0)) / 100,
+                        })
+                      }
+                      min={0}
+                      max={100}
+                      className="w-16 px-1 py-0.5 text-center text-xs"
+                    />
+                    <span className="font-mono text-[9px]">%</span>
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ui-faint">
+                      Stacks
+                    </span>
+                    <NumberInput
+                      value={ref.stacks}
+                      onValueChange={(value) =>
+                        onUpdate(effect.id, { stacks: value ?? 1 })
+                      }
+                      min={1}
+                      max={99}
+                      className="w-14 px-1 py-0.5 text-center text-xs"
+                    />
+                  </label>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -235,6 +235,12 @@ export interface Skill {
   unlocked?: boolean;
 
   target: "single";
+  /**
+   * Efectos que se aplican al **portador** de la skill al usarla, antes de
+   * resolver el clash o el ataque. Independientes de `effects`: esos van al
+   * rival impactado.
+   */
+  selfEffects?: SkillEffectRef[];
   effects?: SkillEffectRef[];
   tags?: string[];
   animation?: string;

@@ -60,6 +60,18 @@ describe("validación de contenido", () => {
     ).toBe(true);
   });
 
+  it("detecta efectos al usar la skill inexistentes", () => {
+    const content = cloneContent();
+    content.skills[0]!.selfEffects = [
+      { effectId: "eff_inexistente", stacks: 1 },
+    ];
+    const result = validateContent(content);
+    expect(result.valid).toBe(false);
+    expect(
+      result.issues.some((issue) => issue.path.includes("selfEffects")),
+    ).toBe(true);
+  });
+
   it("avisa si se aplica un efecto al rival en un trigger sin rival", () => {
     const content = cloneContent();
     const base = content.effects[0]!;

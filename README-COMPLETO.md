@@ -160,6 +160,9 @@ exige el servidor parado, igual que en Linux.
 - **Motor puro y determinista**: SPD base + tirada 1..4 con la seed del combate,
   iniciativa, clash por unidad (sin importar slot), monedas, DEF/(DEF+100),
   efectos, utilidad, dominio/hábitat, redirección y HP persistente.
+- **Efectos al usar la skill** (`Skill.selfEffects`): se aplican al portador
+  antes del clash (autobuffs) y se mantienen aunque pierda el clash; los de
+  `Skill.effects` siguen yendo al rival impactado.
 - **Side-view** con party a la derecha y enemigos a la izquierda, sprites en
   capas o `portrait`, SkillSlots pentagonales, líneas de intención
   (azul/amarillo/rojo/verde) y `targetSlot` visual.

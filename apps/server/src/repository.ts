@@ -1665,12 +1665,20 @@ function remapContent(content: CampaignContent): CampaignContent {
         ...ref,
         effectId: mapIdRequired(ref.effectId),
       })),
+      startCombatEffects: item.startCombatEffects?.map((ref) => ({
+        ...ref,
+        effectId: mapIdRequired(ref.effectId),
+      })),
       useEffect: item.useEffect ? mapActions(item.useEffect) : undefined,
     })),
     skills: content.skills.map((skill) => ({
       ...skill,
       id: mapIdRequired(skill.id),
       effects: skill.effects?.map((ref) => ({
+        ...ref,
+        effectId: mapIdRequired(ref.effectId),
+      })),
+      selfEffects: skill.selfEffects?.map((ref) => ({
         ...ref,
         effectId: mapIdRequired(ref.effectId),
       })),

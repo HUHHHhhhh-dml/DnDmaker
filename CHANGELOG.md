@@ -1,5 +1,30 @@
 # Changelog
 
+## Efectos al portador al usar una skill (2026-10-29)
+
+### Añadido
+
+- **`Skill.selfEffects`**: efectos que se aplican a **quien usa la skill**,
+  antes de resolver el clash o el ataque. Sirven para autobuffs y para
+  cualquier reacción de la propia skill sobre su portador.
+- Se mantienen aunque el clash se pierda o la acción sea redirigida; un buff de
+  stats cuenta ya para el clash de esa misma acción. No dependen de impactar.
+- Son independientes de `Skill.effects`, que sigue aplicando al **rival
+  golpeado** cuando la skill impacta.
+- El editor de Skills añade la sección **05 · Efectos al usar (portador)** con
+  las mismas opciones de probabilidad (0–100 %) y stacks, reutilizando la lista
+  de efectos de la sección de impacto. La vista previa lateral muestra estos
+  efectos aparte.
+- Validación de referencias (`selfEffects` y `findReferences`) y remapeo en
+  export/import.
+- Tests: aplicación al portador y no al rival, autobuff al perder el clash,
+  probabilidad 0, tope de stacks, efecto inexistente, validación e import.
+
+### Corregido
+
+- El export/import remapea también **`Item.startCombatEffects`**: antes podía
+  dejar sus referencias apuntando a los IDs antiguos del archivo exportado.
+
 ## Retrato derivado del personaje visual (2026-10-29)
 
 ### Añadido

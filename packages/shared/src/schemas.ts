@@ -233,6 +233,8 @@ const skillFields = {
   /** Visibilidad para jugadores; ausente = bloqueada. */
   unlocked: z.boolean().optional(),
   target: z.literal("single").default("single"),
+  /** Efectos al portador al usar la skill. */
+  selfEffects: z.array(skillEffectRefSchema).max(10).optional(),
   effects: z.array(skillEffectRefSchema).max(10).optional(),
   tags: tagsSchema.optional(),
   animation: z.string().trim().max(80).optional(),

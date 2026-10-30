@@ -227,6 +227,11 @@ export interface Skill {
 
   /** v0.1: un solo objetivo. */
   target: "single";
+  /**
+   * Efectos que se aplican al portador al usar la skill, antes del clash.
+   * Independientes de `effects`, que van al rival impactado.
+   */
+  selfEffects?: SkillEffectRef[];
   effects?: SkillEffectRef[];
   tags?: string[];
   animation?: string;
