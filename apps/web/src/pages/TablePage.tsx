@@ -11,6 +11,7 @@ import { useAppStore, describeError } from "../store/useAppStore";
 import { useLiveStore } from "../store/useLiveStore";
 import { api } from "../lib/api";
 import { Icon } from "../components/Icons";
+import { CharacterPortrait } from "../components/CharacterPortrait";
 import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import { DmCombatConsole } from "../components/combat/DmCombatConsole";
 import { LootDraftPanel } from "../components/combat/LootDraftPanel";
@@ -736,18 +737,16 @@ export function TablePage() {
                       >
                         <div className="flex items-center gap-3 border-b border-ui-line-strong bg-ui-surface-3 p-3">
                           <div className="relative h-14 w-12 shrink-0 overflow-hidden border border-ui-line-strong bg-ui-surface-2">
-                            {info?.character.portrait ? (
-                              <img
-                                src={info.character.portrait}
-                                alt=""
-                                className="h-full w-full object-cover"
+                            {info ? (
+                              <CharacterPortrait
+                                character={info.character}
+                                content={campaign.content}
+                                placeholderClassName="text-lg"
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center">
                                 <span className="font-display text-lg text-ui-faint">
-                                  {(info?.character.name ?? player.name)
-                                    .slice(0, 1)
-                                    .toUpperCase()}
+                                  {player.name.slice(0, 1).toUpperCase()}
                                 </span>
                               </div>
                             )}

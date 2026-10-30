@@ -18,6 +18,7 @@ import { EquipmentDoll } from "../components/EquipmentDoll";
 import { PlayerSheetEditor } from "../components/PlayerSheetEditor";
 import { StatPanel } from "../components/StatPanel";
 import { Icon } from "../components/Icons";
+import { CharacterPortrait } from "../components/CharacterPortrait";
 import { PlayerCombatView } from "./PlayerCombatView";
 import { CombatResultPanel } from "../components/combat/CombatResultPanel";
 import { LootDraftPanel } from "../components/combat/LootDraftPanel";
@@ -407,21 +408,11 @@ export function PlayerTablePage() {
             <section className="panel animate-rise overflow-hidden">
               <div className="grid sm:grid-cols-[190px_minmax(0,1fr)]">
                 <div className="relative min-h-[190px] border-b border-ui-line-strong bg-grid bg-ui-surface-3 sm:border-b-0 sm:border-r">
-                  {character.portrait ? (
-                    <img
-                      src={character.portrait}
-                      alt={character.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[190px] items-center justify-center">
-                      <div className="flex h-24 w-24 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon">
-                        <span className="font-display text-3xl text-ui-faint">
-                          {character.name.slice(0, 1).toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  <CharacterPortrait
+                    character={character}
+                    content={campaign.content}
+                    placeholderClassName="text-3xl"
+                  />
                   <div className="absolute bottom-2 left-2">
                     <span className="border border-ui-line-strong bg-ui-surface-2 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
                       Tu ficha
@@ -890,15 +881,15 @@ function PartyCard({
     >
       <div className="flex items-center gap-2">
         <div className="relative h-11 w-10 shrink-0 overflow-hidden border border-ui-line-strong bg-ui-surface-2">
-          {character?.portrait ? (
-            <img
-              src={character.portrait}
-              alt=""
-              className="h-full w-full object-cover"
+          {character ? (
+            <CharacterPortrait
+              character={character}
+              content={content}
+              placeholderClassName="text-base"
             />
           ) : (
             <span className="flex h-full w-full items-center justify-center font-display text-base text-ui-faint">
-              {(character?.name ?? player.name).slice(0, 1).toUpperCase()}
+              {player.name.slice(0, 1).toUpperCase()}
             </span>
           )}
         </div>

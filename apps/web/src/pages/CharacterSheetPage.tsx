@@ -23,6 +23,7 @@ import {
 } from "@protocol-life/shared";
 import { useAppStore } from "../store/useAppStore";
 import { useLiveStore } from "../store/useLiveStore";
+import { CharacterPortrait } from "../components/CharacterPortrait";
 import { ImageField } from "../components/ImageField";
 import { Icon } from "../components/Icons";
 import { StatPanel } from "../components/StatPanel";
@@ -433,21 +434,11 @@ export function CharacterSheetPage() {
           <section className="panel overflow-hidden">
             <div className="grid sm:grid-cols-[180px_minmax(0,1fr)]">
               <div className="relative min-h-[180px] border-b border-ui-line-strong bg-grid bg-ui-surface-3 sm:border-b-0 sm:border-r">
-                {view.portrait ? (
-                  <img
-                    src={view.portrait}
-                    alt={view.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full min-h-[180px] items-center justify-center">
-                    <div className="flex h-24 w-24 items-center justify-center border border-ui-line-strong bg-ui-surface-2 pentagon">
-                      <span className="font-display text-3xl text-ui-faint">
-                        {(view.name || "?").slice(0, 1).toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                <CharacterPortrait
+                  character={view}
+                  content={content}
+                  placeholderClassName="text-3xl"
+                />
                 <div className="absolute bottom-2 left-2">
                   <span className="border border-ui-line-strong bg-ui-surface-2 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em]">
                     {CHARACTER_KIND_LABELS[view.kind]}
@@ -525,12 +516,38 @@ export function CharacterSheetPage() {
                       maxLength={2000}
                     />
                   </Field>
-                  <div className="sm:col-span-2">
+                  <div className="sm:col-span-2 space-y-3">
+                    <div className="flex items-start gap-3 border border-ui-line bg-ui-surface-2 p-3">
+                      <div className="relative h-28 w-24 shrink-0 overflow-hidden border border-ui-line-strong bg-grid">
+                        <CharacterPortrait
+                          character={view}
+                          content={content}
+                          placeholderClassName="text-2xl"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="mono-label">Retrato del visual</div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-ui-faint">
+                          Se compone del cuerpo base y el equipo, igual que en
+                          combate. Se actualiza al cambiar el modo visual o el
+                          equipamiento y se usa en la ficha, las tarjetas y la
+                          mesa.
+                        </p>
+                        {resolveVisualMode(view) !== "layered" ||
+                        !view.bodyImage ? (
+                          <p className="mt-1 text-[11px] leading-relaxed text-ui-muted">
+                            Esta ficha no tiene cuerpo base en modo capas: se
+                            usa el sprite único y, si tampoco hay, el retrato de
+                            respaldo.
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
                     <ImageField
                       value={draft.portrait}
                       onChange={(value) => patch({ portrait: value })}
-                      label="Retrato"
-                      hint="Upload local o URL. Se muestra en la ficha y en las tarjetas."
+                      label="Retrato de respaldo"
+                      hint="Solo se usa si la ficha no tiene cuerpo base en modo capas."
                       shape="portrait"
                     />
                   </div>

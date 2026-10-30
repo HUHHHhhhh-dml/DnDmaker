@@ -1,5 +1,26 @@
 # Changelog
 
+## Retrato derivado del personaje visual (2026-10-29)
+
+### Añadido
+
+- Nuevo `CharacterPortrait`: compone el retrato con el **cuerpo base + equipo**
+  usando `planCombatVisual`, la misma pieza que el combate. La inicial sustituye
+  a la imagen solo cuando no hay ninguna.
+- Se usa en la **ficha del DM**, las **tarjetas** de personajes, la **ficha del
+  jugador**, la **party** de la mesa y la **party** de la mesa del jugador. El
+  retrato se actualiza solo al cambiar el modo visual o el equipo.
+- En el editor de ficha, la sección de identidad muestra el **retrato del
+  visual** en vivo y el campo de subida pasa a **Retrato de respaldo**.
+
+### Cambios
+
+- `Character.portrait` ya no manda cuando la ficha tiene `bodyImage` en modo
+  capas: el visual compuesto tiene prioridad. Se conserva en los datos como
+  respaldo para campañas antiguas y fichas en modo sprite único.
+- La lista de personajes del `Join` mantiene `Character.portrait`: `SessionInfo`
+  solo transporta `id`, `name` y `portrait`, no el equipo ni los objetos.
+
 ## Icono de la skill en los pentágonos del combate (2026-10-29)
 
 ### Añadido

@@ -347,6 +347,7 @@ protocol-life/
 - **Desbloqueo:** `unlocked?: boolean` en `Item` y `Skill`. Ausente o `false` = solo DM. Los jugadores solo pueden elegir contenido desbloqueado; el servidor rechaza con `403 content_locked`. Lo que ya lleva un personaje se conserva en su ficha aunque el DM lo vuelva a bloquear.
 - **Contenido JSON validado:** las entidades completas viven en columnas JSON validadas con Zod; las tiendas/mazmorras del modelo se guardan en `campaigns.extras`.
 - **Base visual:** `campaign.settings.baseCharacterImage` (default `/assets/base-character.png`). Las imágenes de objeto se usan a la vez como arte del slot y como capa sobre la base; el seed trae capas locales 200×300 para CIVIL, WARRIOR, SIMPLE ARMOR, WHITE BOOTS y BROKEN FETTERS. El arte de ejemplo viene del prototipo original y se puede reemplazar subiendo imágenes.
+- **Retrato derivado:** las fichas y tarjetas muestran el retrato compuesto de cuerpo base + equipo (misma composición que el combate, `CharacterPortrait`). `Character.portrait` queda como respaldo para fichas sin cuerpo base o en modo sprite único; no se borra de las campañas antiguas. La lista de personajes del `Join` sigue usando `portrait`, porque `SessionInfo` no transporta el equipo.
 - **Stats derivados:** `(base + planos) × (1 + porcentajes)`, Skill Slots limitados a `1..rules.maxSkillSlots`.
 - **Moneda:** **Clean Shards**. Nunca dinero real.
 

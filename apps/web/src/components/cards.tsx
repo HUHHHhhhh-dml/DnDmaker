@@ -13,6 +13,7 @@ import {
   type Skill,
 } from "@protocol-life/shared";
 import { Icon } from "./Icons";
+import { CharacterPortrait } from "./CharacterPortrait";
 import { StatChip, TagList, cx } from "./ui";
 import { normalizedCode, signed, statEntries } from "../lib/format";
 
@@ -311,20 +312,11 @@ export function CharacterCard({
     >
       <div className="relative flex items-center gap-3 border-b border-ui-line-strong bg-ui-surface-3 p-3">
         <div className="relative h-16 w-14 shrink-0 overflow-hidden border border-ui-line-strong bg-ui-surface-2">
-          {character.portrait ? (
-            <img
-              src={character.portrait}
-              alt={character.name}
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <span className="font-display text-xl text-ui-faint">
-                {character.name.slice(0, 1).toUpperCase()}
-              </span>
-            </div>
-          )}
+          <CharacterPortrait
+            character={character}
+            content={content}
+            placeholderClassName="text-xl"
+          />
         </div>
         <div className="min-w-0 flex-1">
           <span

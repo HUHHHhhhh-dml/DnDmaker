@@ -279,8 +279,8 @@ export function PlayerSheetEditor({
             <ImageField
               value={draft.portrait}
               onChange={(value) => patch({ portrait: value })}
-              label="Retrato"
-              hint="Sube un archivo local o pega una URL. Se ve en tu ficha y en la party."
+              label="Retrato de respaldo"
+              hint="Solo se usa si tu ficha no tiene cuerpo base en modo capas; si lo tiene, el retrato se compone del visual y el equipo."
               shape="portrait"
             />
           </div>
